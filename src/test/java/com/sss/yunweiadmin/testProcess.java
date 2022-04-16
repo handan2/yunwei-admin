@@ -57,7 +57,7 @@ public class testProcess {
     }
     @Test//@Test注解修饰的方法只能是void
     public void abc(){
-        System.out.println();
+        System.out.println("111");
 
         JSONObject jsonObject = JSONObject.parseObject("{\"1550\":\"秘密\",\"1551\":\"内网\",\"1552\":\"未分配\",\"asset\":[{\"customTableId\":16,\"asId\":102002}],\"16.计算机信息表.as_device_common.no.75\":\"J0601111\",\"16.计算机信息表.as_device_common.name.76\":\"桌面计算机\",\"16.计算机信息表.as_device_common.type_id.74\":\"联网终端\",\"16.计算机信息表.as_device_common.model.94\":\"M4500T\",\"16.计算机信息表.as_device_common.sn.95\":\"111111111\",\"16.计算机信息表.as_device_common.buy_date.97\":\"2015-01-02\",\"16.计算机信息表.as_device_common.use_date.98\":\"2015-01-01\",\"16.计算机信息表.as_device_common.fund_src.78\":\"折旧资金\",\"16.计算机信息表.as_device_common.net_type.79\":\"试验网\",\"16.计算机信息表.as_device_common.state.85\":\"在用\",\"16.计算机信息表.as_device_common.user_name.89\":\"任勇林\",\"16.计算机信息表.as_device_common.user_dept.90\":\"信息化中心\"}");
         for (Map.Entry entry : jsonObject.entrySet()) {
