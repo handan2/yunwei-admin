@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ProcessDefinitionTaskMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessDefinitionTask">
+        <id column="id" property="id" />
+        <result column="task_type" property="taskType" />
+        <result column="task_id" property="taskId" />
+        <result column="task_name" property="taskName" />
+        <result column="type" property="type" />
+        <result column="type_value" property="typeValue" />
+        <result column="type_label" property="typeLabel" />
+        <result column="have_starter_dept" property="haveStarterDept" />
+        <result column="have_comment" property="haveComment" />
+        <result column="have_next_user" property="haveNextUser" />
+        <result column="have_edit_form" property="haveEditForm" />
+        <result column="have_operate" property="haveOperate" />
+        <result column="process_definition_id" property="processDefinitionId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, task_type, task_id, task_name, type, type_value, type_label, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id
+    </sql>
+
+</mapper>

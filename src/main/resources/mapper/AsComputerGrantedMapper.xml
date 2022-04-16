@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.AsComputerGrantedMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.AsComputerGranted">
+        <id column="id" property="id" />
+        <result column="as_id" property="asId" />
+        <result column="usb" property="usb" />
+        <result column="serial" property="serial" />
+        <result column="parallel" property="parallel" />
+        <result column="hongwai" property="hongwai" />
+        <result column="bluetooth" property="bluetooth" />
+        <result column="screen_shot" property="screenShot" />
+        <result column="dev1394" property="dev1394" />
+        <result column="connection" property="connection" />
+        <result column="ip_bind" property="ipBind" />
+        <result column="vm" property="vm" />
+        <result column="doc_share" property="docShare" />
+        <result column="pcmcia" property="pcmcia" />
+        <result column="dev_image" property="devImage" />
+        <result column="dev_juanying" property="devJuanying" />
+        <result column="port_shemi" property="portShemi" />
+        <result column="port_common" property="portCommon" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, as_id, usb, serial, parallel, hongwai, bluetooth, screen_shot, dev1394, connection, ip_bind, vm, doc_share, pcmcia, dev_image, dev_juanying, port_shemi, port_common
+    </sql>
+
+</mapper>

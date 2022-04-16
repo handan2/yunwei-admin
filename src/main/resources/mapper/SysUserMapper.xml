@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.SysUserMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.SysUser">
+        <id column="id" property="id" />
+        <result column="login_name" property="loginName" />
+        <result column="display_name" property="displayName" />
+        <result column="password" property="password" />
+        <result column="secret_degree" property="secretDegree" />
+        <result column="id_number" property="idNumber" />
+        <result column="mobile" property="mobile" />
+        <result column="telephone" property="telephone" />
+        <result column="location" property="location" />
+        <result column="gender" property="gender" />
+        <result column="email" property="email" />
+        <result column="status" property="status" />
+        <result column="sort" property="sort" />
+        <result column="create_datetime" property="createDateTime" />
+        <result column="remark" property="remark" />
+        <result column="dept_id" property="deptId" />
+        <result column="temp" property="temp" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp
+    </sql>
+
+</mapper>

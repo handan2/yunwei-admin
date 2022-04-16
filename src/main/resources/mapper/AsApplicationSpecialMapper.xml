@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.AsApplicationSpecialMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.AsApplicationSpecial">
+        <id column="id" property="id" />
+        <result column="as_id" property="asId" />
+        <result column="sysadmin_id" property="sysadminId" />
+        <result column="safeadmin_id" property="safeadminId" />
+        <result column="auditadmin_id" property="auditadminId" />
+        <result column="username_tmp" property="usernameTmp" />
+        <result column="operate_type_tmp" property="operateTypeTmp" />
+        <result column="useroperate_type_tmp" property="useroperateTypeTmp" />
+        <result column="roleoperate_type_tmp" property="roleoperateTypeTmp" />
+        <result column="rolename_tmp" property="rolenameTmp" />
+        <result column="sysadmin_tmp" property="sysadminTmp" />
+        <result column="safeadmin_tmp" property="safeadminTmp" />
+        <result column="auditadmin_tmp" property="auditadminTmp" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, as_id, sysadmin_id, safeadmin_id, auditadmin_id, username_tmp, operate_type_tmp, useroperate_type_tmp, roleoperate_type_tmp, rolename_tmp, sysadmin_tmp, safeadmin_tmp, auditadmin_tmp
+    </sql>
+
+</mapper>

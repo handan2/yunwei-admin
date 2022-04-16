@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.SysPermissionMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.SysPermission">
+        <id column="id" property="id"/>
+        <result column="pid" property="pid"/>
+        <result column="type" property="type"/>
+        <result column="name" property="name"/>
+        <result column="path" property="path"/>
+        <result column="permission_type" property="permissionType"/>
+        <result column="position" property="position"/>
+        <result column="icon" property="icon"/>
+        <result column="sort" property="sort"/>
+        <result column="remark" property="remark"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, pid, type, name, path,permission_type,position, icon, sort, remark
+    </sql>
+
+</mapper>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.AsDeviceCommonMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.AsDeviceCommon">
+        <id column="id" property="id" />
+        <result column="type_id" property="typeId" />
+        <result column="no" property="no" />
+        <result column="name" property="name" />
+        <result column="baomi_no" property="baomiNo" />
+        <result column="fund_src" property="fundSrc" />
+        <result column="net_type" property="netType" />
+        <result column="port_no" property="portNo" />
+        <result column="host_name" property="hostName" />
+        <result column="location" property="location" />
+        <result column="shared" property="shared" />
+        <result column="name_shared" property="nameShared" />
+        <result column="state" property="state" />
+        <result column="usagee" property="usagee" />
+        <result column="administrator" property="administrator" />
+        <result column="admin_tel" property="adminTel" />
+        <result column="user_name" property="userName" />
+        <result column="user_dept" property="userDept" />
+        <result column="user_miji" property="userMiji" />
+        <result column="user_tel" property="userTel" />
+        <result column="manufacturer" property="manufacturer" />
+        <result column="model" property="model" />
+        <result column="sn" property="sn" />
+        <result column="made_date" property="madeDate" />
+        <result column="buy_date" property="buyDate" />
+        <result column="use_date" property="useDate" />
+        <result column="price" property="price" />
+        <result column="discard_date" property="discardDate" />
+        <result column="ip" property="ip" />
+        <result column="mac" property="mac" />
+        <result column="miji" property="miji" />
+        <result column="remark" property="remark" />
+        <result column="temp" property="temp" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, type_id, no, name, baomi_no, fund_src, net_type, port_no, host_name, location, shared, name_shared, state, usagee, administrator, admin_tel, user_name, user_dept, user_miji, user_tel, manufacturer, model, sn, made_date, buy_date, use_date, price, discard_date, ip, mac, miji, remark,temp
+    </sql>
+
+</mapper>

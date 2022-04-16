@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ProcessInstanceChangeMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessInstanceChange">
+        <id column="id" property="id"/>
+        <result column="as_id" property="asId"/>
+        <result column="process_instance_data_id" property="processInstanceDataId"/>
+        <result column="act_process_instance_id" property="actProcessInstanceId"/>
+        <result column="name" property="name"/>
+        <result column="old_value" property="oldValue"/>
+        <result column="new_value" property="newValue"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="display_name" property="displayName"/>
+        <result column="login_name" property="loginName"/>
+        <result column="modify_datetime" property="modifyDatetime"/>
+        <result column="flag" property="flag"/>
+        <result column="zh_table_name" property="zhTableName"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, as_id,process_instance_data_id, act_process_instance_id, name, old_value, new_value, dept_name, display_name, login_name, modify_datetime,flag,zh_table_name
+    </sql>
+
+</mapper>

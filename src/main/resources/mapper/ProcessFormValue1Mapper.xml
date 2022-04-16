@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ProcessFormValue1Mapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessFormValue1">
+        <id column="id" property="id" />
+        <result column="process_definition_id" property="processDefinitionId" />
+        <result column="act_process_instance_id" property="actProcessInstanceId" />
+        <result column="value" property="value" />
+        <result column="user_type" property="userType" />
+        <result column="user_id_str" property="userIdStr" />
+        <result column="user_name" property="userName" />
+        <result column="select_group_id" property="selectGroupId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, process_definition_id, act_process_instance_id, value, user_type, user_id_str, user_name, select_group_id
+    </sql>
+
+</mapper>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.AsConfigMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.AsConfig">
+        <id column="id" property="id" />
+        <result column="en_table_name" property="enTableName" />
+        <result column="zh_table_name" property="zhTableName" />
+        <result column="en_column_name" property="enColumnName" />
+        <result column="zh_column_name" property="zhColumnName" />
+        <result column="type" property="type" />
+        <result column="sort" property="sort" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, en_table_name, zh_table_name, en_column_name, zh_column_name, type, sort
+    </sql>
+
+</mapper>

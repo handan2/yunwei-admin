@@ -1,0 +1,226 @@
+package com.sss.yunweiadmin.controller;
+
+
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ReflectUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
+import com.sss.yunweiadmin.common.utils.ProcessFormCustomTypeUtil;
+import com.sss.yunweiadmin.common.utils.SpringUtil;
+import com.sss.yunweiadmin.common.utils.TreeUtil;
+import com.sss.yunweiadmin.model.entity.AsConfig;
+import com.sss.yunweiadmin.model.entity.AsDeviceCommon;
+import com.sss.yunweiadmin.model.entity.ProcessFormCustomType;
+import com.sss.yunweiadmin.model.entity.ProcessFormTemplate;
+import com.sss.yunweiadmin.model.vo.FormTemplateVO;
+import com.sss.yunweiadmin.model.vo.TableTypeVO;
+import com.sss.yunweiadmin.model.vo.TreeDTO;
+import com.sss.yunweiadmin.model.vo.TreeSelectVO;
+import com.sss.yunweiadmin.service.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * <p>
+ * 自定义表单模板 前端控制器
+ * </p>
+ *
+ * @author 任勇林
+ * @since 2021-04-14
+ */
+@RestController
+@RequestMapping("/processFormTemplate")
+@ResponseResultWrapper
+public class ProcessFormTemplateController {
+    @Autowired
+    private ProcessFormTemplateService processFormTemplateService;
+    @Autowired
+    private ProcessFormCustomTypeService processFormCustomTypeService;
+    @Autowired
+    private AsConfigService asConfigService;
+    @Autowired
+    AsTypeService asTypeService;
+
+    /**
+     * 20211201这个是发起流程实例时获取所有的temploate记录（并以id/label/name/type/flag属性组装成基本成员）返回给页面的数据
+     * 参考这里解析temlate表的逻辑新写一个action来传变更字段相应的map（id/label）集合返回给前端:已
+     *
+     * 20211207 todo在这里做下对流程实例发起时select变更字段的value值(选项字段)，做下判断与处理：根据约定（字符串格式）规则
+     * 决定是否查下DB/把结果再塞回options相应的字段值中；当然这里实际要改的是TreeUtil.getFormTemplateTree(list);
+     *
+     */
+
+    @GetMapping("getFormTemplateTree")
+    public List<FormTemplateVO> getFormTemplateTree(Integer processDefinitionId) {
+        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        return TreeUtil.getFormTemplateTree(list);
+    }
+
+    //获取自定义表对应的变更字段的（ID/label）map
+    @GetMapping("getFormTemplateIdLableMap")
+    public Map<String, String> getChangeColumnMap(Integer processDefinitionId) {
+        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        Map<String, String> map = Maps.newHashMap();
+        for (ProcessFormTemplate processFormTemplate : list) {
+            if ("字段变更类型".equals(processFormTemplate.getFlag())) {
+                map.put(processFormTemplate.getLabel(), processFormTemplate.getId().toString());
+            }
+        }
+        return map;
+    }
+
+    @GetMapping("getFormTemplateGroupTree")
+    public List<TreeSelectVO> getFormTemplateGroupTree(Integer processDefinitionId) {
+        List<ProcessFormTemplate> list1 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
+        Map<String, String> map1 = list1.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate::getHaveGroupSelect));
+
+        List<ProcessFormTemplate> list2 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组").eq("have_group_select", "是"));
+        Map<String, Integer> map2 = list2.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate::getId));
+        //
+        List<TreeDTO> list3 = Lists.newArrayList();
+        for (ProcessFormTemplate processFormTemplate : list2) {
+            if (!Strings.isNullOrEmpty(processFormTemplate.getGroupParentLabel())) {
+                //有父字段组,判断父字段组的haveGroupSelect
+                String groupParentLabel = processFormTemplate.getGroupParentLabel();
+                String haveGroupSelect = map1.get(groupParentLabel);
+                if (haveGroupSelect.equals("是")) {
+                    TreeDTO treeDTO = new TreeDTO();
+                    treeDTO.setId(processFormTemplate.getId());
+                    treeDTO.setName(processFormTemplate.getLabel());
+                    treeDTO.setPid(map2.get(processFormTemplate.getGroupParentLabel()));
+                    list3.add(treeDTO);
+                }
+            } else {
+                TreeDTO treeDTO = new TreeDTO();
+                treeDTO.setId(processFormTemplate.getId());
+                treeDTO.setName(processFormTemplate.getLabel());
+                treeDTO.setPid(0);
+                list3.add(treeDTO);
+            }
+        }
+        System.out.println();
+        if (CollUtil.isEmpty(list3)) {
+            return Lists.newArrayList();
+        } else {
+            return TreeUtil.getTreeSelectVO(list3);
+        }
+    }
+
+    //根据已选择的字段组id,筛选出完整需要被显示的字段组id
+    @GetMapping("getSelectGroupIdList")
+    public Set<Integer> getSelectGroupIdList(Integer processDefinitionId, Integer[] checkGroupIdArr) {
+        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
+        Map<String, ProcessFormTemplate> map = list.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate -> ProcessFormTemplate));
+
+        Set<Integer> selectGroupIdSet = Stream.of(checkGroupIdArr).collect(Collectors.toSet());
+        //先将 have_group_select=否 放入checkGroupIdArr
+        selectGroupIdSet.addAll(list.stream().filter(item -> item.getHaveGroupSelect().equals("否")).map(ProcessFormTemplate::getId).collect(Collectors.toSet()));
+        //根据checkGroupIdArr，继续找出有父子关系的需要显示的父id
+        List<ProcessFormTemplate> list2 = list.stream().filter(item -> selectGroupIdSet.contains(item.getId())).collect(Collectors.toList());
+        for (ProcessFormTemplate processFormTemplate : list2) {
+            String groupParentLabel = processFormTemplate.getGroupParentLabel();
+            if (!Strings.isNullOrEmpty(groupParentLabel)) {
+                try {
+                    ProcessFormTemplate tmp = map.get(groupParentLabel);
+                    selectGroupIdSet.add(tmp.getId());
+                    //继续向上寻找
+                    String groupParentLabel2 = tmp.getGroupParentLabel();
+                    while (true) {
+                        ProcessFormTemplate tmp2 = map.get(groupParentLabel2);
+                        if (tmp2 != null) {
+                            selectGroupIdSet.add(tmp2.getId());
+                            groupParentLabel2 = tmp2.getGroupParentLabel();
+                        } else {
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("此处代码有错误。。。");
+                }
+            }
+        }
+        return selectGroupIdSet;
+    }
+
+    //<自定义表的ID,对应的字段VOList<VO: "label": "计算机信息表.资产编号","name": "16.计算机信息表.as_device_common.no.75">>//自定义表的记录相应源表/字段的那个字段叫props:里面是json格式
+    @GetMapping("getTableTypeVO")
+    public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) {
+        Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
+        //1.取出所有的表类型的名称
+        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
+            String tableId = item.getType().split("\\.")[0];
+            return Integer.parseInt(tableId);
+        }).collect(Collectors.toList());
+        if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
+            //2.根据表名称取出processFormCustomType
+            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().in("id", tableIdList));
+            //3.
+            for (ProcessFormCustomType processFormCustomType : typeList) {
+                List<TableTypeVO> tmpList = Lists.newArrayList();
+
+                String props = processFormCustomType.getProps();
+                Map<String, List<AsConfig>> tmpMap = ProcessFormCustomTypeUtil.parseProps(props);
+                tmpMap.entrySet().stream().forEach(item -> {
+                    item.getValue().forEach(item2 -> {
+                        TableTypeVO tableTypeVO = new TableTypeVO();
+                        tableTypeVO.setLabel(processFormCustomType.getName() + "." + item2.getZhColumnName());
+                        tableTypeVO.setName(processFormCustomType.getId() + "." + processFormCustomType.getName() + "." + item.getKey() + "." + item2.getEnColumnName() + "." + item2.getId());
+                        tmpList.add(tableTypeVO);
+                    });
+                });
+
+                map.put(processFormCustomType.getId(), tmpList);
+            }
+        }
+        return map;
+    }
+
+    //20211129获取流程实例中自定义表的相应实例数据; 格式<"16.计算机信息表.as_device_common.no.75","J0601111">；这个函数只有在流程发起时选择资产后的填充相应字段时被调用
+   //20220408这个方法和ProcessFormCustomInstController的设置初衷有关联，todo后续研究需要不需要整合
+    @GetMapping("getTableTypeDbData")
+    public Map<String, String> getTableTypeDbData(Integer customTableId, Integer asDeviceCommonId, Integer processDefinitionId) {
+        Map<String, String> map = Maps.newTreeMap();
+
+        List<TableTypeVO> list = this.getTableTypeVO(processDefinitionId).get(customTableId);//20220408getTableTypeVO:返回 Map<Integer, List<TableTypeVO>>；map也能用get方法
+        list.forEach(item -> {
+            //1.资产哦.as_device_common.no.1
+            String name = item.getName();//"name": "16.计算机信息表.as_device_common.no.75"
+            String[] arr = name.split("\\.");
+            String serviceName = StrUtil.toCamelCase(arr[2]) + "ServiceImpl";
+            IService service = (IService) SpringUtil.getBean(serviceName);
+            Object obj = null;
+            if (arr[2].equals("as_device_common")) {
+                obj = service.getById(asDeviceCommonId);
+            } else {
+                obj = service.getOne(new QueryWrapper<Object>().eq("as_id", asDeviceCommonId));
+            }
+            if (obj != null) {
+                //读实例中相应自定义表的具体字段值：这里的toString()是把所有字段不管啥类型都转成string&&资产表中不能有NULL值否则会报错
+                String value = ReflectUtil.getFieldValue(obj, StrUtil.toCamelCase(arr[3])).toString();
+                if (!Strings.isNullOrEmpty(value)) {
+                    if ("type_id".equals(arr[3])) {
+                        String typeName = asTypeService.getById(Integer.valueOf(value)).getName();
+                        map.put(name, typeName);
+                    } else
+                        map.put(name, value);
+                }
+            }
+        });
+
+        return map;
+    }
+}
