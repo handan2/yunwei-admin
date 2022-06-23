@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * 用户操作记录日志 服务类
  * </p>
  *
- * @author 任勇林
+ * @author 任勇林1
  * @since 2021-10-18
  */
 public interface OperateeLogService extends IService<OperateeLog> {
