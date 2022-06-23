@@ -66,7 +66,14 @@ public class ProcessDefinitionController {
         return result;
     }
 
-    //tableNameArr=[计算机类型，设备通用类型]
+    /**
+     * tableNameArr=[16.计算机信息表，xx.yyyy]
+     * 返回“自定义表类型/custormType”构成的森林（用于自定表单设计时设置变更字段时要用到的的下拉选择内容）：其实就是二次结构，一级是表名，二级是属性
+     * 采取“链表”结构存储“二级结构”；这种结构只记录其头部/根结点即可，因为是多链，其头部结点构成List
+     * @author 任勇林/注释
+     * @since 2022-04-28
+     */
+
     @GetMapping("getTreeByTableNames")
     public List<TreeSelectVO> getTreeByTableNames(String[] tableNameArr) {
         List<TreeSelectVO> treeList = Lists.newArrayList();
@@ -153,7 +160,7 @@ public class ProcessDefinitionController {
         return processDefinitionService.add(processDefinitionVO);
     }
 
-    //获取流程定义时的3个表单数据
+    //获取流程定义时的3个model/map 数据
     @GetMapping("getProcessDefinitionVO")
     public ProcessDefinitionVO getProcessDefinitionVO(String processDefinitionId) {
         ProcessDefinitionVO processDefinitionVO = new ProcessDefinitionVO();

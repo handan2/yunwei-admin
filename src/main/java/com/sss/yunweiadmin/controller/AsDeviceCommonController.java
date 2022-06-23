@@ -64,6 +64,8 @@ public class AsDeviceCommonController {
     AsTypeService asTypeService;
     @Autowired
     SysDeptService sysDeptService;
+    @Autowired
+    DiskService diskService;
 
     @GetMapping("test")
     public  List<Integer> test (int typeId)
@@ -145,6 +147,9 @@ public class AsDeviceCommonController {
             if (asComputerGranted != null) {
                 assetVO.setAsComputerGranted(asComputerGranted);
             }
+            //202206112加载硬盘信息
+            List<AsDeviceCommon> diskList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("host_as_id",id));
+            assetVO.setDiskList(diskList);
         } else if (asTypeId == 5) {
             //网络设备
             AsNetworkDeviceSpecial asNetworkDeviceSpecial = asNetworkDeviceSpecialService.getOne(new QueryWrapper<AsNetworkDeviceSpecial>().eq("as_id", id));

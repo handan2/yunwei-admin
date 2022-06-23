@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.AsComputerSpecial;
 import com.sss.yunweiadmin.model.entity.AsType;
+import com.sss.yunweiadmin.model.entity.ProcessDefinition;
+import com.sss.yunweiadmin.service.ProcessDefinitionService;
 import com.sss.yunweiadmin.service.impl.AsTypeServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,15 +29,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class AsTypeController {
     @Autowired
     AsTypeServiceImpl asTypeService;
-    @GetMapping("getAsType")
-    public int getAsIdByType(String name) {
+    @Autowired
+    ProcessDefinitionService processDefinitionService;
+    @GetMapping("getAsTypeIdByName")
+    public int getAsTypeIdByName(String name) {
+        System.out.println(name);
         AsType astype =  asTypeService.getOne(new QueryWrapper<AsType>().eq("name", name));
         if(ObjectUtil.isNotEmpty(astype))
             return astype.getId();
         else
-            return 0;
+            return -1;
     }
+    @GetMapping("getAllowedAsTypeIdByProDefId")
+    public int getAllowedAsTypeIdByProDefId(Integer id) {
+        ProcessDefinition def = processDefinitionService.getOne(new QueryWrapper< ProcessDefinition>().eq("id",id));
+        return getAsTypeIdByName(def.getProcessType2());
 
+    }
 
 
 }

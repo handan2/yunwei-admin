@@ -1,6 +1,8 @@
 package com.sss.yunweiadmin.controller;
 
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -8,7 +10,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sss.yunweiadmin.bean.WorkFlowBean;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
-import com.sss.yunweiadmin.common.utils.SpringUtil;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.vo.*;
 import com.sss.yunweiadmin.service.*;
@@ -252,18 +253,23 @@ public class ProcessInstanceDataController {
     }
 
     //201211111流程实例发起时的校验：如果存在互斥流程实例，则返回互斥的流程实例LIST，当然如果不存在就返回null
-    private List<ProcessInstanceData> validate(StartProcessVO startProcessVO) {
+    private List<ProcessInstanceData> validate(ProcessFormValue1 value1,List<ProcessFormValue2> value2List) {//StartProcessVO/CheckProcessVO
         SysUser user = (SysUser) httpSession.getAttribute("user");
-        System.out.println(startProcessVO.getValue2List().get(0).getAsId());
         if (user == null) {
             throw new RuntimeException("用户未登录");
         }
-
-        int processDefId = startProcessVO.getProcessDefinitionId();
+        if(ObjectUtil.isEmpty(value1)){
+            return null;
+        }
+        int processDefId = value1.getProcessDefinitionId();
         String processType = processDefinitionService.getById(processDefId).getProcessType();
-        int assetId = startProcessVO.getValue2List().get(0).getAsId();
-        //判空，如果是空，证明是没有关联资产的，直接放行
-        if (ObjectUtil.isEmpty(assetId)) return null;
+        //20220528加判空：不能用OBjectUtil(不能判断size=0这种List）
+        if(CollUtil.isEmpty(value2List)){
+            return null;
+        }
+        int assetId = value2List.get(0).getAsId();
+//        //判空，如果是空，证明是没有关联资产的，直接放行  //20220528暂把这个注释了
+//        if (ObjectUtil.isEmpty(assetId)) return null;
         //需要加对资产TYPE的判断，只有“计算机类”的设备需要做互斥判断todo
         int typeId = asDeviceCommonService.getById(assetId).getTypeId();
         //查询资产类型表中typeId对应的level=2/上级分类的名称是不是“计算机”，不是的话，直接放行
@@ -289,18 +295,16 @@ public class ProcessInstanceDataController {
     }
     @OperateLog(module = "流程模块", type = "发起流程")
     @PostMapping("start")//20211112重写
-    public StartProcessResultVO start(@RequestBody StartProcessVO startProcessVO) {
-
-        StartProcessResultVO startProcessResultVO = new StartProcessResultVO();
-        List<ProcessInstanceData> processInstanceDataList = this.validate(startProcessVO);
+    public StartOrHandleProcessResultVO start(@RequestBody StartProcessVO startProcessVO) {
+        StartOrHandleProcessResultVO startOrHandleProcessResultVO = new StartOrHandleProcessResultVO();
+        List<ProcessInstanceData> processInstanceDataList = this.validate(startProcessVO.getValue1(),startProcessVO.getValue2List());
         if(ObjectUtil.isNotEmpty(processInstanceDataList)){//有值即存在互斥实例
-            startProcessResultVO.setProcessInstanceDataList(processInstanceDataList);
-            startProcessResultVO.setIsSuccess(false);
+            startOrHandleProcessResultVO.setProcessInstanceDataList(processInstanceDataList);
+            startOrHandleProcessResultVO.setIsSuccess(false);
         }else{
-            startProcessResultVO.setIsSuccess( processInstanceDataService.start(startProcessVO));
+            startOrHandleProcessResultVO.setIsSuccess(processInstanceDataService.start(startProcessVO));
         }
-
-        return  startProcessResultVO;
+        return  startOrHandleProcessResultVO;
     }
     @PostMapping("start2")//备份原版，改为start2
     public boolean start2(@RequestBody StartProcessVO startProcessVO) {
@@ -313,13 +317,24 @@ public class ProcessInstanceDataController {
     }
     @OperateLog(module = "流程模块", type = "处理流程")
     @PostMapping("handle")
-    public boolean handle(@RequestBody CheckProcessVO checkProcessVO) {
+    //返回值改造成自定义VO
+    public StartOrHandleProcessResultVO handle(@RequestBody CheckProcessVO checkProcessVO) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
             throw new RuntimeException("用户未登录");
         }
-        return processInstanceDataService.handle(checkProcessVO);
+        StartOrHandleProcessResultVO startOrHandleProcessResultVO = new StartOrHandleProcessResultVO();
+        List<ProcessInstanceData> processInstanceDataList = this.validate(checkProcessVO.getValue1(),checkProcessVO.getValue2List());
+        if(ObjectUtil.isNotEmpty(processInstanceDataList)){//有值即存在互斥实例
+            startOrHandleProcessResultVO.setProcessInstanceDataList(processInstanceDataList);
+            startOrHandleProcessResultVO.setIsSuccess(false);
+        }else{
+            startOrHandleProcessResultVO.setIsSuccess( processInstanceDataService.handle(checkProcessVO));
+        }
+
+        return startOrHandleProcessResultVO;
     }
+
 
     @PostMapping("modify")
     public boolean modify(@RequestBody ModifyProcessFormVO modifyProcessFormVO) {
@@ -335,35 +350,45 @@ public class ProcessInstanceDataController {
     public boolean delete(@RequestBody ProcessInstanceData processInstanceData) {
         return processInstanceDataService.delete(processInstanceData);
     }
-
+//20220525todo在StartProcessConditionVO /CheckProcessConditionVO增加 hide_group_ids/hide_group_label字段
     @GetMapping("getStartProcessConditionVO")
     public StartProcessConditionVO getStartProcessConditionVO(Integer processDefinitionId) {
         StartProcessConditionVO startProcessConditionVO = new StartProcessConditionVO();
         //取出流程定义中的第一个发起任务节点
-        List<ProcessDefinitionTask> startEventList = processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_type", "bpmn:startEvent"));
-        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).in("source_id", startEventList.stream().map(ProcessDefinitionTask::getTaskId).collect(Collectors.toList())));
-        String startTaskId;
+        //注意startEvent是比"startTask"之前那个节点，后者才是实际的发起人节点
+       ProcessDefinitionTask startEvent = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_type", "bpmn:startEvent"));
+        List<ProcessDefinitionEdge> edgeList;
+       //20220517 加判空
+        if (ObjectUtil.isNotEmpty(startEvent)) {
+            //20220608感觉可以用getOne:毕竟startEvent到StartTask只有一条线）
+            edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", startEvent.getTaskDefKey()));
+        } else{
+            throw new RuntimeException("该流程可能不存在，找不到起始结点信息");
+        }
+        String startTaskDefKey;
         if (ObjectUtil.isNotEmpty(edgeList)) {
-            startTaskId = edgeList.get(0).getTargetId();
+            startTaskDefKey = edgeList.get(0).getTargetId();
         } else {
             throw new RuntimeException("流程图错误,缺少开始节点");
         }
-        if (startTaskId != null) {
+        if (startTaskDefKey != null) {
             //获取多条连线
-            List<String> buttonNameList = workFlowBean.getButtonNameList(processDefinitionId, startTaskId);
+            List<String> buttonNameList = workFlowBean.getButtonNameList(processDefinitionId, startTaskDefKey);
             if (ObjectUtil.isNotEmpty(buttonNameList)) {
                 startProcessConditionVO.setButtonNameList(buttonNameList);
             }
-            ProcessDefinitionTask processDefinitionTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_id", startTaskId));
+            ProcessDefinitionTask startTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", startTaskDefKey));
             //是否有下一步处理人
-            startProcessConditionVO.setHaveNextUser(processDefinitionTask.getHaveNextUser());
+            startProcessConditionVO.setHaveNextUser(startTask.getHaveNextUser());
+            startProcessConditionVO.setHideGroupIds(startTask.getHideGroupIds());
+            startProcessConditionVO.setHideGroupLabel(startTask.getHideGroupLabel());
         }
 
         return startProcessConditionVO;
     }
 
-    @GetMapping("getCheckProcessConditionVO")
-    public CheckProcessConditionVO getUserTaskConditionVO(Integer processDefinitionId, String actProcessInstanceId) {
+    @GetMapping("getCheckProcessConditionVO")//实际相当地“getUserTaskAndEdgeVO”
+    public CheckProcessConditionVO getCheckProcessConditionVO(Integer processDefinitionId, String actProcessInstanceId) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
             throw new RuntimeException("用户未登录");
@@ -381,9 +406,9 @@ public class ProcessInstanceDataController {
             checkProcessConditionVO.setButtonNameList(buttonNameList);
         }
         //是否允许 意见，修改表单，下一步处理人
-        ProcessDefinitionTask processDefinitionTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_id", actTask.getTaskDefinitionKey()));
-        if (processDefinitionTask.getHaveComment().equals("是")) {
-            if (processDefinitionTask.getTaskType().equals("bpmn:approvalTask")) {
+        ProcessDefinitionTask checkTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", actTask.getTaskDefinitionKey()));
+        if (checkTask.getHaveComment().equals("是")) {
+            if (checkTask.getTaskType().equals("bpmn:approvalTask")) {
                 //审批任务
                 checkProcessConditionVO.setCommentTitle("意见备注");
             } else {
@@ -391,15 +416,18 @@ public class ProcessInstanceDataController {
                 checkProcessConditionVO.setCommentTitle("处理备注");
             }
         }
-        checkProcessConditionVO.setHaveComment(processDefinitionTask.getHaveComment());
-        checkProcessConditionVO.setHaveEditForm(processDefinitionTask.getHaveEditForm());
-        checkProcessConditionVO.setHaveNextUser(processDefinitionTask.getHaveNextUser());
-        checkProcessConditionVO.setHaveOperate(processDefinitionTask.getHaveOperate());
+        checkProcessConditionVO.setHaveComment(checkTask.getHaveComment());
+        checkProcessConditionVO.setHaveEditForm(checkTask.getHaveEditForm());
+        checkProcessConditionVO.setHaveNextUser(checkTask.getHaveNextUser());
+        checkProcessConditionVO.setHaveOperate(checkTask.getHaveOperate());
+        checkProcessConditionVO.setHideGroupIds(checkTask.getHideGroupIds());
+        checkProcessConditionVO.setHideGroupLabel(checkTask.getHideGroupLabel());
+        checkProcessConditionVO.setHaveSelectAsset(checkTask.getHaveSelectAsset());
         return checkProcessConditionVO;
     }
 
-    @GetMapping("getActiveTaskIdList")
-    public List<String> getActiveTaskIdList(String actProcessInstanceId) {
+    @GetMapping("getActiveTaskDefKeyList")
+    public List<String> getActiveTaskDefKeyList(String actProcessInstanceId) {
         List<String> list = new ArrayList<>();
         List<Task> activeTaskList = workFlowBean.getActiveTask(actProcessInstanceId);
         if (ObjectUtil.isNotEmpty(activeTaskList)) {
