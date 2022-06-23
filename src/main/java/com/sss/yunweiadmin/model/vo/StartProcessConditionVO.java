@@ -10,4 +10,9 @@ public class StartProcessConditionVO {
     private List<String> buttonNameList;
     //是否允许指定下一步处理人
     private String haveNextUser;
+    //隐藏字段组ID
+    private String hideGroupIds;
+    //隐藏字段组名称
+    private String hideGroupLabel;
+
 }

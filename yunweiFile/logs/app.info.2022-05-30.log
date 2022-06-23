@@ -1,0 +1,185 @@
+2022-05-30 00:08:01.455 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStarting:55 -Starting YunweiAdminApplication using Java 1.8.0_172 on CN-20191003CFKL with PID 7680 (E:\project\yunwei-admin111\target\classes started by Administrator in E:\project\yunwei-admin111)
+2022-05-30 00:08:01.464 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2022-05-30 00:08:08.477 INFO [main]o.s.boot.web.embedded.tomcat.TomcatWebServer.initialize:108 -Tomcat initialized with port(s): 8080 (http)
+2022-05-30 00:08:08.513 INFO [main]org.apache.coyote.http11.Http11NioProtocol.log:173 -Initializing ProtocolHandler ["http-nio-8080"]
+2022-05-30 00:08:08.514 INFO [main]org.apache.catalina.core.StandardService.log:173 -Starting service [Tomcat]
+2022-05-30 00:08:08.514 INFO [main]org.apache.catalina.core.StandardEngine.log:173 -Starting Servlet engine: [Apache Tomcat/9.0.41]
+2022-05-30 00:08:08.905 INFO [main]o.a.c.core.ContainerBase.[Tomcat].[localhost].[/yunwei].log:173 -Initializing Spring embedded WebApplicationContext
+2022-05-30 00:08:08.905 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 7116 ms
+2022-05-30 00:08:09.039 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2022-05-30 00:08:12.447 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2022-05-30 00:08:13.631 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2022-05-30 00:08:16.550 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2022-05-30 00:08:17.840 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2022-05-30 00:08:27.101 INFO [main]org.apache.coyote.http11.Http11NioProtocol.log:173 -Starting ProtocolHandler ["http-nio-8080"]
+2022-05-30 00:08:27.148 INFO [main]o.s.boot.web.embedded.tomcat.TomcatWebServer.start:220 -Tomcat started on port(s): 8080 (http) with context path '/yunwei'
+2022-05-30 00:08:27.168 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStarted:61 -Started YunweiAdminApplication in 27.772 seconds (JVM running for 31.765)
+2022-05-30 12:35:07.426 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStarting:55 -Starting YunweiAdminApplication using Java 1.8.0_172 on CN-20191003CFKL with PID 1012 (E:\project\yunwei-admin111\target\classes started by Administrator in E:\project\yunwei-admin111)
+2022-05-30 12:35:07.473 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2022-05-30 12:35:16.215 INFO [main]o.s.boot.web.embedded.tomcat.TomcatWebServer.initialize:108 -Tomcat initialized with port(s): 8080 (http)
+2022-05-30 12:35:16.290 INFO [main]org.apache.coyote.http11.Http11NioProtocol.log:173 -Initializing ProtocolHandler ["http-nio-8080"]
+2022-05-30 12:35:16.291 INFO [main]org.apache.catalina.core.StandardService.log:173 -Starting service [Tomcat]
+2022-05-30 12:35:16.292 INFO [main]org.apache.catalina.core.StandardEngine.log:173 -Starting Servlet engine: [Apache Tomcat/9.0.41]
+2022-05-30 12:35:16.672 INFO [main]o.a.c.core.ContainerBase.[Tomcat].[localhost].[/yunwei].log:173 -Initializing Spring embedded WebApplicationContext
+2022-05-30 12:35:16.672 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 8857 ms
+2022-05-30 12:35:16.790 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2022-05-30 12:35:20.098 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2022-05-30 12:35:20.776 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2022-05-30 12:35:22.579 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2022-05-30 12:35:23.186 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2022-05-30 12:35:29.163 INFO [main]org.apache.coyote.http11.Http11NioProtocol.log:173 -Starting ProtocolHandler ["http-nio-8080"]
+2022-05-30 12:35:29.229 INFO [main]o.s.boot.web.embedded.tomcat.TomcatWebServer.start:220 -Tomcat started on port(s): 8080 (http) with context path '/yunwei'
+2022-05-30 12:35:29.246 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStarted:61 -Started YunweiAdminApplication in 25.339 seconds (JVM running for 35.202)
+2022-05-30 12:45:15.269 INFO [http-nio-8080-exec-1]o.a.c.core.ContainerBase.[Tomcat].[localhost].[/yunwei].log:173 -Initializing Spring DispatcherServlet 'dispatcherServlet'
+2022-05-30 12:45:15.270 INFO [http-nio-8080-exec-1]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2022-05-30 12:45:15.272 INFO [http-nio-8080-exec-1]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 2 ms
+2022-05-30 12:45:15.713 WARN [http-nio-8080-exec-1]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 592423
+2022-05-30 12:45:16.158 WARN [http-nio-8080-exec-1]o.s.w.s.m.m.annotation.ExceptionHandlerExceptionResolver.doResolveHandlerMethodException:434 -Failure in @ExceptionHandler com.sss.yunweiadmin.common.config.ExceptionHandle#handleException(HttpServletRequest, Exception)
+java.lang.NullPointerException: null
+	at com.sss.yunweiadmin.common.config.ExceptionHandle.handleException(ExceptionHandle.java:24)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:197)
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:141)
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:106)
+	at org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver.doResolveHandlerMethodException(ExceptionHandlerExceptionResolver.java:428)
+	at org.springframework.web.servlet.handler.AbstractHandlerMethodExceptionResolver.doResolveException(AbstractHandlerMethodExceptionResolver.java:75)
+	at org.springframework.web.servlet.handler.AbstractHandlerExceptionResolver.resolveException(AbstractHandlerExceptionResolver.java:141)
+	at org.springframework.web.servlet.handler.HandlerExceptionResolverComposite.resolveException(HandlerExceptionResolverComposite.java:80)
+	at org.springframework.web.servlet.DispatcherServlet.processHandlerException(DispatcherServlet.java:1320)
+	at org.springframework.web.servlet.DispatcherServlet.processDispatchResult(DispatcherServlet.java:1131)
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1077)
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:962)
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1006)
+	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:898)
+	at javax.servlet.http.HttpServlet.service(HttpServlet.java:626)
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:883)
+	at javax.servlet.http.HttpServlet.service(HttpServlet.java:733)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:231)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:53)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at com.alibaba.druid.support.http.WebStatFilter.doFilter(WebStatFilter.java:124)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:119)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:202)
+	at org.apache.catalina.core.StandardContextValve.__invoke(StandardContextValve.java:97)
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:41002)
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:542)
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:143)
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:92)
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:78)
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:343)
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:374)
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:65)
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:888)
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1597)
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:49)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61)
+	at java.lang.Thread.run(Thread.java:748)
+2022-05-30 12:47:59.100 WARN [http-nio-8080-exec-4]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 163287
+2022-05-30 13:13:41.550 WARN [http-nio-8080-exec-10]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 1538886
+2022-05-30 13:13:41.552 WARN [http-nio-8080-exec-10]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 1538899
+2022-05-30 13:13:41.555 WARN [http-nio-8080-exec-10]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 1539672
+2022-05-30 13:13:41.557 WARN [http-nio-8080-exec-10]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 1539677
+2022-05-30 13:13:41.564 WARN [http-nio-8080-exec-10]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 1539701
+2022-05-30 13:15:54.481 WARN [http-nio-8080-exec-6]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 132293
+2022-05-30 13:15:54.482 WARN [http-nio-8080-exec-6]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 132304
+2022-05-30 13:15:54.484 WARN [http-nio-8080-exec-6]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 132307
+2022-05-30 13:15:54.486 WARN [http-nio-8080-exec-6]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 132312
+2022-05-30 13:16:51.336 WARN [http-nio-8080-exec-4]o.s.w.s.m.m.annotation.ExceptionHandlerExceptionResolver.doResolveHandlerMethodException:434 -Failure in @ExceptionHandler com.sss.yunweiadmin.common.config.ExceptionHandle#handleException(HttpServletRequest, Exception)
+java.lang.NullPointerException: null
+	at com.sss.yunweiadmin.common.config.ExceptionHandle.handleException(ExceptionHandle.java:24)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:197)
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:141)
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:106)
+	at org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver.doResolveHandlerMethodException(ExceptionHandlerExceptionResolver.java:428)
+	at org.springframework.web.servlet.handler.AbstractHandlerMethodExceptionResolver.doResolveException(AbstractHandlerMethodExceptionResolver.java:75)
+	at org.springframework.web.servlet.handler.AbstractHandlerExceptionResolver.resolveException(AbstractHandlerExceptionResolver.java:141)
+	at org.springframework.web.servlet.handler.HandlerExceptionResolverComposite.resolveException(HandlerExceptionResolverComposite.java:80)
+	at org.springframework.web.servlet.DispatcherServlet.processHandlerException(DispatcherServlet.java:1320)
+	at org.springframework.web.servlet.DispatcherServlet.processDispatchResult(DispatcherServlet.java:1131)
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1077)
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:962)
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1006)
+	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:898)
+	at javax.servlet.http.HttpServlet.service(HttpServlet.java:626)
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:883)
+	at javax.servlet.http.HttpServlet.service(HttpServlet.java:733)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:231)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:53)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at com.alibaba.druid.support.http.WebStatFilter.doFilter(WebStatFilter.java:124)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:119)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:202)
+	at org.apache.catalina.core.StandardContextValve.__invoke(StandardContextValve.java:97)
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:41002)
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:542)
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:143)
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:92)
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:78)
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:343)
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:374)
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:65)
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:888)
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1597)
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:49)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61)
+	at java.lang.Thread.run(Thread.java:748)
+2022-05-30 13:18:15.629 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 84313
+2022-05-30 13:18:15.632 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 140668
+2022-05-30 13:18:15.633 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 140670
+2022-05-30 13:18:15.635 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 140674
+2022-05-30 19:32:37.786 WARN [http-nio-8080-exec-9]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 63234
+2022-05-30 19:32:37.788 WARN [http-nio-8080-exec-9]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 63613
+2022-05-30 19:32:37.790 WARN [http-nio-8080-exec-9]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 63974
+2022-05-30 20:03:58.159 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStarting:55 -Starting YunweiAdminApplication using Java 1.8.0_172 on CN-20191003CFKL with PID 5912 (E:\project\yunwei-admin111\target\classes started by Administrator in E:\project\yunwei-admin111)
+2022-05-30 20:03:58.181 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2022-05-30 20:04:05.778 INFO [main]o.s.boot.web.embedded.tomcat.TomcatWebServer.initialize:108 -Tomcat initialized with port(s): 8080 (http)
+2022-05-30 20:04:05.877 INFO [main]org.apache.coyote.http11.Http11NioProtocol.log:173 -Initializing ProtocolHandler ["http-nio-8080"]
+2022-05-30 20:04:05.879 INFO [main]org.apache.catalina.core.StandardService.log:173 -Starting service [Tomcat]
+2022-05-30 20:04:05.879 INFO [main]org.apache.catalina.core.StandardEngine.log:173 -Starting Servlet engine: [Apache Tomcat/9.0.41]
+2022-05-30 20:04:06.258 INFO [main]o.a.c.core.ContainerBase.[Tomcat].[localhost].[/yunwei].log:173 -Initializing Spring embedded WebApplicationContext
+2022-05-30 20:04:06.258 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 7811 ms
+2022-05-30 20:04:06.364 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2022-05-30 20:04:09.553 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2022-05-30 20:04:10.080 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2022-05-30 20:04:11.556 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2022-05-30 20:04:12.119 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2022-05-30 20:04:17.209 INFO [main]org.apache.coyote.http11.Http11NioProtocol.log:173 -Starting ProtocolHandler ["http-nio-8080"]
+2022-05-30 20:04:18.326 INFO [main]o.s.boot.web.embedded.tomcat.TomcatWebServer.start:220 -Tomcat started on port(s): 8080 (http) with context path '/yunwei'
+2022-05-30 20:04:18.350 INFO [main]com.sss.yunweiadmin.YunweiAdminApplication.logStarted:61 -Started YunweiAdminApplication in 22.569 seconds (JVM running for 38.226)
+2022-05-30 20:05:17.857 INFO [http-nio-8080-exec-1]o.a.c.core.ContainerBase.[Tomcat].[localhost].[/yunwei].log:173 -Initializing Spring DispatcherServlet 'dispatcherServlet'
+2022-05-30 20:05:17.857 INFO [http-nio-8080-exec-1]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2022-05-30 20:05:17.860 INFO [http-nio-8080-exec-1]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 2 ms
+2022-05-30 20:05:22.388 WARN [http-nio-8080-exec-2]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 70182
+2022-05-30 20:20:02.707 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 876877
+2022-05-30 20:20:02.709 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 876893
+2022-05-30 20:20:02.712 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 877788
+2022-05-30 20:20:02.714 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 877792
+2022-05-30 20:20:02.723 WARN [http-nio-8080-exec-8]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 877800
+2022-05-30 22:57:12.169 WARN [http-nio-8080-exec-7]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 676136
+2022-05-30 23:00:59.096 WARN [http-nio-8080-exec-9]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 226885
+2022-05-30 23:02:16.355 WARN [http-nio-8080-exec-4]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 66048

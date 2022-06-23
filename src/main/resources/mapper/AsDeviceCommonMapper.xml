@@ -5,6 +5,7 @@
     <!-- 通用查询映射结果 -->
     <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.AsDeviceCommon">
         <id column="id" property="id" />
+        <result column="host_as_id" property="hostAsId" />
         <result column="type_id" property="typeId" />
         <result column="no" property="no" />
         <result column="name" property="name" />
@@ -41,7 +42,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, type_id, no, name, baomi_no, fund_src, net_type, port_no, host_name, location, shared, name_shared, state, usagee, administrator, admin_tel, user_name, user_dept, user_miji, user_tel, manufacturer, model, sn, made_date, buy_date, use_date, price, discard_date, ip, mac, miji, remark,temp
+        id, type_id,host_as_id, no, name, baomi_no, fund_src, net_type, port_no, host_name, location, shared, name_shared, state, usagee, administrator, admin_tel, user_name, user_dept, user_miji, user_tel, manufacturer, model, sn, made_date, buy_date, use_date, price, discard_date, ip, mac, miji, remark,temp
     </sql>
 
 </mapper>

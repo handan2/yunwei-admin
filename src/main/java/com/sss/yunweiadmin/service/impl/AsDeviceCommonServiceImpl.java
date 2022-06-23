@@ -12,6 +12,7 @@ import com.sss.yunweiadmin.model.excel.AsNetworkDeviceSpecialExcel;
 import com.sss.yunweiadmin.model.excel.AsSecurityProductsSpecialExcel;
 import com.sss.yunweiadmin.model.vo.AssetVO;
 import com.sss.yunweiadmin.service.*;
+import org.apache.xmlbeans.impl.schema.XQuerySchemaTypeSystem;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -46,19 +47,26 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
     AsTypeService asTypeService;
     @Autowired
     AsApplicationSpecialService asApplicationSpecialService;
+
+
     //20211115 不管啥类型，把所有专有表清清
     @Override
-    public boolean delete(Integer[] idArr1){
+    public boolean delete(Integer[] idArr1) {
         List<Integer> idArr = Stream.of(idArr1).collect(Collectors.toList());
-        asComputerSpecialService.remove(new QueryWrapper<AsComputerSpecial>().in("as_id",idArr));
-        asNetworkDeviceSpecialService.remove(new QueryWrapper<AsNetworkDeviceSpecial>().in("as_id",idArr));
-        asComputerGrantedService.remove(new QueryWrapper<AsComputerGranted>().in("as_id",idArr));
-        asIoSpecialService.remove(new QueryWrapper<AsIoSpecial>().in("as_id",idArr));
-        asSecurityProductsSpecialService.remove(new QueryWrapper<AsSecurityProductsSpecial>().in("as_id",idArr));
-        asApplicationSpecialService.remove(new QueryWrapper<AsApplicationSpecial>().in("as_id",idArr));
+        asComputerSpecialService.remove(new QueryWrapper<AsComputerSpecial>().in("as_id", idArr));
+        asNetworkDeviceSpecialService.remove(new QueryWrapper<AsNetworkDeviceSpecial>().in("as_id", idArr));
+        asComputerGrantedService.remove(new QueryWrapper<AsComputerGranted>().in("as_id", idArr));
+        asIoSpecialService.remove(new QueryWrapper<AsIoSpecial>().in("as_id", idArr));
+        asSecurityProductsSpecialService.remove(new QueryWrapper<AsSecurityProductsSpecial>().in("as_id", idArr));
+        asApplicationSpecialService.remove(new QueryWrapper<AsApplicationSpecial>().in("as_id", idArr));
+        //删除硬盘信息
+        List<AsDeviceCommon> diskList = this.list(new QueryWrapper<AsDeviceCommon>().in("host_as_id",idArr));
+        this.removeByIds(diskList.stream().map(item->item.getId()).collect(Collectors.toList()));
+        //删除asDeviceCommon“主设备”
         this.removeByIds(idArr);
         return true;
     }
+
     @Override
     public boolean add(AssetVO assetVO) {
         boolean flag;
@@ -78,6 +86,11 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             if (asComputerGranted != null) {
                 asComputerGranted.setAsId(asDeviceCommon.getId());
                 flag = flag && asComputerGrantedService.save(asComputerGranted);
+            }
+            //20220620 保存硬盘信息
+            List<AsDeviceCommon> diskListForHis = assetVO.getDiskListForHis();
+            if (diskListForHis != null) {
+                flag = flag && this.saveBatch(diskListForHis.stream().map(item->{item.setHostAsId(asDeviceCommon.getId());item.setMiji(asDeviceCommon.getMiji());item.setUserName(asDeviceCommon.getMiji());item.setNetType(asDeviceCommon.getNetType());item.setUserDept(asDeviceCommon.getUserDept());return item;}).collect(Collectors.toList()));//20220614这个flag设置有点小问题：暂不改
             }
         } else if (asTypeId == 5) {
             //网络设备
@@ -100,7 +113,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asSecurityProductsSpecialService.save(asSecurityProductsSpecial);
             }
-        }else if (asTypeId == 19) {
+        } else if (asTypeId == 19) {
             //应用系统
             AsApplicationSpecial asApplicationSpecial = assetVO.getAsApplicationSpecial();
             if (asApplicationSpecial != null) {
@@ -131,6 +144,18 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 asComputerGranted.setAsId(asDeviceCommon.getId());
                 flag = flag && asComputerGrantedService.saveOrUpdate(asComputerGranted);
             }
+            //20220612 保存硬盘信息
+            List<AsDeviceCommon> diskListForHis = assetVO.getDiskListForHis();
+            List<AsDeviceCommon> diskListForHisForDel = diskListForHis.stream().filter(item -> item.getTemp().equals("删除")).collect(Collectors.toList());
+            List<AsDeviceCommon> diskListForHisForSaveOrUpdate = diskListForHis.stream().filter(item -> !(item.getTemp().equals("删除"))).collect(Collectors.toList());
+            if (diskListForHis != null) {
+                if (diskListForHisForDel != null)
+                    this.removeByIds(diskListForHisForDel.stream().map(AsDeviceCommon::getId).collect(Collectors.toList()));
+                if (diskListForHisForSaveOrUpdate != null) {
+                    diskListForHisForSaveOrUpdate.forEach(item -> item.setTemp(""));
+                    flag = flag && this.saveOrUpdateBatch(diskListForHisForSaveOrUpdate);//20220614这个flag设置有点小问题：暂不改
+                }
+            }
         } else if (asTypeId == 5) {
             //网络设备
             AsNetworkDeviceSpecial asNetworkDeviceSpecial = assetVO.getAsNetworkDeviceSpecial();
@@ -152,7 +177,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asSecurityProductsSpecialService.saveOrUpdate(asSecurityProductsSpecial);
             }
-        }else if (asTypeId == 19) {
+        } else if (asTypeId == 19) {
             //应用系统
             AsApplicationSpecial asApplicationSpecial = assetVO.getAsApplicationSpecial();
             if (asApplicationSpecial != null) {
@@ -160,7 +185,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 flag = flag && asApplicationSpecialService.saveOrUpdate(asApplicationSpecial);
             }
         }
-
+        //20220612 todo问张强，这里是不要flag为false时，抛个异常（可以引发回滚吗？），让其回滚？
         return flag;
     }
 
@@ -198,14 +223,14 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
             }
         }
-        if(ObjectUtil.isNotEmpty(pageList)) {
-            List<AsDeviceCommon> asDeviceCommonList = new ArrayList<>();
+        if (ObjectUtil.isNotEmpty(pageList)) {
+
             List<AsComputerSpecial> asComputerSpecialList = new ArrayList<>();
             List<AsComputerGranted> asComputerGrantedList = new ArrayList<>();
 
             for (AsComputerExcel asComputerExcel : pageList) {
                 if (ObjectUtil.isEmpty(asComputerExcel.getNo())) {
-                    throw new RuntimeException( "资产编号不能为空");
+                    throw new RuntimeException("资产编号不能为空");
                 }
                 AsType asType = asTypeService.getAsType(asComputerExcel.getTypeName());
                 if (asType == null) {
@@ -225,12 +250,71 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 asComputerSpecial.setAsId(asDeviceCommon.getId());
                 asComputerGranted.setAsId(asDeviceCommon.getId());
                 //
-                asDeviceCommonList.add(asDeviceCommon);
+                List<AsDeviceCommon> asDeviceCommonListForDisk = new ArrayList<>();
+              //  asDeviceCommonList.add(asDeviceCommon);
                 asComputerSpecialList.add(asComputerSpecial);
                 asComputerGrantedList.add(asComputerGranted);
+                //20220623组织硬盘信息，后面还要加对“逗号隔开”的处理
+                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn1())) {
+                    AsDeviceCommon asDeviceCommon1 = new AsDeviceCommon();
+                    asDeviceCommon1.setSn(asComputerExcel.getDiskSn1());
+                    asDeviceCommon1.setModel(asComputerExcel.getDiskMode1());
+                    asDeviceCommon1.setUserName(asDeviceCommon.getUserName());
+                    asDeviceCommon1.setUserDept(asDeviceCommon.getUserDept());
+                    asDeviceCommon1.setUserMiji(asDeviceCommon.getUserMiji());
+                    asDeviceCommon1.setNetType(asDeviceCommon.getNetType());
+                    asDeviceCommon1.setName("硬盘");
+                    asDeviceCommon1.setTypeId(25);
+                    asDeviceCommon1.setHostAsId(asDeviceCommon.getId());
+                    //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
+                    asDeviceCommonListForDisk.add(asDeviceCommon1);
+                }
+                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn2())) {
+                    AsDeviceCommon asDeviceCommon2 = new AsDeviceCommon();
+                    asDeviceCommon2.setSn(asComputerExcel.getDiskSn2());
+                    asDeviceCommon2.setModel(asComputerExcel.getDiskMode2());
+                    asDeviceCommon2.setUserName(asDeviceCommon.getUserName());
+                    asDeviceCommon2.setUserDept(asDeviceCommon.getUserDept());
+                    asDeviceCommon2.setUserMiji(asDeviceCommon.getUserMiji());
+                    asDeviceCommon2.setNetType(asDeviceCommon.getNetType());
+                    asDeviceCommon2.setName("硬盘");
+                    asDeviceCommon2.setTypeId(25);
+                    asDeviceCommon2.setHostAsId(asDeviceCommon.getId());
+                    //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
+                    asDeviceCommonListForDisk.add(asDeviceCommon2);
+                }
+                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn3())) {
+                    AsDeviceCommon asDeviceCommon3 = new AsDeviceCommon();
+                    asDeviceCommon3.setSn(asComputerExcel.getDiskSn3());
+                    asDeviceCommon3.setModel(asComputerExcel.getDiskMode3());
+                    asDeviceCommon3.setUserName(asDeviceCommon.getUserName());
+                    asDeviceCommon3.setUserDept(asDeviceCommon.getUserDept());
+                    asDeviceCommon3.setUserMiji(asDeviceCommon.getUserMiji());
+                    asDeviceCommon3.setNetType(asDeviceCommon.getNetType());
+                    asDeviceCommon3.setName("硬盘");
+                    asDeviceCommon3.setTypeId(25);
+                    asDeviceCommon3.setHostAsId(asDeviceCommon.getId());
+                    //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
+                    asDeviceCommonListForDisk.add(asDeviceCommon3);
+                }
+                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn4())) {
+                    AsDeviceCommon asDeviceCommon4 = new AsDeviceCommon();
+                    asDeviceCommon4.setSn(asComputerExcel.getDiskSn4());
+                    asDeviceCommon4.setModel(asComputerExcel.getDiskMode4());
+                    asDeviceCommon4.setUserName(asDeviceCommon.getUserName());
+                    asDeviceCommon4.setUserDept(asDeviceCommon.getUserDept());
+                    asDeviceCommon4.setUserMiji(asDeviceCommon.getUserMiji());
+                    asDeviceCommon4.setNetType(asDeviceCommon.getNetType());
+                    asDeviceCommon4.setName("硬盘");
+                    asDeviceCommon4.setTypeId(25);
+                    asDeviceCommon4.setHostAsId(asDeviceCommon.getId());
+                    //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
+                    asDeviceCommonListForDisk.add(asDeviceCommon4);
+                }
+                this.saveBatch(asDeviceCommonListForDisk);
             }
             //
-            this.saveBatch(asDeviceCommonList);
+           // this.saveBatch(asDeviceCommonList);
             asComputerSpecialService.saveBatch(asComputerSpecialList);
             asComputerGrantedService.saveBatch(asComputerGrantedList);
         }

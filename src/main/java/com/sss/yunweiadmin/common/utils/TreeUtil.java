@@ -86,13 +86,13 @@ public class TreeUtil {
     public static List<TreeTransferVO> getSelectDeptUserTree(List<SysDept> initList) {
         if (CollUtil.isEmpty(initList)) throw new RuntimeException("集合为空！");
         List<TreeTransferVO> treeList = Lists.newArrayList();
-        Map<Integer, TreeTransferVO> map = Maps.newHashMap();
+        Map<Integer, TreeTransferVO> depMap = Maps.newHashMap();
 
         //获取所有用户
         SysUserService sysUserService = SpringUtil.getBean(SysUserService.class);
         List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().orderByAsc("sort"));
-        Map<Integer, List<SysUser>> userMap = userList.stream().collect(Collectors.groupingBy(SysUser::getDeptId, Collectors.toList()));
-
+        //20220520 collect（Collectors.groupingBy（））用法：返回一个map
+        Map<Integer, List<SysUser>> depUserlistMap = userList.stream().collect(Collectors.groupingBy(SysUser::getDeptId));
         for (SysDept dept : initList) {
             Integer id = dept.getId();
             String deptName = dept.getName();
@@ -100,10 +100,15 @@ public class TreeUtil {
             treeTransferVO.setTitle(deptName);
             treeTransferVO.setKey("dept" + id);
             treeTransferVO.setCheckable(false);
-
             //设置用户
-            if (userMap.get(id) != null) {
-                List<TreeTransferVO> userTreeList = userMap.get(id).stream().map(user -> {
+            /*
+            * 20220521实际上下面这段逻辑可以这么设计（更逻辑“标准化”）：上一层逻辑组装完deptMap<deptID,transferVO>后
+            * 直接“再起一层独立遍历List<sysUser>”组装完成"真正的UserMap<userID,transferVO>"
+            *(而不是创建并遍历现在的"这个奇葩且名不符实的userMap<deptID,List<sysUser>>")
+            *然后再分别遍历List<sysUser>/List<dept>来实现childern属性的组装；其中，List<dept>的遍历用下下段的代码即可
+            * */
+            if (depUserlistMap.get(id) != null) {
+                List<TreeTransferVO> userTreeList = depUserlistMap.get(id).stream().map(user -> {
                     TreeTransferVO userTreeTransferVO = new TreeTransferVO();
                     userTreeTransferVO.setTitle(user.getDisplayName());
                     userTreeTransferVO.setKey("user" + user.getId());
@@ -113,22 +118,20 @@ public class TreeUtil {
                 treeTransferVO.setChildren(userTreeList);
             }
 
-            map.put(id, treeTransferVO);
+            depMap.put(id, treeTransferVO);
         }
-
         for (SysDept dept : initList) {
             Integer id = dept.getId();
-
             Integer pid = dept.getPid();
-            TreeTransferVO parent = map.get(pid);
-            if (parent != null) {
+            TreeTransferVO parent = depMap.get(pid);
+            if (parent != null) {//将上一级部门节点的childern赋值为下一级部门对应的vo
                 if (parent.getChildren() != null) {
-                    parent.getChildren().add(map.get(id));
+                    parent.getChildren().add(depMap.get(id));
                 } else {
-                    parent.setChildren(Lists.newArrayList(map.get(id)));
+                    parent.setChildren(Lists.newArrayList(depMap.get(id)));
                 }
-            } else {
-                treeList.add(map.get(id));
+            } else {//只有最上一级的部门结点才放入treeList
+                treeList.add(depMap.get(id));
             }
         }
         return treeList;
@@ -187,7 +190,7 @@ public class TreeUtil {
 
         for (ProcessFormTemplate processFormTemplate : initList) {//我觉得是可以优化的，至少这个循环里应遍历processFormTemplateVOList的，当然前面那个map类型也需要调整：暂不研
             Integer id = processFormTemplate.getId();
-            //有GroupParentLabel值的是字段组内的成员，GroupParentLabel是字段组的label
+            //有GroupParentLabel值的是字段组内的成员，GroupParentLabel值是字段组的label
             String groupParentLabel = processFormTemplate.getGroupParentLabel();
             //利用两个map:查找字段组Label对应的ID && 根据ID获取字段组VO,然后将给这处字段组VO设置children(当前遍历过程中的 processFormTemplate对应的VO)
             Integer groupParentId = groupMap.get(groupParentLabel);

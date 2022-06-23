@@ -38,11 +38,11 @@ public class ProcessFormValue1 implements Serializable {
      */
     private String value;
 
-    private String userType;
+    private String committerType;
 
-    private String userIdStr;
+    private String committerIdStr;
 
-    private String userName;
+    private String committerName;
 
     private String selectGroupId;
 

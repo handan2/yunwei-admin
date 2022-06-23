@@ -15,8 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -46,13 +46,14 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         processDefinition.setHaveDisplay("是");
         //将流程名称中的空格符 去掉
         processDefinition.setProcessName(processDefinition.getProcessName().replaceAll("\\s|\\t", ""));
-
+        //20220426 解决流程实例被删除后，将对应的流程定义编辑后产生的新定义仍具有deployID/在发起流程实例时被误识别成已部署
+        processDefinition.setDeployId(null);
         List<ProcessFormTemplate> formTemplateList = processDefinitionVO.getFormTemplateList();
         List<ProcessDefinitionTask> taskList = processDefinitionVO.getTaskList();
         List<ProcessDefinitionEdge> edgeList = processDefinitionVO.getEdgeList();
-
         flag1 = this.save(processDefinition);
 
+        //存储hideGroupIDS/labels ;
         formTemplateList.forEach(item -> {
             item.setProcessDefinitionId(processDefinition.getId());
             //value的中文逗号 转为 英文逗号
@@ -61,11 +62,39 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
             }
         });
         flag2 = processFormTemplateService.saveBatch(formTemplateList);
-
-
-        taskList.forEach(item -> {
-            item.setProcessDefinitionId(processDefinition.getId());
+        //20220526 只能遍历两遍formTemplateList：只有保存DB后才有id值
+        Map<String, String> groupLabelIdStringMap = new HashMap<>();
+        formTemplateList.forEach(item -> {
+            //202000526
+            if ("字段组类型".equals(item.getFlag())) {
+                groupLabelIdStringMap.put(item.getLabel(), item.getId().toString());
+            }
         });
+        /* 20220525在这后面添加tasklist里hideGroupIds字段的更新:根据labelList来更新idList:因为idList会经常变（）
+        好像有一个问题，新建流程定义时，template并没有写入DB，那么hideGroupIDS对应的穿梭框数据来源就不能是DB了，应该是map;
+        对于修改时：无论是有实例的修改（会把老template数据删除）还是保留老的template再新建template数据，原先记录的hideGroupIDS都需要更新*/
+        taskList.forEach(item -> {
+            if (ObjectUtil.isNotEmpty(item.getHideGroupLabel())) {
+                String[] hideGroupLabelArr = item.getHideGroupLabel().split(",");
+                List<String> newHideGroupLabelStringList = new ArrayList<>();
+                List<String> newHideGroupIdStringList = new ArrayList<>();
+                item.setHideGroupIds("");//先清空
+                item.setHideGroupLabel("");
+                Arrays.stream(hideGroupLabelArr).forEach(tmp -> {
+                    if (ObjectUtil.isNotEmpty(groupLabelIdStringMap.get(tmp))) {//过滤掉那些已经"过时"的groupID/label
+                        newHideGroupIdStringList.add(groupLabelIdStringMap.get(tmp));
+                        newHideGroupLabelStringList.add(tmp);
+                    }
+                });
+                //20220526todo测试空List,返回空串还是null
+                item.setHideGroupIds(newHideGroupIdStringList.stream().collect(Collectors.joining(",")));
+                item.setHideGroupLabel(newHideGroupLabelStringList.stream().collect(Collectors.joining(",")));
+            }
+            item.setProcessDefinitionId(processDefinition.getId());//给新增的task定义指定definitionID
+        });
+
+
+
         flag3 = processDefinitionTaskService.saveBatch(taskList);
 
         if (ObjectUtil.isNotEmpty(edgeList)) {
@@ -81,7 +110,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
     }
 
     @Override
-    public boolean edit(ProcessDefinitionVO processDefinitionVO) {
+    public boolean edit(ProcessDefinitionVO processDefinitionVO) {//流程定义编辑后都会导致新增一条流程定义记录：故最后都会调用this.adds()
         Integer processDefinitionId = processDefinitionVO.getProcessDefinition().getId();
         List<ProcessInstanceData> list = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().eq("process_definition_id", processDefinitionId));
         if (CollUtil.isEmpty(list)) {
@@ -99,7 +128,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
             this.updateById(processDefinition);
             //插入页面数据
             processDefinitionVO.getProcessDefinition().setId(null);
-            processDefinitionVO.getProcessDefinition().setDeployId(null);
+            processDefinitionVO.getProcessDefinition().setDeployId(null);//20220426todo断点
             processDefinitionVO.getProcessDefinition().setBeforeId(processDefinition.getId());
             if (processDefinition.getBaseId() == null) {
                 //第一次修改

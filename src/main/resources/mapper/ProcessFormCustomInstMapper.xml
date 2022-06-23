@@ -9,12 +9,14 @@
         <result column="column_name" property="columnName" />
         <result column="column_type" property="columnType" />
         <result column="column_value" property="columnValue" />
+        <result column="asset_type_id" property="assetTypeId" />
+        <result column="as_id" property="asId" />
         <result column="process_instance_data_id" property="processInstanceDataId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, table_name, column_name, column_type, column_value, process_instance_data_id
+        id, table_name, column_name, column_type, column_value, asset_type_id,as_id,process_instance_data_id
     </sql>
 
 </mapper>

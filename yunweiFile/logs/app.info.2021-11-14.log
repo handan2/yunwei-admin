@@ -1,0 +1,12 @@
+2021-11-14 16:34:45.872 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarting:55 -Starting ServletInitializer v1.0 using Java 1.8.0_172 on CN-20191003CFKL with PID 8604 (D:\apache-tomcat-9.0.8\webapps\yunwei\WEB-INF\classes started by Administrator in D:\apache-tomcat-9.0.8\bin)
+2021-11-14 16:34:45.879 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2021-11-14 16:34:49.147 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 3122 ms
+2021-11-14 16:34:50.829 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2021-11-14 16:34:55.168 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2021-11-14 16:34:55.800 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2021-11-14 16:34:57.089 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2021-11-14 16:34:57.551 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2021-11-14 16:35:03.006 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarted:61 -Started ServletInitializer in 18.452 seconds (JVM running for 43.627)
+2021-11-14 16:41:56.636 INFO [http-nio-8088-exec-7]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2021-11-14 16:41:56.640 INFO [http-nio-8088-exec-7]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 2 ms
+2021-11-14 16:41:57.744 WARN [http-nio-8088-exec-7]com.alibaba.druid.pool.DruidAbstractDataSource.testConnectionInternal:1489 -discard long time none received connection. , jdbcUrl : jdbc:mysql://localhost:3306/yunwei1?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true, version : 1.2.4, lastPacketReceivedIdleMillis : 420025

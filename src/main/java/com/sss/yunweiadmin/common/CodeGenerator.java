@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CodeGenerator {
-    private static String[] include = {"process_form_custom_inst"};
+    private static String[] include = {"diskTmp"};
 
     public static void main(String[] args) {
         // 代码生成器

@@ -31,7 +31,7 @@ public class ProcessInstanceNode implements Serializable {
     /**
      * 节点id
      */
-    private String taskId;
+    private String taskDefKey;
 
     /**
      * 节点名称
@@ -64,17 +64,17 @@ public class ProcessInstanceNode implements Serializable {
     /**
      * 选择处理类型,值为角色和用户
      */
-    private String type;
+    private String operatorType;
 
     /**
      * 角色id集合，或者 用户id集合
      */
-    private String typeValue;
+    private String operatorTypeValue;
 
     /**
      * 角色名称集合，或者 用户名称集合
      */
-    private String typeLabel;
+    private String operatorTypeLabel;
 
     /**
      * 按钮名称

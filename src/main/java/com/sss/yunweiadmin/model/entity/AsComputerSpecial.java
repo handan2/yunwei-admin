@@ -67,5 +67,7 @@ public class AsComputerSpecial implements Serializable {
 
     private String diskSn4;
 
+    private String diskForRender;
+
 
 }

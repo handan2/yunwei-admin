@@ -1,0 +1,63 @@
+2021-11-07 10:51:50.482 INFO [main]com.sss.yunweiadmin.YunweiAdminApplicationTests.logStarting:55 -Starting YunweiAdminApplicationTests using Java 1.8.0_172 on CN-20191003CFKL with PID 4420 (started by Administrator in E:\project\yunwei-admin(历史版本，含SQL)\yunwei-admin（改成noform前）)
+2021-11-07 10:51:50.491 INFO [main]com.sss.yunweiadmin.YunweiAdminApplicationTests.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2021-11-07 10:52:00.970 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2021-11-07 10:52:02.363 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2021-11-07 10:52:03.967 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2021-11-07 10:52:04.188 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2021-11-07 10:52:10.770 INFO [main]com.sss.yunweiadmin.YunweiAdminApplicationTests.logStarted:61 -Started YunweiAdminApplicationTests in 21.64 seconds (JVM running for 24.342)
+2021-11-07 10:52:12.412 INFO [SpringContextShutdownHook]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.shutdown:218 -Shutting down ExecutorService 'applicationTaskExecutor'
+2021-11-07 10:52:12.420 INFO [SpringContextShutdownHook]com.alibaba.druid.pool.DruidDataSource.close:2032 -{dataSource-1} closing ...
+2021-11-07 10:52:12.456 INFO [SpringContextShutdownHook]com.alibaba.druid.pool.DruidDataSource.close:2104 -{dataSource-1} closed
+2021-11-07 10:55:23.681 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarting:55 -Starting ServletInitializer v1.0 using Java 1.8.0_172 on CN-20191003CFKL with PID 11396 (D:\apache-tomcat-9.0.8\webapps\yunwei\WEB-INF\classes started by Administrator in D:\apache-tomcat-9.0.8\bin)
+2021-11-07 10:55:23.690 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2021-11-07 10:55:26.427 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 2601 ms
+2021-11-07 10:55:27.560 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2021-11-07 10:55:30.473 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2021-11-07 10:55:30.888 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2021-11-07 10:55:32.028 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2021-11-07 10:55:32.229 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2021-11-07 10:55:36.012 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarted:61 -Started ServletInitializer in 13.506 seconds (JVM running for 27.925)
+2021-11-07 10:55:46.256 INFO [http-nio-8088-exec-2]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2021-11-07 10:55:46.260 INFO [http-nio-8088-exec-2]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 3 ms
+2021-11-07 10:55:47.329 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.shutdown:218 -Shutting down ExecutorService 'applicationTaskExecutor'
+2021-11-07 10:55:47.336 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.alibaba.druid.pool.DruidDataSource.close:2032 -{dataSource-1} closing ...
+2021-11-07 10:55:47.366 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.alibaba.druid.pool.DruidDataSource.close:2104 -{dataSource-1} closed
+2021-11-07 11:06:53.199 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarting:55 -Starting ServletInitializer v1.0 using Java 1.8.0_172 on CN-20191003CFKL with PID 10296 (D:\apache-tomcat-9.0.8\webapps\yunwei\WEB-INF\classes started by Administrator in D:\apache-tomcat-9.0.8\bin)
+2021-11-07 11:06:53.207 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2021-11-07 11:06:55.991 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 2652 ms
+2021-11-07 11:06:57.095 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2021-11-07 11:07:00.160 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2021-11-07 11:07:00.567 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2021-11-07 11:07:01.783 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2021-11-07 11:07:01.941 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2021-11-07 11:07:05.478 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarted:61 -Started ServletInitializer in 13.446 seconds (JVM running for 28.357)
+2021-11-07 11:07:16.062 INFO [http-nio-8088-exec-1]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2021-11-07 11:07:16.066 INFO [http-nio-8088-exec-1]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 2 ms
+2021-11-07 11:07:58.983 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.shutdown:218 -Shutting down ExecutorService 'applicationTaskExecutor'
+2021-11-07 11:07:58.997 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.alibaba.druid.pool.DruidDataSource.close:2032 -{dataSource-1} closing ...
+2021-11-07 11:07:59.036 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.alibaba.druid.pool.DruidDataSource.close:2104 -{dataSource-1} closed
+2021-11-07 11:08:39.722 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.sss.yunweiadmin.ServletInitializer.logStarting:55 -Starting ServletInitializer v1.0 using Java 1.8.0_172 on CN-20191003CFKL with PID 10296 (D:\apache-tomcat-9.0.8\webapps\yunwei\WEB-INF\classes started by Administrator in D:\apache-tomcat-9.0.8\bin)
+2021-11-07 11:08:39.733 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.sss.yunweiadmin.ServletInitializer.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2021-11-07 11:08:42.731 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 2830 ms
+2021-11-07 11:08:43.884 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2021-11-07 11:08:46.873 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2021-11-07 11:08:47.388 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2021-11-07 11:08:48.572 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2021-11-07 11:08:48.680 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2021-11-07 11:08:52.258 INFO [ContainerBackgroundProcessor[StandardEngine[Catalina]]]com.sss.yunweiadmin.ServletInitializer.logStarted:61 -Started ServletInitializer in 14.126 seconds (JVM running for 135.134)
+2021-11-07 11:08:53.289 INFO [http-nio-8088-exec-7]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2021-11-07 11:08:53.300 INFO [http-nio-8088-exec-7]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 2 ms
+2021-11-07 11:08:59.306 INFO [Thread-7]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.shutdown:218 -Shutting down ExecutorService 'applicationTaskExecutor'
+2021-11-07 11:08:59.310 INFO [Thread-7]com.alibaba.druid.pool.DruidDataSource.close:2032 -{dataSource-1} closing ...
+2021-11-07 11:08:59.328 INFO [Thread-7]com.alibaba.druid.pool.DruidDataSource.close:2104 -{dataSource-1} closed
+2021-11-07 11:09:29.780 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarting:55 -Starting ServletInitializer v1.0 using Java 1.8.0_172 on CN-20191003CFKL with PID 3404 (D:\apache-tomcat-9.0.8\webapps\yunwei\WEB-INF\classes started by Administrator in D:\apache-tomcat-9.0.8\bin)
+2021-11-07 11:09:29.788 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStartupProfileInfo:660 -No active profile set, falling back to default profiles: default
+2021-11-07 11:09:32.586 INFO [main]o.s.b.w.s.context.ServletWebServerApplicationContext.prepareWebApplicationContext:289 -Root WebApplicationContext: initialization completed in 2643 ms
+2021-11-07 11:09:33.747 INFO [main]org.springframework.boot.web.servlet.RegistrationBean.register:110 -Servlet UReportServlet was not registered (possibly already registered?)
+2021-11-07 11:09:36.644 INFO [main]o.s.scheduling.concurrent.ThreadPoolTaskExecutor.initialize:181 -Initializing ExecutorService 'applicationTaskExecutor'
+2021-11-07 11:09:37.073 INFO [main]com.alibaba.druid.pool.DruidDataSource.init:985 -{dataSource-1} inited
+2021-11-07 11:09:38.271 INFO [main]o.a.e.c.DefaultActiviti5CompatibilityHandlerFactory.createActiviti5CompatibilityHandler:38 -Activiti 5 compatibility handler implementation not found or error during instantiation : org.activiti.compatibility.DefaultActiviti5CompatibilityHandler. Activiti 5 backwards compatibility disabled.
+2021-11-07 11:09:38.377 INFO [main]org.activiti.engine.impl.ProcessEngineImpl.<init>:87 -ProcessEngine default created
+2021-11-07 11:09:42.320 INFO [main]com.sss.yunweiadmin.ServletInitializer.logStarted:61 -Started ServletInitializer in 13.829 seconds (JVM running for 26.751)
+2021-11-07 11:09:48.107 INFO [http-nio-8088-exec-4]org.springframework.web.servlet.DispatcherServlet.initServletBean:525 -Initializing Servlet 'dispatcherServlet'
+2021-11-07 11:09:48.110 INFO [http-nio-8088-exec-4]org.springframework.web.servlet.DispatcherServlet.initServletBean:547 -Completed initialization in 2 ms

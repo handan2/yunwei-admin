@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 
 public class ProcessFormCustomTypeUtil {
-    //取出 props 中的表名+属性id
+    //取出 props 中的表名+属性id;map格式：<"as_device_common",List<AsConfig>>
     public static Map<String, List<AsConfig>> parseProps(String props) {
         Map<String, List<AsConfig>> map = Maps.newLinkedHashMap();
         //字符串转map

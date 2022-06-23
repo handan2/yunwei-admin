@@ -1,6 +1,11 @@
 package com.sss.yunweiadmin;
+
 import cn.hutool.core.util.ObjectUtil;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.sss.yunweiadmin.common.utils.SpringUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import org.activiti.engine.HistoryService;
@@ -17,8 +22,42 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.lang.reflect.Field;
+import java.net.SocketTimeoutException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+
+
+class Person {
+
+    private String name;
+    private String desc;
+
+    public Person(String name, String desc) {
+        this.name = name;
+        this.desc = desc;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Person setName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public String getDesc() {
+        return desc;
+    }
+
+    public Person setDesc(String desc) {
+        this.desc = desc;
+        return this;
+    }
+}
 /**
  *
  */
@@ -50,31 +89,90 @@ public class testProcess {
 
     //    @Autowired
 //    SysRoleUserService sysRoleUserService;
+@Test
+    public void abc1() throws ClassNotFoundException {
 
+       //Class CC = Class.forName("String");//这旬会报错：java.lang.ClassNotFoundException: String，可能没用全名
+       // CC c = "ssss";
+        Class CC = Class.forName("com.sss.yunweiadmin.Person");//可行
 
-    public Integer bbb(){
-        return null;//null不能返回给int,但可以是Integer
-    }
-    @Test//@Test注解修饰的方法只能是void
-    public void abc(){
-        System.out.println("111");
+        List<String> list;
 
-        JSONObject jsonObject = JSONObject.parseObject("{\"1550\":\"秘密\",\"1551\":\"内网\",\"1552\":\"未分配\",\"asset\":[{\"customTableId\":16,\"asId\":102002}],\"16.计算机信息表.as_device_common.no.75\":\"J0601111\",\"16.计算机信息表.as_device_common.name.76\":\"桌面计算机\",\"16.计算机信息表.as_device_common.type_id.74\":\"联网终端\",\"16.计算机信息表.as_device_common.model.94\":\"M4500T\",\"16.计算机信息表.as_device_common.sn.95\":\"111111111\",\"16.计算机信息表.as_device_common.buy_date.97\":\"2015-01-02\",\"16.计算机信息表.as_device_common.use_date.98\":\"2015-01-01\",\"16.计算机信息表.as_device_common.fund_src.78\":\"折旧资金\",\"16.计算机信息表.as_device_common.net_type.79\":\"试验网\",\"16.计算机信息表.as_device_common.state.85\":\"在用\",\"16.计算机信息表.as_device_common.user_name.89\":\"任勇林\",\"16.计算机信息表.as_device_common.user_dept.90\":\"信息化中心\"}");
-        for (Map.Entry entry : jsonObject.entrySet()) {
-            System.out.println(entry.getKey());
-                System.out.println(entry.getValue().toString());
-
-        }
-
-
-            String a = "abc";
+        String a = "abc";
         String b = "ab11";
         String[] a11 = {a,b};
-       // System.out.println(a11[0]);
-        Integer c =this.bbb();
-        System.out.println(ObjectUtil.isNotEmpty(0));
+        System.out.println(a11[0]);
+
+        IService service = (IService) SpringUtil.getBean("asDeviceCommonServiceImpl");
+
+        Object dbObject = null;
+        String columnName = "baomi_no";
+
+
+        //dbObject = service.getOne(new QueryWrapper<Object>().eq("id", "13"));
+        //List<Map<String,Object>> aaa  = service.listMaps(new QueryWrapper<Object>().select(columnName).eq("id", "102002"));
+        //20220622以下语句只返回的map只有一个元素：<baomi_no -> SN111122>这样的：可能select只读一行无级：暂不研，
+        Map<String,Object> aaa  = service.getMap(new QueryWrapper<Object>().select(columnName));//.eq("id", "102002"));//
+        //String bb = String.valueOf(null);
+        System.out.println( aaa.get(columnName));
+    }
+
+
+
+    @Test
+    public void testReflect() throws IllegalAccessException {
+    //    Person a= new Person("john","xxxxxxxxxx");
+        System.out.println(taskService);
+//        Field[] fields = taskService.getClass().getDeclaredFields();
+//        for (Field field : fields) {
+//            if (!field.isAccessible()) {
+//                field.setAccessible(true);
+//            }
+//            System.out.println(field.getName() + ":" + field.get(taskService));
+//        }
+    }
+
+
+    @Test
+    public void testJson() {
+        //
+
+        String str = "{\"1550\":\"秘密\", \"asset\":[{\"customTableId\":16, \"asId\":102002 },{\"customTableId\":17, \"asId\":102004 }],\"16.计算机信息表.as_device_common.no.75\":\"J0601111\"}";
+        JSONObject jsonObject = JSONObject.parseObject(str);
+        System.out.println(jsonObject);
+        JSONArray jsonAssetArray = jsonObject.getJSONArray("asset");
+        Map<String, String> map = new HashMap<>();
+        jsonAssetArray.stream().forEach(item -> {
+            JSONObject itemJson = (JSONObject) item;//注意：关于强转“直接用后半句(JSONObject)item.getString”是不行的，可能因为那个括号最后执行吧，也不是：todo记录
+            System.out.println(item);
+            //{16=102002, 17=102004}:用于遍历每个自定义表字段时查找对象资产id(来进一步查询资产类型)
+            map.put(itemJson.getString("customTableId"), itemJson.getString("asId"));
+        });
+        System.out.println(map);
 
     }
+
+
+    public Integer bbb() {
+        return null;//null不能返回给int,但可以是Integer
+    }
+
+    @Test//@Test注解修饰的方法只能是void
+    public void abc() {
+       // return;
+
+        String a = "abc";
+        String b = "ab11";
+        String[] a11 = {a, b};
+        String d = "";
+        // System.out.println(a11[0]);
+        Integer c = this.bbb();
+        System.out.println(ObjectUtil.isNotEmpty(d));
+        String [] abc ="".split(",");
+        System.out.println(abc[0]);
+
+    }
+
     @Test
     public void deploy() {
         repositoryService.createDeployment()

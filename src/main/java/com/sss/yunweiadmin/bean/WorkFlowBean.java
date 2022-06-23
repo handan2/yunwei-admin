@@ -48,6 +48,7 @@ public class WorkFlowBean {
 
 
     public Deployment deploy(String actProcessName, String activitiXml) {
+        System.out.println(activitiXml);
         return repositoryService.createDeployment().name(actProcessName).addString(actProcessName + ".bpmn", activitiXml).deploy();
     }
 
@@ -58,7 +59,7 @@ public class WorkFlowBean {
 
     //删除流程实例
     public void deleteProcessInstance(String actProcessInstanceId) {
-        if (finish(actProcessInstanceId)) {
+        if (isFinish(actProcessInstanceId)) {
             historyService.deleteHistoricProcessInstance(actProcessInstanceId);
         } else {
             //删除顺序不能换
@@ -94,16 +95,16 @@ public class WorkFlowBean {
     }
 
 
-    public Map<String, String> getCurrentStep(Integer processDefinitionId, Integer processInstanceDataId, String actProcessInstanceId, String preTaskId) {
+    public Map<String, String> getCurrentStep(Integer processDefinitionId, Integer processInstanceDataId, String actProcessInstanceId, String preTaskDefKey) {
         Map<String, String> resultMap = new HashMap<>();
-        if (!this.finish(actProcessInstanceId)) {
+        if (!this.isFinish(actProcessInstanceId)) {
             //显示名称
             List<String> displayList = new ArrayList<>();
             //登录名称
             List<String> loginList = new ArrayList<>();
             //历史处理节点
             List<ProcessInstanceNode> list = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceDataId));
-            Map<String, ProcessInstanceNode> map = list.stream().collect(Collectors.toMap(ProcessInstanceNode::getTaskId, v -> v, (key1, key2) -> key2));
+            Map<String, ProcessInstanceNode> map = list.stream().collect(Collectors.toMap(ProcessInstanceNode::getTaskDefKey, v -> v, (key1, key2) -> key2));
             //获取当前活动任务
             List<Task> taskList = this.getActiveTask(actProcessInstanceId);
 
@@ -116,7 +117,7 @@ public class WorkFlowBean {
                 } else {
                     //获取处理人
                     //20211210修改实参
-                    List<SysUser> userList = userTaskBean.getUserList(processDefinitionId, preTaskId, task.getTaskDefinitionKey(),processInstanceDataId);
+                    List<SysUser> userList = userTaskBean.getUserList(processDefinitionId, preTaskDefKey, task.getTaskDefinitionKey(),processInstanceDataId);
                     List<String> displayNameList = userList.stream().map(SysUser::getDisplayName).collect(Collectors.toList());
                     List<String> loginNameList = userList.stream().map(SysUser::getLoginName).collect(Collectors.toList());
                     displayList.add(task.getName() + "[" + String.join(",", displayNameList) + "]");
@@ -136,10 +137,10 @@ public class WorkFlowBean {
         taskService.claim(actTask.getId(), currentUser.getLoginName());
         //设置buttonName条件和排他网关条件
         Map<String, Object> map = new HashMap<>();
-        map.put(actTask.getTaskDefinitionKey(), buttonName);
-        //判断任务的下一个节点有没有排他网关
-        String taskId = actTask.getTaskDefinitionKey();
-        List<ProcessDefinitionEdge> exclusiveGatewayList = getExclusiveGatewayCondition(processDefinitionId, taskId);
+        map.put(actTask.getTaskDefinitionKey(), buttonName);//对应流程变量：两个参数分别为变量名/值
+        //判断任务的下一个节点（可能是多个）有没有排他网关：目前流程设计图里没有排他网关
+        String taskDefKey = actTask.getTaskDefinitionKey();
+        List<ProcessDefinitionEdge> exclusiveGatewayList = getExclusiveGatewayCondition(processDefinitionId, taskDefKey);
         if (ObjectUtil.isNotEmpty(exclusiveGatewayList)) {
             Set<String> varNameSet = exclusiveGatewayList.stream().map(ProcessDefinitionEdge::getVarName).collect(Collectors.toSet());
             //设置排他网关条件，自由发挥
@@ -155,8 +156,8 @@ public class WorkFlowBean {
         //拾取任务
         taskService.claim(actTask.getId(), currentUser.getLoginName());
         //判断任务的下一个节点有没有排他网关
-        String taskId = actTask.getTaskDefinitionKey();
-        List<ProcessDefinitionEdge> exclusiveGatewayList = getExclusiveGatewayCondition(processDefinitionId, taskId);
+        String taskDefKey = actTask.getTaskDefinitionKey();
+        List<ProcessDefinitionEdge> exclusiveGatewayList = getExclusiveGatewayCondition(processDefinitionId, taskDefKey);
         if (ObjectUtil.isNotEmpty(exclusiveGatewayList)) {
             Set<String> varNameSet = exclusiveGatewayList.stream().map(ProcessDefinitionEdge::getVarName).collect(Collectors.toSet());
             //设置排他网关条件，自由发挥
@@ -170,7 +171,7 @@ public class WorkFlowBean {
         }
     }
 
-    public boolean finish(String actProcessInstanceId) {
+    public boolean isFinish(String actProcessInstanceId) {
         return runtimeService.createProcessInstanceQuery().processInstanceId(actProcessInstanceId).singleResult() == null;
     }
 
@@ -182,10 +183,10 @@ public class WorkFlowBean {
     }
 
     //获取节点的多条连线
-    public List<String> getButtonNameList(Integer processDefinitionId, String taskId) {
+    public List<String> getButtonNameList(Integer processDefinitionId, String taskDefKey) {
         List<String> buttonNameList = null;
         //判断是否有多条连线
-        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", taskId));
+        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", taskDefKey));
         if (ObjectUtil.isNotEmpty(edgeList)) {
             List<String> list = edgeList.stream().filter(item -> ObjectUtil.isNotEmpty(item.getButtonName())).map(ProcessDefinitionEdge::getButtonName).collect(Collectors.toList());
             if (ObjectUtil.isNotEmpty(list)) {
@@ -195,11 +196,11 @@ public class WorkFlowBean {
         return buttonNameList;
     }
 
-    //获取节点的下一个节点(排他网关)的连线条件
-    public List<ProcessDefinitionEdge> getExclusiveGatewayCondition(Integer processDefinitionId, String taskId) {
+    //获取节点的到下一个节点(排他网关)的连线
+    public List<ProcessDefinitionEdge> getExclusiveGatewayCondition(Integer processDefinitionId, String taskDefKey) {
         List<ProcessDefinitionEdge> list = null;
         //排他网关的连线的id
-        List<ProcessDefinitionEdge> exclusiveGatewayTmp = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", taskId).likeLeft("target_id", "ExclusiveGateway"));
+        List<ProcessDefinitionEdge> exclusiveGatewayTmp = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", taskDefKey).likeLeft("target_id", "ExclusiveGateway"));
         if (ObjectUtil.isNotEmpty(exclusiveGatewayTmp)) {
             if (exclusiveGatewayTmp.size() == 1) {
                 //排他网关的连线的edge
@@ -215,7 +216,7 @@ public class WorkFlowBean {
     }
 
     //获取上一个节点和当前运行节点的连线关系
-    public ProcessDefinitionEdge getPreCurrentTaskEdge(Integer processDefinitionId, String preTaskId, String currentTaskId) {
-        return processDefinitionEdgeService.getOne(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", preTaskId).eq("target_id", currentTaskId).eq("edge_direction", "退回"));
+    public ProcessDefinitionEdge getPreCurrentTaskEdge(Integer processDefinitionId, String preTaskDefKey, String currentTaskDefKey) {
+        return processDefinitionEdgeService.getOne(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", preTaskDefKey).eq("target_id", currentTaskDefKey).eq("edge_direction", "退回"));
     }
 }

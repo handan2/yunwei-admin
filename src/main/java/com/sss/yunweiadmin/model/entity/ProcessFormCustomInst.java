@@ -29,6 +29,10 @@ public class ProcessFormCustomInst implements Serializable {
 
     private String columnType;
 
+    private  Integer assetTypeId;
+
+    private  Integer asId;
+
     private String columnValue;
 
     private Integer processInstanceDataId;

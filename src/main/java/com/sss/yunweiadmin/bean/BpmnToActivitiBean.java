@@ -23,7 +23,9 @@ public class BpmnToActivitiBean {
     ProcessDefinitionTaskService processDefinitionTaskService;
     @Autowired
     ProcessDefinitionEdgeService processDefinitionEdgeService;
-
+    //（注意：这里的分支条件相关xml在definition表xmlbpmn中并没有记录：直接由Db/task表生成）；
+    // 这个函数是由definition表xmlbpmn转化成部署到ACTIVITI时所要补充的分支条件相关信息：
+    // definition表xmlbpmn除在此用于转化成activity格式bpmnxml外，还直接用于LogicFlow的可视化流程编辑（除节点属性编辑外的）逻辑
     private Map<String, String> getEgeMap(ProcessDefinition processDefinition) {
         Map<String, String> map = new HashMap<>();
         List<ProcessDefinitionEdge> list = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinition.getId()).ne("edge_name", ""));
@@ -37,6 +39,7 @@ public class BpmnToActivitiBean {
                     tmp.add("<conditionExpression xsi:type=\"tFormalExpression\"><![CDATA[#{" + edge.getConditionn() + "}]]></conditionExpression>");
                 }
                 tmp.add("</sequenceFlow>");
+                //2022608这里可添加判断edge表里的“流程参数字段”（可保存在现有的表字段：var_name<这个值由编辑edge属性时，下拉框筛选流程定义表单的变更字段/空转字段时获取>/condition<目前需求中这个值可不设，bpmn里的condtion条件可直接写死为！=“”这种>）是不是有值，有的话，也参考上面组装下conditionExpression
                 map.put(edge.getEdgeId(), tmp.stream().collect(Collectors.joining(System.getProperty("line.separator"))));
             }
         }

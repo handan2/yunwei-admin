@@ -48,7 +48,7 @@ public class ActEventListener implements ActivitiEventListener {
             //
             String actProcessInstanceId = taskEntity.getProcessInstanceId();
             //Task_3in0qiu
-            String taskId = taskEntity.getTaskDefinitionKey();
+            String taskDefKey = taskEntity.getTaskDefinitionKey();
             //
             ProcessInstanceDataService processInstanceDataService = SpringUtil.getBean(ProcessInstanceDataService.class);
             ProcessInstanceNodeService processInstanceNodeService = SpringUtil.getBean(ProcessInstanceNodeService.class);
@@ -60,7 +60,7 @@ public class ActEventListener implements ActivitiEventListener {
           //20211214 processInstanceData可能=null：先创建task,后创建data/node记录：流程启动时会接连创建两个activiTask
             // 在发起activi节点创建时（流程启动的第一个activi节点创建），data/node里还没有记录；在创建第二个activi节点时，才创建data、node ，
             if (processInstanceData != null) {
-                List<ProcessInstanceNode> list = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceData.getId()).eq("task_id", taskId));
+                List<ProcessInstanceNode> list = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceData.getId()).eq("task_def_key", taskDefKey));
                 if (ObjectUtil.isNotEmpty(list)) {
                     processInstanceNode = list.get(0);
                 }
@@ -70,7 +70,7 @@ public class ActEventListener implements ActivitiEventListener {
                 //存在历史节点，使用历史处理人
                 taskEntity.addCandidateUser(processInstanceNode.getLoginName());
             } else {
-                ProcessDefinitionTask processDefinitionTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_id", taskId));
+                ProcessDefinitionTask processDefinitionTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", taskDefKey));
                 //如果是发起结点，直接使用当前登陆者作为处理人，当然发起者提交流程和处理这一步是合并在一个action方法里完成的
                 if (processDefinitionTask.getTaskType().equals("bpmn:startTask")) {//20211215发起结点，直接给值
                     SysUser currentUser = (SysUser) httpSession.getAttribute("user");
@@ -80,17 +80,17 @@ public class ActEventListener implements ActivitiEventListener {
                     NextUserVO nextUserVO = (NextUserVO) httpSession.getAttribute("nextUserVO");
                    //设置了下一步处理人的情况
                     if (nextUserVO != null) {
-                        userList = userTaskBean.getUserList(nextUserVO.getType(), nextUserVO.getTypeValue(), nextUserVO.getHaveStarterDept(),processInstanceData.getId());
+                        userList = userTaskBean.getUserList(nextUserVO.getOperatorType(), nextUserVO.getOperatorTypeValue(), nextUserVO.getHaveStarterDept(),processInstanceData.getId());
                     } else {//20211208 todo在getUserList（）添加一种情况，task表的type字段是“发起人”的情况；
                         if (ObjectUtil.isNotEmpty(processInstanceData)) {
-                            userList = userTaskBean.getUserList(processDefinitionTask.getType(), processDefinitionTask.getTypeValue(), processDefinitionTask.getHaveStarterDept(), processInstanceData.getId());
+                            userList = userTaskBean.getUserList(processDefinitionTask.getOperatorType(), processDefinitionTask.getOperatorTypeValue(), processDefinitionTask.getHaveStarterDept(), processInstanceData.getId());
                         } else//处理发起节点的下个节点的情况（用户发起流程动作时：会在创建第二个activ节点后才创建NODE，所以此时data表依旧为空），此时processInstanceData里还是null,下面相应参数给个”占位符“
-                            userList = userTaskBean.getUserList(processDefinitionTask.getType(), processDefinitionTask.getTypeValue(), processDefinitionTask.getHaveStarterDept(), 0);
+                            userList = userTaskBean.getUserList(processDefinitionTask.getOperatorType(), processDefinitionTask.getOperatorTypeValue(), processDefinitionTask.getHaveStarterDept(), 0);
                     }
                     if (ObjectUtil.isNotEmpty(userList)) {
                         userList.forEach(user -> taskEntity.addCandidateUser(user.getLoginName()));
                     } else {//20211208 张强：这里抛出异常也不会被截获。但待后续思考如果真的没处理人，流程流转时会出现什么情况
-                        log.error(processDefinitionTask.getTaskId() + "," + processDefinitionTask.getTaskName() + "没有处理人");
+                        log.error(processDefinitionTask.getTaskDefKey() + "," + processDefinitionTask.getTaskName() + "没有处理人");
                     }
                 }
             }

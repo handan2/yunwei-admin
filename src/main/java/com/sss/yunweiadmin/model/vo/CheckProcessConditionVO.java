@@ -18,4 +18,10 @@ public class CheckProcessConditionVO {
     private String haveNextUser;
     //是否显示操作记录
     private String haveOperate;
+    //隐藏字段组ID
+    private String hideGroupIds;
+    //隐藏字段组名称
+    private String hideGroupLabel;
+    //
+    private String haveSelectAsset;
 }

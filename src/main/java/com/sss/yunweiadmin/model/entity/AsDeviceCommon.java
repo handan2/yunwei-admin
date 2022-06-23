@@ -28,6 +28,8 @@ public class AsDeviceCommon implements Serializable {
 
     private Integer typeId;
 
+    private Integer hostAsId;
+
     private String no;
 
     private String name;

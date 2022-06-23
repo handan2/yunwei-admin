@@ -31,7 +31,7 @@ public class ProcessDefinitionTask implements Serializable {
     /**
      * 节点id
      */
-    private String taskId;
+    private String taskDefKey;
 
     /**
      * 节点名称
@@ -41,17 +41,17 @@ public class ProcessDefinitionTask implements Serializable {
     /**
      * 选择处理类型,值为角色和用户
      */
-    private String type;
+    private String operatorType;
 
     /**
      * 角色id集合，或者 用户id集合
      */
-    private String typeValue;
+    private String operatorTypeValue;
 
     /**
      * 角色名称集合，或者 用户名称集合
      */
-    private String typeLabel;
+    private String operatorTypeLabel;
 
     /**
      * 是否勾选提交人部门
@@ -82,6 +82,16 @@ public class ProcessDefinitionTask implements Serializable {
      * 关联process_definition.id
      */
     private Integer processDefinitionId;
+    /**
+     * 关联process_definition. hide_group_ids
+     */
+    private String  hideGroupIds;
+    /**
+     * 关联process_definition.hide_group_label
+     */
+    private String hideGroupLabel;
 
+
+    private String haveSelectAsset;
 
 }

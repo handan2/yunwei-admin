@@ -17,7 +17,7 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
     protected void addInterceptors(InterceptorRegistry registry) {
         //配置ResponseResultInterceptor
         registry.addInterceptor(new ResponseResultInterceptor()).addPathPatterns("/**");
-        //配置登录拦截器，搭配下面的拦截器使用
+        //配置登录拦截器， excludeList搭配下面的拦截器使用
         List<String> excludeList = new ArrayList<>();
         excludeList.add("/sysUser/login");
         excludeList.add("/sysUser/ssoLogin");//20220324
@@ -28,7 +28,7 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
         excludeList.add("/sysUser/ssoLoginForPost");
         excludeList.add("/*.js");
         excludeList.add("/*.css");
-       registry.addInterceptor(new LoginInterceptor()).addPathPatterns("/**").excludePathPatterns(excludeList);
+       //registry.addInterceptor(new LoginInterceptor()).addPathPatterns("/**").excludePathPatterns(excludeList);
         super.addInterceptors(registry);
     }
 
