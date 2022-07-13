@@ -18,11 +18,13 @@
         <result column="login_name" property="loginName"/>
         <result column="start_datetime" property="startDatetime"/>
         <result column="end_datetime" property="endDatetime"/>
+        <result column="pre_process_instance_id" property="preProcessInstanceId"/>
+        <result column="post_process_instance_id" property="postProcessInstanceId"/>
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime
+        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime,pre_process_instance_id,post_process_instance_id
     </sql>
 
 </mapper>

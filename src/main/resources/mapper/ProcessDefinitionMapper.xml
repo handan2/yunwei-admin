@@ -22,12 +22,13 @@
         <result column="sort" property="sort"/>
         <result column="description" property="description"/>
         <result column="status" property="status"/>
-
+        <result column="start_limited_by_check" property="startLimitedByCheck"/>
+        <result column="integration_mode" property="integrationMode"/>
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, base_id, before_id, have_display, process_name, process_type, process_type2,process_name_type,have_rate, form_layout, create_time, remark, bpmn_xml,deploy_id,role_id,sort,description,status
+        id, base_id, before_id, have_display, process_name, process_type, process_type2,process_name_type,have_rate, form_layout, create_time, remark, bpmn_xml,deploy_id,role_id,sort,description,status,start_limited_by_check,integration_mode
     </sql>
 
 </mapper>

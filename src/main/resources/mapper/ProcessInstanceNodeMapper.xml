@@ -13,18 +13,15 @@
         <result column="dept_name" property="deptName"/>
         <result column="comment" property="comment"/>
         <result column="operate" property="operate"/>
-        <result column="operator_type" property="operatorType"/>
-        <result column="operator_type_value" property="operatorTypeValue"/>
-        <result column="operator_type_label" property="operatorTypeLabel"/>
         <result column="button_name" property="buttonName"/>
-        <result column="have_starter_dept" property="haveStarterDept"/>
+        <result column="selected_process" property="selectedProcess"/>
         <result column="start_datetime" property="startDatetime"/>
         <result column="end_datetime" property="endDatetime"/>
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, process_instance_data_id, task_def_key, task_name, login_name, display_name, dept_name, comment, operate, operator_type, operator_type_value, operator_type_label, button_name,have_starter_dept, start_datetime, end_datetime
+        id, process_instance_data_id, task_def_key, task_name, login_name, display_name, dept_name, comment, operate,  button_name, selected_process,start_datetime, end_datetime
     </sql>
 
 </mapper>

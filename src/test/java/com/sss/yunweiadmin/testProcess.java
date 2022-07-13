@@ -62,8 +62,8 @@ class Person {
  *
  */
 @Slf4j
-@RunWith(SpringRunner.class)
-@SpringBootTest
+//@RunWith(SpringRunner.class)
+//@SpringBootTest
 @EnableAutoConfiguration(exclude = SecurityAutoConfiguration.class)
 public class testProcess {
 
@@ -121,8 +121,10 @@ public class testProcess {
 
     @Test
     public void testReflect() throws IllegalAccessException {
+
+        System.out.println(ObjectUtil.isNotEmpty(""));
     //    Person a= new Person("john","xxxxxxxxxx");
-        System.out.println(taskService);
+  //      System.out.println(taskService);
 //        Field[] fields = taskService.getClass().getDeclaredFields();
 //        for (Field field : fields) {
 //            if (!field.isAccessible()) {

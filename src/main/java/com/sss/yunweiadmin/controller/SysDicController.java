@@ -45,7 +45,7 @@ public class SysDicController {
 
     @GetMapping("getDicVL")
     public List<ValueLabelVO> getDicVL(String flag) {
-        List<SysDic> list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag", flag));
+        List<SysDic> list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag", flag).orderByAsc("sort"));
         return list.stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());
     }
 

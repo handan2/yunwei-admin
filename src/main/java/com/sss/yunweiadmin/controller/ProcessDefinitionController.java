@@ -47,6 +47,18 @@ public class ProcessDefinitionController {
     @Autowired
     HttpSession httpSession;
 
+
+    @GetMapping("getOneCustomTableIdByProcDefId")//20220702加,用于ProcessFormForEndAndStart.jsx
+    public int getOneCustomTableIdByProcDefId(Integer processDefId) {
+        //只取一个：约定审批发起的流程只能有一个自定义表
+        ProcessFormTemplate templateForCustomType =  processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("flag","表类型").eq("process_definition_id", processDefId)).get(0);
+        if(ObjectUtil.isEmpty(templateForCustomType))
+            throw new RuntimeException("该流程没有配置自定义表，请联系管理员！");
+       String [] a = templateForCustomType.getType().split("\\.");
+        return  Integer.parseInt(a[0]);
+
+    }
+
     //获取所有下拉类型
     @GetMapping("getTypeVL")
     public List<ValueLabelVO> getType() {
@@ -125,7 +137,13 @@ public class ProcessDefinitionController {
         //默许没登陆时，先显示全部吧
         return true;
     }
-
+    //20220626加,L和V一样：都是Label
+    @GetMapping("getProcessDefLV")
+    public List<ValueLabelVO> getProcessDefLV() {
+       List<ProcessDefinition> list  = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("status","启用").eq("have_display","是"));
+       // Map<String,Integer> map = list.stream().collect(Collectors.toMap(ProcessDefinition::getProcessName,ProcessDefinition::getId));
+        return list.stream().map(item->new ValueLabelVO(item.getProcessName(),item.getProcessName())).collect(Collectors.toList());
+    }
     @GetMapping("list")
     public IPage<ProcessDefinition> list(int currentPage, int pageSize, String processName, String processType) {
         QueryWrapper<ProcessDefinition> queryWrapper = new QueryWrapper<ProcessDefinition>().eq("have_display", "是").orderByAsc("sort");
@@ -154,7 +172,10 @@ public class ProcessDefinitionController {
     public ProcessDefinition getById(String processDefinitionId) {
         return processDefinitionService.getById(processDefinitionId);
     }
-
+    @GetMapping("getByName")
+    public ProcessDefinition getByName(String processDefinitionName) {
+        return processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_name",processDefinitionName)).get(0);
+    }
     @PostMapping("add")
     public boolean add(@RequestBody ProcessDefinitionVO processDefinitionVO) {
         return processDefinitionService.add(processDefinitionVO);

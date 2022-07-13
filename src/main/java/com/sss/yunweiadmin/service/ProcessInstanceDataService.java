@@ -2,10 +2,7 @@ package com.sss.yunweiadmin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.sss.yunweiadmin.model.entity.ProcessInstanceData;
-import com.sss.yunweiadmin.model.vo.CheckProcessVO;
-import com.sss.yunweiadmin.model.vo.ModifyProcessFormVO;
-import com.sss.yunweiadmin.model.vo.StartOrHandleProcessResultVO;
-import com.sss.yunweiadmin.model.vo.StartProcessVO;
+import com.sss.yunweiadmin.model.vo.*;
 
 /**
  * <p>
@@ -16,7 +13,10 @@ import com.sss.yunweiadmin.model.vo.StartProcessVO;
  * @since 2021-04-17
  */
 public interface ProcessInstanceDataService extends IService<ProcessInstanceData> {
-    boolean start( StartProcessVO startProcessVO);
+
+    boolean endAndStart(EndAndStartProcessVO endAndStartProcessVO);
+
+    boolean start(StartProcessVO startProcessVO);
 
     boolean handle(CheckProcessVO checkProcessVO);
 

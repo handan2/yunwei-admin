@@ -28,7 +28,7 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
         excludeList.add("/sysUser/ssoLoginForPost");
         excludeList.add("/*.js");
         excludeList.add("/*.css");
-       //registry.addInterceptor(new LoginInterceptor()).addPathPatterns("/**").excludePathPatterns(excludeList);
+        //registry.addInterceptor(new LoginInterceptor()).addPathPatterns("/**").excludePathPatterns(excludeList);
         super.addInterceptors(registry);
     }
 

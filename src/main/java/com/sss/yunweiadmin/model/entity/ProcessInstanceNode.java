@@ -61,31 +61,35 @@ public class ProcessInstanceNode implements Serializable {
      */
     private String operate;
 
-    /**
-     * 选择处理类型,值为角色和用户
-     */
-    private String operatorType;
-
-    /**
-     * 角色id集合，或者 用户id集合
-     */
-    private String operatorTypeValue;
-
-    /**
-     * 角色名称集合，或者 用户名称集合
-     */
-    private String operatorTypeLabel;
+//    /**
+//     * 选择处理类型,值为角色和用户
+//     */
+//    private String operatorType;
+//
+//    /**
+//     * 角色id集合，或者 用户id集合
+//     */
+//    private String operatorTypeValue;
+//
+//    /**
+//     * 角色名称集合，或者 用户名称集合
+//     */
+//    private String operatorTypeLabel;
 
     /**
      * 按钮名称
      */
     private String buttonName;
 
-    /**
-     * 提交人部门
-     */
-    private String haveStarterDept;
+//    /**
+//     * 提交人部门(开关量)
+//     */
+//    private String haveStarterDept;
 
+    /**
+     * 后续流程名称
+     */
+    private String selectedProcess;
 
     /**
      * 到达时间

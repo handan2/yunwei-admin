@@ -52,8 +52,8 @@ public class AsConfigController {
         return list2;
     }
 
-    @GetMapping("getTableData")
-    public Map<String, List<ValueLabelVO>> getTableData() {
+    @GetMapping("getTableTypeVO")
+    public Map<String, List<ValueLabelVO>> getTableTypeVO() {
         Map<String, List<ValueLabelVO>> map = new LinkedHashMap<>();
         List<AsConfig> AsConfigList = asConfigService.list(new QueryWrapper<AsConfig>().orderByAsc("sort"));
         String key = null;

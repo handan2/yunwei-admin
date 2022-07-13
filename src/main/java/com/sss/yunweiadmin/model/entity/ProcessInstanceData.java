@@ -98,4 +98,7 @@ public class ProcessInstanceData implements Serializable {
      */
     @TableField(exist = false)
     private int score;
+
+    private int preProcessInstanceId;
+    private int postProcessInstanceId;
 }

@@ -33,13 +33,27 @@ public class BpmnToActivitiBean {
             for (ProcessDefinitionEdge edge : list) {
                 List<String> tmp = new ArrayList<>();
                 tmp.add("<sequenceFlow id=\"" + edge.getEdgeId() + "\" name=\"" + edge.getEdgeName() + "\" sourceRef=\"" + edge.getSourceId() + "\" targetRef=\"" + edge.getTargetId() + "\">");
-                if (ObjectUtil.isNotEmpty(edge.getButtonName())) {
-                    tmp.add("<conditionExpression xsi:type=\"tFormalExpression\"><![CDATA[#{" + edge.getSourceId() + "==\"" + edge.getButtonName() + "\"}]]></conditionExpression>");
-                } else {
-                    tmp.add("<conditionExpression xsi:type=\"tFormalExpression\"><![CDATA[#{" + edge.getConditionn() + "}]]></conditionExpression>");
+                String cExpressionStart = "<conditionExpression xsi:type=\"tFormalExpression\"><![CDATA[#{" ;
+                String cExpressionEnd = "}]]></conditionExpression>";
+                String cExpressionCenter = "";
+                if(!edge.getSourceId().contains("ExclusiveGateway")){//20220628加判断
+                    if (ObjectUtil.isNotEmpty(edge.getButtonName())) {
+                        cExpressionCenter = edge.getSourceId() + "==\"" + edge.getButtonName()+"\"";
+                    } else {//这个分支也有点问题，普通结点没有buttonName时（单分支）也没有必要设置分支条件
+                      //  cExpressionCenter = edge.getConditionn()  ;
+                    }
+                }else{//ExclusiveGateway结点的处理
+                    //2022608这里可添加判断edge表里的“流程参数字段”（可保存在现有的表字段：var_name<这个值由编辑edge属性时，下拉框筛选流程定义表单的变更字段/空转字段时获取>/condition<目前需求中这个值可不设，bpmn里的condtion条件可直接写死为！=“”这种>）是不是有值，有的话，也参考上面组装下conditionExpression
+                    if(ObjectUtil.isNotEmpty(edge.getVarName())) {
+                       // cExpressionCenter =  edge.getVarName() + "!=\"\"";
+                        cExpressionCenter =  edge.getVarName() + edge.getConditionn()  ;
+                    }//edge的condition变量还未处理
+                }
+                if(ObjectUtil.isNotEmpty(cExpressionCenter)) {
+                    cExpressionCenter = cExpressionCenter + " && " + cExpressionCenter;//为了测语法，故意多加了一个条件
+                    tmp.add(cExpressionStart + cExpressionCenter + cExpressionEnd);
                 }
                 tmp.add("</sequenceFlow>");
-                //2022608这里可添加判断edge表里的“流程参数字段”（可保存在现有的表字段：var_name<这个值由编辑edge属性时，下拉框筛选流程定义表单的变更字段/空转字段时获取>/condition<目前需求中这个值可不设，bpmn里的condtion条件可直接写死为！=“”这种>）是不是有值，有的话，也参考上面组装下conditionExpression
                 map.put(edge.getEdgeId(), tmp.stream().collect(Collectors.joining(System.getProperty("line.separator"))));
             }
         }

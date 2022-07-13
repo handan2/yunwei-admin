@@ -89,4 +89,6 @@ public class ProcessDefinition implements Serializable {
     private Double sort;
     private String description;
     private String status;
+    private String startLimitedByCheck;
+    private String integrationMode;
 }

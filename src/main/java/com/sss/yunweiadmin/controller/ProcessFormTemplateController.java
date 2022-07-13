@@ -54,6 +54,8 @@ public class ProcessFormTemplateController {
     AsDeviceCommonService asDeviceCommonService;
 
 
+
+
     //20220521加， 应该已不用
     @GetMapping("getGroupKT")
     public List<KeyTitleVO> getGroupKT(Integer processDefinitionId) {
@@ -76,8 +78,8 @@ public class ProcessFormTemplateController {
     }
 
     //获取自定义表对应的变更字段的（ID/label）map
-    @GetMapping("getFormTemplateIdLableMap")
-    public Map<String, String> getChangeColumnMap(Integer processDefinitionId) {
+    @GetMapping("getChangeColumnIdLableMap")
+    public Map<String, String> getChangeColumnIdLableMap(Integer processDefinitionId) {
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
         Map<String, String> map = Maps.newHashMap();
         for (ProcessFormTemplate processFormTemplate : list) {
@@ -89,8 +91,8 @@ public class ProcessFormTemplateController {
     }
 
     //用于给tree组件赋值:获得需要在提交时可供界面上选择来显示的group
-    @GetMapping("getFormTemplateGroupTree")
-    public List<TreeSelectVO> getFormTemplateGroupTree(Integer processDefinitionId) {
+    @GetMapping("getFormTemplateGroupTreeForSelect")
+    public List<TreeSelectVO> getFormTemplateGroupTreeForSelect(Integer processDefinitionId) {
         List<ProcessFormTemplate> list1 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
         //20220517todo要判断空
         if (CollUtil.isEmpty(list1)) {
@@ -134,6 +136,7 @@ public class ProcessFormTemplateController {
     public Set<Integer> getSelectGroupIdList(Integer processDefinitionId, Integer[] checkGroupIdArr) {
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
         Map<String, ProcessFormTemplate> map = list.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate -> ProcessFormTemplate));
+        //20220704 实际这个checkGroupIdArr是应该判下空，不过Action机制：前端传null到actioon时：也会初始化一个“空对象”
         Set<Integer> selectGroupIdSet = Stream.of(checkGroupIdArr).collect(Collectors.toSet());
         System.out.println(selectGroupIdSet.size());
         //先将 have_group_select=否 放入checkGroupIdArr
