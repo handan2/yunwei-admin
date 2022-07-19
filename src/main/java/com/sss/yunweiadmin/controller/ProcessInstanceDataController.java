@@ -170,6 +170,7 @@ public class ProcessInstanceDataController {
     }
 
     //已办任务
+    //20220719回头改
     @GetMapping("completeList")
     public IPage<ProcessInstanceData> completeList(int currentPage, int pageSize, String processName, String processType, String handleName, String no, String startDate, String endDate) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
@@ -177,6 +178,7 @@ public class ProcessInstanceDataController {
             throw new RuntimeException("用户未登录");
         }
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().eq("process_status", "完成").eq("login_name", user.getLoginName()).orderByDesc("id");
+
         if (ObjectUtil.isNotEmpty(processName)) {
             queryWrapper.like("processName", processName);
         }
@@ -304,7 +306,6 @@ public class ProcessInstanceDataController {
     @GetMapping("getOneDeviceByProcessInstId")//20220702加,注意逻辑是根据流程类型中的“资产类型”ID，来查找对应的设备：约定同一个资产类型只有只能选择一个资产：这条需要单独记录在一个地方
     public AsDeviceCommon getOneDeviceByProcessInstId(Integer processInstanceDataId) {
         ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
-        String allowedAssetTypeStr = processDefinitionService.getById(processInstanceData.getProcessDefinitionId()).getProcessType2();
         List<Integer> assetIdList = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("act_process_instance_id",processInstanceData.getActProcessInstanceId())).stream().map(item->item.getAsId()).collect(Collectors.toList());
         if(CollUtil.isNotEmpty(assetIdList))
             return  asDeviceCommonService.getById(assetIdList.get(0));//审批型流程的前置流程：约定：只能选择一个资产

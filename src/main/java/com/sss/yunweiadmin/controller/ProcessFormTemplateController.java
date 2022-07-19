@@ -170,6 +170,7 @@ public class ProcessFormTemplateController {
 
     //用于自定义表相关字段的渲染;格式：<自定义表的ID,对应的字段VOList<VO: "label": "计算机信息表.资产编号","name": "16.计算机信息表.as_device_common.no.75">>//自定义表的记录相应源表/字段的那个字段叫props:里面是json格式;
     //示例中最后那个“75”代表as_config中的对应ID
+    //asConfigController也有同名getTableTypeVO方法
     @GetMapping("getTableTypeVO")
     public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) {
         Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();

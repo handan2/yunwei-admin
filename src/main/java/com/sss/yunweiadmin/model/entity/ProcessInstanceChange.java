@@ -33,6 +33,10 @@ public class ProcessInstanceChange implements Serializable {
      * activiti的流程实例id
      */
     private String actProcessInstanceId;
+    /**
+     * 生命周期
+     */
+    private String lifteCycle;
 
     /**
      * 属性名称

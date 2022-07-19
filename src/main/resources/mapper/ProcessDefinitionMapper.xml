@@ -11,6 +11,7 @@
         <result column="process_name" property="processName"/>
         <result column="process_type" property="processType"/>
         <result column="process_type2" property="processType2"/>
+        <result column="as_type_id" property="asTypeId"/>
         <result column="process_name_type" property="processNameType"/>
         <result column="have_rate" property="haveRate"/>
         <result column="form_layout" property="formLayout"/>
@@ -28,7 +29,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, base_id, before_id, have_display, process_name, process_type, process_type2,process_name_type,have_rate, form_layout, create_time, remark, bpmn_xml,deploy_id,role_id,sort,description,status,start_limited_by_check,integration_mode
+        id, base_id, before_id, have_display, process_name, process_type, process_type2,as_type_id,process_name_type,have_rate, form_layout, create_time, remark, bpmn_xml,deploy_id,role_id,sort,description,status,start_limited_by_check,integration_mode
     </sql>
 
 </mapper>

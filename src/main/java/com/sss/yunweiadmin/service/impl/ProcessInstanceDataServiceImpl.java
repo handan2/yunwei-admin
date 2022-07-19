@@ -280,7 +280,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         tmp.setUserMiji(asDeviceCommon.getUserMiji());
                         tmp.setNetType(asDeviceCommon.getNetType());
                         tmp.setName("硬盘");
-                        tmp.setTypeId(25);
+                        tmp.setTypeId(30);
                         asDeviceCommonService.save(tmp);
                         item.setAsId(tmp.getId());
                     } else if (item.getFlag().equals("修改")) {
@@ -676,7 +676,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         tmp.setUserMiji(asDeviceCommon.getUserMiji());
                         tmp.setNetType(asDeviceCommon.getNetType());
                         tmp.setName("硬盘");
-                        tmp.setTypeId(25);
+                        tmp.setTypeId(30);
                         asDeviceCommonService.save(tmp);
                         item.setAsId(tmp.getId());
                     } else if (item.getFlag().equals("修改")) {
@@ -725,7 +725,9 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 
     private void changeColumnForStart(ProcessInstanceData processInstanceData, ProcessFormValue1 processFormValue1, List<ProcessFormValue2> formValue2List) {
         if (CollUtil.isEmpty(formValue2List)) return;
-        //
+        //20220716
+        ProcessDefinition processDefinition = processDefinitionService.getById(processInstanceData.getProcessDefinitionId());
+
         List<AsConfig> asConfigList = asConfigService.list(new QueryWrapper<AsConfig>().select("distinct en_table_name,zh_table_name"));
         Map<String, String> asConfigMap = asConfigList.stream().collect(Collectors.toMap(AsConfig::getEnTableName, AsConfig::getZhTableName));
         //
@@ -798,6 +800,15 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         if (!pageValue.equals(dbValue)) {
                             //变更字段
                             ProcessInstanceChange change = new ProcessInstanceChange();
+                            //20220716 设置生命周期状态; todo在前端加了相应变更字段后，这里要解析并写入计算机专用表
+                            AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(asId);
+                            List<Integer> typeIdList = asTypeService.getTypeIdList(processDefinition.getAsTypeId());//获取流程定义里的“主设备”类型(及其子类)List
+                            if(typeIdList.contains(asDeviceCommon.getTypeId()))//如果当前资产是“主类型”，生命周期类型为流程定义中的processType,否则为processType2
+                                change.setLifteCycle(processDefinition.getProcessType());
+                            else
+                                change.setLifteCycle(processDefinition.getProcessType2());
+
+
                             change.setAsId(asId);
                             change.setProcessInstanceDataId(processInstanceData.getId());
                             change.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
@@ -829,6 +840,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
     private void changeColumnForHandle(ProcessInstanceData processInstanceData, boolean isFinish) {
         //先删除变更记录
         processInstanceChangeService.remove(new QueryWrapper<ProcessInstanceChange>().eq("process_instance_data_id", processInstanceData.getId()));
+        //20220716
+        ProcessDefinition processDefinition = processDefinitionService.getById(processInstanceData.getProcessDefinitionId());
 
         ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new QueryWrapper<ProcessFormValue1>().eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()));
         List<ProcessFormValue2> formValue2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("form_value1_id", processFormValue1.getId()));
@@ -890,12 +903,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         pageValue = jsonObject.getString(id + "");
                     }
                     if (ObjectUtil.isNotEmpty(pageValue)) {//这是变更字段存在值的分支
-//                        //20220708 todo断点，这个位置变更字段的名称与值都有了，现在要（增加一个函数调用他）寻找流程定义中所有的排他网关节点及节点的引线/edge，将这些Edge上的parmName读出来
-//                        List<String> proVarList= workFlowBean.getProVarListForExGateway(processInstanceData.getProcessDefinitionId());
-//                        if(CollUtil.isNotEmpty(proVarList)){
-//                            if(proVarList.contains(columnName))
-//
-//                        }
+
                         Object dbValueObj = ReflectUtil.getFieldValue(dbObject, columnName);
                         String dbValue = null;
                         if (ObjectUtil.isEmpty(dbValueObj)) {
@@ -906,6 +914,14 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         if (!pageValue.equals(dbValue)) {
                             //变更字段
                             ProcessInstanceChange change = new ProcessInstanceChange();
+                            //20220716 设置生命周期状态
+                            AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(asId);
+                            List<Integer> typeIdList = asTypeService.getTypeIdList(processDefinition.getAsTypeId());//获取流程定义里的“主设备”类型(及其子类)List
+                            if(typeIdList.contains(asDeviceCommon.getTypeId()))//如果当前资产是“主类型”，生命周期类型为流程定义中的processType,否则为processType2
+                                change.setLifteCycle(processDefinition.getProcessType());
+                            else
+                                change.setLifteCycle(processDefinition.getProcessType2());
+
                             change.setAsId(asId);
                             change.setProcessInstanceDataId(processInstanceData.getId());
                             change.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
@@ -924,7 +940,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 
                             changeList.add(change);
                             //数据对象
-                            if (isFinish) {
+                            if (isFinish) {//20220713 有问题todo断点 就没有“变更硬盘”这个字段
                                 ReflectUtil.setFieldValue(dbObject, columnName, pageValue);
                                 if (columnName.contains("变更硬盘") || columnName.contains("硬盘变更"))//20220625加
                                     ReflectUtil.setFieldValue(dbObject, columnName, "");

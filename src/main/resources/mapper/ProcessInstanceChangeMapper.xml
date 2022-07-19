@@ -8,6 +8,7 @@
         <result column="as_id" property="asId"/>
         <result column="process_instance_data_id" property="processInstanceDataId"/>
         <result column="act_process_instance_id" property="actProcessInstanceId"/>
+        <result column="lifte_cycle" property="lifteCycle"/>
         <result column="name" property="name"/>
         <result column="old_value" property="oldValue"/>
         <result column="new_value" property="newValue"/>
@@ -21,7 +22,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id,process_instance_data_id, act_process_instance_id, name, old_value, new_value, dept_name, display_name, login_name, modify_datetime,flag,zh_table_name
+        id, as_id,process_instance_data_id, act_process_instance_id,lifte_cycle, name, old_value, new_value, dept_name, display_name, login_name, modify_datetime,flag,zh_table_name
     </sql>
 
 </mapper>

@@ -264,7 +264,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     asDeviceCommon1.setUserMiji(asDeviceCommon.getUserMiji());
                     asDeviceCommon1.setNetType(asDeviceCommon.getNetType());
                     asDeviceCommon1.setName("硬盘");
-                    asDeviceCommon1.setTypeId(25);
+                    asDeviceCommon1.setTypeId(30);
                     asDeviceCommon1.setHostAsId(asDeviceCommon.getId());
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon1);
@@ -278,7 +278,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     asDeviceCommon2.setUserMiji(asDeviceCommon.getUserMiji());
                     asDeviceCommon2.setNetType(asDeviceCommon.getNetType());
                     asDeviceCommon2.setName("硬盘");
-                    asDeviceCommon2.setTypeId(25);
+                    asDeviceCommon2.setTypeId(30);
                     asDeviceCommon2.setHostAsId(asDeviceCommon.getId());
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon2);
@@ -292,7 +292,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     asDeviceCommon3.setUserMiji(asDeviceCommon.getUserMiji());
                     asDeviceCommon3.setNetType(asDeviceCommon.getNetType());
                     asDeviceCommon3.setName("硬盘");
-                    asDeviceCommon3.setTypeId(25);
+                    asDeviceCommon3.setTypeId(30);
                     asDeviceCommon3.setHostAsId(asDeviceCommon.getId());
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon3);
@@ -306,7 +306,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     asDeviceCommon4.setUserMiji(asDeviceCommon.getUserMiji());
                     asDeviceCommon4.setNetType(asDeviceCommon.getNetType());
                     asDeviceCommon4.setName("硬盘");
-                    asDeviceCommon4.setTypeId(25);
+                    asDeviceCommon4.setTypeId(30);
                     asDeviceCommon4.setHostAsId(asDeviceCommon.getId());
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon4);

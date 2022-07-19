@@ -54,6 +54,12 @@ public class ProcessDefinition implements Serializable {
      * 流程分类2，来自sys_dic
      */
     private String processType2;
+    /**
+     * asTypeId
+     */
+    private Integer asTypeId;
+
+
 
     /**
      * 流程实例名称分类

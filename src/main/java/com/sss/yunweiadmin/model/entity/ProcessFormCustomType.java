@@ -22,7 +22,6 @@ public class ProcessFormCustomType implements Serializable {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
-
     /**
      * 名称
      */

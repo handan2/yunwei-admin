@@ -1,6 +1,7 @@
 package com.sss.yunweiadmin.controller;
 
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -153,7 +154,7 @@ public class ProcessDefinitionController {
         if (ObjectUtil.isNotEmpty(processType)) {
             queryWrapper.like("process_type", processType);
         }
-        // 20211114查了两遍DB
+        // 20211114查了两遍DB;20220715 这个ProcessDefiniton/role_id应改成 role_idlist
         List<ProcessDefinition> processDefinitionListLegal =processDefinitionService.list().stream().filter(item -> this.processVisable(item.getRoleId())).collect(Collectors.toList());
         //第一遍，取出合法授权defIdList，第二遍读Page
         List<Integer> processDefinitionIdListLegal = processDefinitionListLegal.stream().map(item -> item.getId()).collect(Collectors.toList());
@@ -174,7 +175,11 @@ public class ProcessDefinitionController {
     }
     @GetMapping("getByName")
     public ProcessDefinition getByName(String processDefinitionName) {
-        return processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_name",processDefinitionName)).get(0);
+        List<ProcessDefinition> list = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_name",processDefinitionName));
+        if(CollUtil.isNotEmpty(list))
+            return list.get(0);
+        else
+            return null;
     }
     @PostMapping("add")
     public boolean add(@RequestBody ProcessDefinitionVO processDefinitionVO) {

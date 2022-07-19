@@ -66,29 +66,38 @@ public class AsDeviceCommonController {
     SysDeptService sysDeptService;
     @Autowired
     DiskService diskService;
+    @Autowired
+    ProcessFormCustomTypeService processFormCustomTypeService;
 
     @GetMapping("test")
-    public  List<Integer> test (int typeId)
-    {
-        return  asTypeService.getTypeIdList(typeId);
+    public List<Integer> test(int typeId) {
+        return asTypeService.getTypeIdList(typeId);
     }
+
     //20211115
     @OperateLog(module = "资产模块", type = "删除资产")
     @GetMapping("delete")
-    public boolean delete (Integer[] idArr)
-    {
+    public boolean delete(Integer[] idArr) {
         System.out.println(idArr[0]);
-        return  asDeviceCommonService.delete(idArr);
+        return asDeviceCommonService.delete(idArr);
     }
+
     @GetMapping("list")
-    public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDept, String userName) {
+    public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDeptId, String userName, Integer customTableId) {
         QueryWrapper<AsDeviceCommon> queryWrapper = new QueryWrapper<>();
         if (ObjectUtil.isNotEmpty(no)) {
             queryWrapper.like("no", no);
         }
         if (ObjectUtil.isNotEmpty(typeId)) {
-           List<Integer> typeIdList = asTypeService.getTypeIdList(typeId);
-            queryWrapper.in("type_id",typeIdList);
+            List<Integer> typeIdList = asTypeService.getTypeIdList(typeId);
+            queryWrapper.in("type_id", typeIdList);
+        }
+        if (ObjectUtil.isNotEmpty(customTableId)) {//20220716
+            String str = processFormCustomTypeService.getById(customTableId).getProps();
+            JSONObject jsonObject = JSON.parseObject(str);
+            int asTypeId = jsonObject.getInteger("asTypeId");
+            List<Integer> typeIdList = asTypeService.getTypeIdList(asTypeId);
+            queryWrapper.in("type_id", typeIdList);
         }
         if (ObjectUtil.isNotEmpty(name)) {
             queryWrapper.like("name", name);
@@ -99,8 +108,8 @@ public class AsDeviceCommonController {
         if (ObjectUtil.isNotEmpty(state)) {
             queryWrapper.eq("state", state);
         }
-        if (ObjectUtil.isNotEmpty(userDept)) {
-            String deptName = sysDeptService.getById(userDept).getName();
+        if (ObjectUtil.isNotEmpty(userDeptId)) {
+            String deptName = sysDeptService.getById(userDeptId).getName();
             queryWrapper.eq("user_dept", deptName);
         }
         if (ObjectUtil.isNotEmpty(userName)) {
@@ -108,7 +117,7 @@ public class AsDeviceCommonController {
         }
         IPage<AsDeviceCommon> page = asDeviceCommonService.page(new Page<>(currentPage, pageSize), queryWrapper);
         //20211115临时借用temp字段存储设备类型
-        page.getRecords().stream().forEach(item->item.setTemp(asTypeService.getById(item.getTypeId()).getName()));
+        page.getRecords().stream().forEach(item -> item.setTemp(asTypeService.getById(item.getTypeId()).getName()));
         return page;
     }
 
@@ -118,17 +127,14 @@ public class AsDeviceCommonController {
         return list.stream().map(item -> new ValueLabelVO(item.getNo(), item.getNo())).collect(Collectors.toList());
     }
 
-    @GetMapping("getAsTypeTree")
-    public List<TreeSelectVO> getAsTypeTree() {
-        //20211119 加入sort
-        List<AsType> list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid","sort"));
-        return TreeUtil.getTreeSelectVO(list);
-    }
+
+
     @GetMapping("getLevelTwoAsTypeById")
     public AsType getLevel2AsTypeById(Integer typeId) {
         return asTypeService.getLevel2AsTypeById(typeId);
     }
-//与前端path.js里路径对应，所有的页面都是用的这个，先不改了
+
+    //与前端path.js里路径对应，所有的页面都是用的这个，先不改了
     @GetMapping("get")
     public AssetVO getById(Integer id) {
         AssetVO assetVO = new AssetVO();
@@ -148,7 +154,7 @@ public class AsDeviceCommonController {
                 assetVO.setAsComputerGranted(asComputerGranted);
             }
             //202206112加载硬盘信息
-            List<AsDeviceCommon> diskList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("host_as_id",id));
+            List<AsDeviceCommon> diskList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("host_as_id", id));
             assetVO.setDiskList(diskList);
         } else if (asTypeId == 5) {
             //网络设备
@@ -168,7 +174,7 @@ public class AsDeviceCommonController {
             if (asSecurityProductsSpecial != null) {
                 assetVO.setAsSecurityProductsSpecial(asSecurityProductsSpecial);
             }
-        }else if (asTypeId == 19) {
+        } else if (asTypeId == 19) {
             //应用系统 20211121
             AsApplicationSpecial asApplicationSpecial = asApplicationSpecialService.getOne(new QueryWrapper<AsApplicationSpecial>().eq("as_id", id));
             if (asApplicationSpecial != null) {
@@ -178,11 +184,13 @@ public class AsDeviceCommonController {
 
         return assetVO;
     }
+
     @OperateLog(module = "资产模块", type = "添加资产")
     @PostMapping("add")
     public boolean add(@RequestBody AssetVO assetVO) {
         return asDeviceCommonService.add(assetVO);
     }
+
     @OperateLog(module = "资产模块", type = "编辑资产")
     @PostMapping("edit")
     public boolean edit(@RequestBody AssetVO assetVO) {

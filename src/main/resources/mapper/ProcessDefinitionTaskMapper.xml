@@ -5,6 +5,7 @@
     <!-- 通用查询映射结果 -->
     <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessDefinitionTask">
         <id column="id" property="id" />
+
         <result column="task_type" property="taskType" />
         <result column="task_def_key" property="taskDefKey" />
         <result column="task_name" property="taskName" />

@@ -36,7 +36,7 @@ public class AsConfigController {
     @Autowired
     AnySqlMapper anySqlMapper;
 
-    @GetMapping("getTableList")
+    @GetMapping("getAsConfigTableList")
     public List<ValueLabelVO> getTablelist() {
         //select distinct en_table_name,zh_table_name from as_config where en_table_name not in('as_device_common')
         List<AsConfig> list = asConfigService.list(new QueryWrapper<AsConfig>().select("distinct en_table_name,zh_table_name").notIn("en_table_name", "as_device_common").orderByAsc("sort"));
@@ -45,15 +45,15 @@ public class AsConfigController {
         return list2;
     }
 
-    @GetMapping("getColumnList")
+    @GetMapping("getAsConfigColumnList")
     public List<ValueLabelVO> list(String enTableName) {
         List<AsConfig> list = asConfigService.list(new QueryWrapper<AsConfig>().eq("en_table_name", enTableName).orderByAsc("sort"));
         List<ValueLabelVO> list2 = list.stream().map(tmp -> new ValueLabelVO(tmp.getId(), tmp.getZhColumnName())).collect(Collectors.toList());
         return list2;
     }
 
-    @GetMapping("getTableTypeVO")
-    public Map<String, List<ValueLabelVO>> getTableTypeVO() {
+    @GetMapping("getAsConfigTableTypeVO")
+    public Map<String, List<ValueLabelVO>> getAsConfigTableTypeVO() {
         Map<String, List<ValueLabelVO>> map = new LinkedHashMap<>();
         List<AsConfig> AsConfigList = asConfigService.list(new QueryWrapper<AsConfig>().orderByAsc("sort"));
         String key = null;
