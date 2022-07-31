@@ -17,6 +17,7 @@
         <result column="value" property="value" />
         <result column="default_value" property="defaultValue" />
         <result column="process_definition_id" property="processDefinitionId" />
+        <result column="visible" property="visible" />
     </resultMap>
 
     <!-- 通用查询结果列 -->

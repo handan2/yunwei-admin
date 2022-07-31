@@ -48,7 +48,7 @@ public class WorkFlowBean {
     @Autowired
     ProcessDefinitionEdgeService processDefinitionEdgeService;
 
-    public void setProVarListForExGateway(Task actTask,Map map){
+    public void setProVarList(Task actTask,Map map){
         taskService.setVariables(actTask.getId(), map);
     }
 
@@ -169,6 +169,7 @@ public class WorkFlowBean {
             map.put("newProcessName", selectedProcess);
         }
         //完成任务
+       // map.put("haveReInstall","否");
         taskService.complete(actTask.getId(), map);
     }
 //20220628加

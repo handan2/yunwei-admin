@@ -134,6 +134,7 @@ public class ProcessInstanceDataController {
     public IPage<ProcessInstanceData> myList(int currentPage, int pageSize, String processName, String processType, String startDate) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
+
             throw new RuntimeException("用户未登录");
         }
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("id");
@@ -266,12 +267,24 @@ public class ProcessInstanceDataController {
             return null;
         }
         int processDefId = value1.getProcessDefinitionId();
-        String processType = processDefinitionService.getById(processDefId).getProcessType();
+        ProcessDefinition proDef = processDefinitionService.getById(processDefId);
+        String processType = proDef.getProcessType();
         //20220528加判空：不能用OBjectUtil(不能判断size=0这种List）
         if (CollUtil.isEmpty(value2List)) {
             return null;
         }
-        int assetId = value2List.get(0).getAsId();
+        //20220721  todo添加逻辑：读所有资产，并只判断流程定义中“主类型”对应的资产
+        int mainTypeIdForDef = proDef.getAsTypeId();
+        List<Integer> mainTypeIdListForDef = asTypeService.getTypeIdList(mainTypeIdForDef);
+        List<ProcessFormValue2>   value2ListForFilter = null;
+        if(CollUtil.isNotEmpty(mainTypeIdListForDef)){
+           value2ListForFilter = value2List.stream().filter(item-> mainTypeIdListForDef.contains( asDeviceCommonService.getById(item.getAsId()).getTypeId())).collect(Collectors.toList());
+        }
+        if(CollUtil.isEmpty(value2ListForFilter)){
+          return null;
+        }
+        ProcessFormValue2 value2Filterd = value2ListForFilter.get(0);//约定：一个流程只有一个主类型对应资产
+        int assetId =value2Filterd.getAsId();
 //        //判空，如果是空，证明是没有关联资产的，直接放行  //20220528暂把这个注释了
 //        if (ObjectUtil.isEmpty(assetId)) return null;
         //需要加对资产TYPE的判断，只有“计算机类”的设备需要做互斥判断todo
@@ -293,8 +306,8 @@ public class ProcessInstanceDataController {
         List<String> actProcessInsIdList = actProcessInsIdListMap.stream().map(item -> item.get("act_process_instance_id").toString()).collect(Collectors.toList());
         //查出互斥定义的定义IDlist
         List<Map<String, Object>> mutexDefIdListMap;//不可能为空，肯定有值
-        if (processType.contains("启用") || processType.contains("停用")) {
-            mutexDefIdListMap = processDefinitionService.listMaps(new QueryWrapper<ProcessDefinition>().or().like("process_type", "启用").or().like("process_type", "停用").select("id"));
+        if (processType.contains("申领") || processType.contains("停用")) {
+            mutexDefIdListMap = processDefinitionService.listMaps(new QueryWrapper<ProcessDefinition>().or().like("process_type", "申领").or().like("process_type", "停用").select("id"));
         } else {
             mutexDefIdListMap = processDefinitionService.listMaps(new QueryWrapper<ProcessDefinition>().like("process_type", processType).select("id"));
         }
@@ -432,6 +445,7 @@ public class ProcessInstanceDataController {
             startProcessConditionVO.setHaveNextUser(startTask.getHaveNextUser());
             startProcessConditionVO.setHideGroupIds(startTask.getHideGroupIds());
             startProcessConditionVO.setHideGroupLabel(startTask.getHideGroupLabel());
+            startProcessConditionVO.setHaveSelectAsset(startTask.getHaveSelectAsset());//20220724加
         }
 
         return startProcessConditionVO;

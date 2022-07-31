@@ -38,11 +38,12 @@
         <result column="miji" property="miji" />
         <result column="remark" property="remark" />
         <result column="temp" property="temp" />
+        <result column="problem" property="problem" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, type_id,host_as_id, no, name, baomi_no, fund_src, net_type, port_no, host_name, location, shared, name_shared, state, usagee, administrator, admin_tel, user_name, user_dept, user_miji, user_tel, manufacturer, model, sn, made_date, buy_date, use_date, price, discard_date, ip, mac, miji, remark,temp
+        id, type_id,host_as_id, no, name, baomi_no, fund_src, net_type, port_no, host_name, location, shared, name_shared, state, usagee, administrator, admin_tel, user_name, user_dept, user_miji, user_tel, manufacturer, model, sn, made_date, buy_date, use_date, price, discard_date, ip, mac, miji, remark,temp,problem
     </sql>
 
 </mapper>

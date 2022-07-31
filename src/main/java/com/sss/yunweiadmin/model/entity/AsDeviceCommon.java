@@ -94,6 +94,7 @@ public class AsDeviceCommon implements Serializable {
 
     private String remark;
     private String temp;
+    private String problem;
 
 
 }

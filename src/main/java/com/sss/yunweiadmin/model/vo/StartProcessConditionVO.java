@@ -14,5 +14,7 @@ public class StartProcessConditionVO {
     private String hideGroupIds;
     //隐藏字段组名称
     private String hideGroupLabel;
+    //是否可选设备
+    private String haveSelectAsset;
 
 }

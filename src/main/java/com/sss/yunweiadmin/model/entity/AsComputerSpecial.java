@@ -70,7 +70,14 @@ public class AsComputerSpecial implements Serializable {
     private String diskForRender;
 
     private String diskChangedDec;
+
     private String affDeviceDec;
+
+    private String haveReinstall;
+
+    private String haveChangeDisk;
+
+    private String haveOut;
 
 
 }

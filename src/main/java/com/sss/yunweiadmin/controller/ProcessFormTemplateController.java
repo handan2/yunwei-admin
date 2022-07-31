@@ -77,9 +77,9 @@ public class ProcessFormTemplateController {
         return TreeUtil.getFormTemplateTree(list);
     }
 
-    //获取自定义表对应的变更字段的（ID/label）map
-    @GetMapping("getChangeColumnIdLableMap")
-    public Map<String, String> getChangeColumnIdLableMap(Integer processDefinitionId) {
+    //获取自定义表对应的变更字段的（label/ID）map
+    @GetMapping("getChangeColumnLabelIdMap")
+    public Map<String, String> getChangeColumnLabelIdMap(Integer processDefinitionId) {
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
         Map<String, String> map = Maps.newHashMap();
         for (ProcessFormTemplate processFormTemplate : list) {

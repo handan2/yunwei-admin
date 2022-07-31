@@ -51,7 +51,7 @@ public class SysDicController {
 
     @GetMapping("getDicValueList")
     public List<String> getDicValueList(String flag) {
-        List<SysDic> list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag", flag));
+        List<SysDic> list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag", flag).orderByAsc("sort"));
         return list.stream().map(SysDic::getName).collect(Collectors.toList());
     }
 
@@ -77,3 +77,13 @@ public class SysDicController {
     }
 
 }
+
+
+
+
+
+
+
+
+
+

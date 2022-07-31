@@ -1,5 +1,3 @@
-
-
 package com.sss.yunweiadmin.service.impl;
 
 import cn.hutool.core.util.ObjectUtil;
@@ -109,7 +107,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 flag = flag && asIoSpecialService.save(asIoSpecial);
             }
         } else if (asTypeId == 7) {
-            //安全产品（硬件）
+            //安全防护产品
             AsSecurityProductsSpecial asSecurityProductsSpecial = assetVO.getAsSecurityProductsSpecial();
             if (asSecurityProductsSpecial != null) {
                 asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());
@@ -173,7 +171,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 flag = flag && asIoSpecialService.saveOrUpdate(asIoSpecial);
             }
         } else if (asTypeId == 7) {
-            //安全产品（硬件）
+            //安全防护产品
             AsSecurityProductsSpecial asSecurityProductsSpecial = assetVO.getAsSecurityProductsSpecial();
             if (asSecurityProductsSpecial != null) {
                 asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());

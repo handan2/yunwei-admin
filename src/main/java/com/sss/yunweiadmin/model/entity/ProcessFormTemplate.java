@@ -84,5 +84,10 @@ public class ProcessFormTemplate implements Serializable {
      */
     private Integer processDefinitionId;
 
+    /**
+     * visible
+     */
+    private String visible;
+
 
 }

@@ -52,11 +52,11 @@ public class ProcessDefinitionController {
     @GetMapping("getOneCustomTableIdByProcDefId")//20220702加,用于ProcessFormForEndAndStart.jsx
     public int getOneCustomTableIdByProcDefId(Integer processDefId) {
         //只取一个：约定审批发起的流程只能有一个自定义表
-        ProcessFormTemplate templateForCustomType =  processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("flag","表类型").eq("process_definition_id", processDefId)).get(0);
-        if(ObjectUtil.isEmpty(templateForCustomType))
+        ProcessFormTemplate templateForCustomType = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("flag", "表类型").eq("process_definition_id", processDefId)).get(0);
+        if (ObjectUtil.isEmpty(templateForCustomType))
             throw new RuntimeException("该流程没有配置自定义表，请联系管理员！");
-       String [] a = templateForCustomType.getType().split("\\.");
-        return  Integer.parseInt(a[0]);
+        String[] a = templateForCustomType.getType().split("\\.");
+        return Integer.parseInt(a[0]);
 
     }
 
@@ -83,6 +83,7 @@ public class ProcessDefinitionController {
      * tableNameArr=[16.计算机信息表，xx.yyyy]
      * 返回“自定义表类型/custormType”构成的森林（用于自定表单设计时设置变更字段时要用到的的下拉选择内容）：其实就是二次结构，一级是表名，二级是属性
      * 采取“链表”结构存储“二级结构”；这种结构只记录其头部/根结点即可，因为是多链，其头部结点构成List
+     *
      * @author 任勇林/注释
      * @since 2022-04-28
      */
@@ -138,13 +139,20 @@ public class ProcessDefinitionController {
         //默许没登陆时，先显示全部吧
         return true;
     }
+
     //20220626加,L和V一样：都是Label
     @GetMapping("getProcessDefLV")
-    public List<ValueLabelVO> getProcessDefLV() {
-       List<ProcessDefinition> list  = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("status","启用").eq("have_display","是"));
-       // Map<String,Integer> map = list.stream().collect(Collectors.toMap(ProcessDefinition::getProcessName,ProcessDefinition::getId));
-        return list.stream().map(item->new ValueLabelVO(item.getProcessName(),item.getProcessName())).collect(Collectors.toList());
+    public List<ValueLabelVO> getProcessDefLV(String processName) {
+        QueryWrapper queryWrapper = new QueryWrapper<ProcessDefinition>();
+        queryWrapper.eq("status", "启用");
+        queryWrapper.eq("have_display", "是");
+        if (processName.contains("报修"))
+            queryWrapper.eq("start_limited_by_check", "是");
+        List<ProcessDefinition> list = processDefinitionService.list(queryWrapper);
+        // Map<String,Integer> map = list.stream().collect(Collectors.toMap(ProcessDefinition::getProcessName,ProcessDefinition::getId));
+        return list.stream().map(item -> new ValueLabelVO(item.getProcessName(), item.getProcessName())).collect(Collectors.toList());
     }
+
     @GetMapping("list")
     public IPage<ProcessDefinition> list(int currentPage, int pageSize, String processName, String processType) {
         QueryWrapper<ProcessDefinition> queryWrapper = new QueryWrapper<ProcessDefinition>().eq("have_display", "是").orderByAsc("sort");
@@ -155,7 +163,7 @@ public class ProcessDefinitionController {
             queryWrapper.like("process_type", processType);
         }
         // 20211114查了两遍DB;20220715 这个ProcessDefiniton/role_id应改成 role_idlist
-        List<ProcessDefinition> processDefinitionListLegal =processDefinitionService.list().stream().filter(item -> this.processVisable(item.getRoleId())).collect(Collectors.toList());
+        List<ProcessDefinition> processDefinitionListLegal = processDefinitionService.list().stream().filter(item -> this.processVisable(item.getRoleId())).collect(Collectors.toList());
         //第一遍，取出合法授权defIdList，第二遍读Page
         List<Integer> processDefinitionIdListLegal = processDefinitionListLegal.stream().map(item -> item.getId()).collect(Collectors.toList());
         if (ObjectUtil.isNotEmpty(processDefinitionIdListLegal)) {
@@ -163,7 +171,7 @@ public class ProcessDefinitionController {
             queryWrapper.in("id", processDefinitionIdListLegal);
         }
         //只读启用状态的流程定义
-        queryWrapper.eq("status","启用");
+        queryWrapper.eq("status", "启用");
         IPage<ProcessDefinition> page1 = processDefinitionService.page(new Page<>(currentPage, pageSize), queryWrapper);
         page1.getRecords().forEach(item -> item.setBpmnXml(""));
         return page1;
@@ -173,14 +181,16 @@ public class ProcessDefinitionController {
     public ProcessDefinition getById(String processDefinitionId) {
         return processDefinitionService.getById(processDefinitionId);
     }
+
     @GetMapping("getByName")
     public ProcessDefinition getByName(String processDefinitionName) {
-        List<ProcessDefinition> list = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_name",processDefinitionName));
-        if(CollUtil.isNotEmpty(list))
+        List<ProcessDefinition> list = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_name", processDefinitionName).orderByDesc("id"));
+        if (CollUtil.isNotEmpty(list))
             return list.get(0);
         else
             return null;
     }
+
     @PostMapping("add")
     public boolean add(@RequestBody ProcessDefinitionVO processDefinitionVO) {
         return processDefinitionService.add(processDefinitionVO);

@@ -50,7 +50,7 @@ public class BpmnToActivitiBean {
                     }//edge的condition变量还未处理
                 }
                 if(ObjectUtil.isNotEmpty(cExpressionCenter)) {
-                    cExpressionCenter = cExpressionCenter + " && " + cExpressionCenter;//为了测语法，故意多加了一个条件
+                 //   cExpressionCenter = cExpressionCenter + " && " + cExpressionCenter;//为了测语法，故意多加了一个条件
                     tmp.add(cExpressionStart + cExpressionCenter + cExpressionEnd);
                 }
                 tmp.add("</sequenceFlow>");

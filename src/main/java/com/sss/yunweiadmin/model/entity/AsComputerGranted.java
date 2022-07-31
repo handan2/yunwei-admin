@@ -57,5 +57,7 @@ public class AsComputerGranted implements Serializable {
 
     private String portCommon;
 
+    private String imageOutput;
+
 
 }
