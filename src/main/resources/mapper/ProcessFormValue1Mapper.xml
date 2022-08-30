@@ -9,14 +9,14 @@
         <result column="act_process_instance_id" property="actProcessInstanceId" />
         <result column="value" property="value" />
         <result column="committer_type" property="committerType" />
-        <result column="committer_id_str" property="committerIdStr" />
+        <result column="committer_str" property="committerStr" />
         <result column="committer_name" property="committerName" />
         <result column="select_group_id" property="selectGroupId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, process_definition_id, act_process_instance_id, value, committer_type, committer_id_str, committer_name, select_group_id
+        id, process_definition_id, act_process_instance_id, value, committer_type, committer_str, committer_name, select_group_id
     </sql>
 
 </mapper>

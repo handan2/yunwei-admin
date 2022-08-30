@@ -35,6 +35,8 @@ public class ExcelDateUtil {
                         String regex1 = "\\d{4}[-]\\d{2}[-]\\d{2} \\d{2}:\\d{2}:\\d{2}";
                         //yyyy-MM-dd
                         String regex2 = "\\d{4}[-]\\d{2}[-]\\d{2}";
+                       //  DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd"); 测试成功
+                       // ReflectUtil.setFieldValue(obj, dateName.replaceAll("Tmp", ""), LocalDate.parse(dateValue, dateTimeFormatter));
                         if (ReUtil.isMatch(regex1, dateValue)) {
                             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                             ReflectUtil.setFieldValue(obj, dateName.replaceAll("Tmp", ""), LocalDateTime.parse(dateValue, dateTimeFormatter));

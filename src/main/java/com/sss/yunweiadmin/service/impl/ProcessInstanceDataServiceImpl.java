@@ -88,12 +88,15 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         这两个名称不相等的话，在此处读user表找出新部门的保密员ID,然后再找到“新部门保密员”（这个节点名要约定:新部门保密员）task定义结点，把这个用户信息给他加进去；新部门的部门领导由前一步的保密员选择，这里就不动了
         ; 排他网关上判断这两个是否相等
          */
+        List<Task> activeTaskList = workFlowBean.getActiveTask(processInstanceData.getActProcessInstanceId());
+        Task activeTask = activeTaskList.get(0);
+        Map<String, String> map = new HashMap<>();
         if (processDefinition.getProcessType().contains("变更") && !processDefinition.getProcessType().contains("用户")) {//20220725对信息设备及用户变更流程的processType值约定
-            List<ProcessInstanceChange> processInstanceChangeList = processInstanceChangeService.list(new QueryWrapper<ProcessInstanceChange>().eq("process_instance_data_id", processInstanceData.getId()).eq("name", "责任部门"));
+            List<ProcessInstanceChange> processInstanceChangeList = processInstanceChangeService.list(new QueryWrapper<ProcessInstanceChange>().eq("process_instance_data_id", processInstanceData.getId()).eq("name", "责任部门").eq("is_report_title","否"));
             if (CollUtil.isNotEmpty(processInstanceChangeList)) {
                 ProcessInstanceChange processInstanceChange =processInstanceChangeList.get(0);
-                String currentDeptName = processInstanceChange.getOldValue().replace("*", "");//*号机制：为了方便外设流程的相关变更记录：将责任人/部门的old值都加了*
-                String changeDeptName = processInstanceChange.getNewValue().replace("*", "");//new值应该本身就没*,这里的替换可能没用
+                String currentDeptName = processInstanceChange.getOldValue();
+                String changeDeptName = processInstanceChange.getNewValue();
                 int deptId = sysDeptService.getOne(new QueryWrapper<SysDept>().eq("name", changeDeptName)).getId();
                 List<SysUser> userListForChangeDept = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", deptId));
                 if (CollUtil.isEmpty(userListForChangeDept))
@@ -110,18 +113,21 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 taskForChangeDeptForBaomiUser.setOperatorTypeValue(baomiUserIdForChangeDept + "");
                 taskForChangeDeptForBaomiUser.setOperatorTypeLabel("新部门保密员");
                 processDefinitionTaskService.updateById(taskForChangeDeptForBaomiUser);
-                List<Task> activeTaskList = workFlowBean.getActiveTask(processInstanceData.getActProcessInstanceId());
-                Task activeTask = activeTaskList.get(0);
-                Map<String, String> map = new HashMap<>();
                 map.put("currentDeptName", currentDeptName);
                 map.put("changeDeptName", changeDeptName);
+                workFlowBean.setProVarList(activeTask, map);
+            } else {//20220829没变部门，就随便赋个值吧（反正也是在流程变量里比较相等与否）
+                map.put("currentDeptName", "");
+                map.put("changeDeptName", "");
                 workFlowBean.setProVarList(activeTask, map);
             }
         }
 
 
     }
-
+/*
+处理变更字段及非变更字段中的
+ */
     private void setProVarListForExGateway(ProcessInstanceData processInstanceData, Task actTask) {
 
         List<String> proVarList = workFlowBean.getProVarListForExGateway(processInstanceData.getProcessDefinitionId());
@@ -541,9 +547,16 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         processInstanceData.setLoginCurrentStep(stepMap.get("loginName"));
         SysUser user = (SysUser) httpSession.getAttribute("user");
         SysDept dept = sysDeptService.getById(user.getDeptId());
-        processInstanceData.setDisplayName(user.getDisplayName());
-        processInstanceData.setLoginName(user.getLoginName());
-        processInstanceData.setDeptName(dept.getName());
+        if(processFormValue1.getCommitterType().equals("代其他人申请")){
+            String[] comitterStrArr = processFormValue1.getCommitterStr().split(".");
+            processInstanceData.setDisplayName(comitterStrArr[1]);
+            processInstanceData.setLoginName(comitterStrArr[2]);
+            processInstanceData.setDeptName(comitterStrArr[3]);
+        } else {
+            processInstanceData.setDisplayName(user.getDisplayName());
+            processInstanceData.setLoginName(user.getLoginName());
+            processInstanceData.setDeptName(dept.getName());
+        }
         processInstanceData.setStartDatetime(LocalDateTime.now());
         //20220710 save前置，这里加个update
         processInstanceDataService.updateById(processInstanceData);
@@ -607,6 +620,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //20220711 从task里找出流程定义信息-->找出(自定义的)task定义相关信息：取代checkVo从前端读的部分
         //20220709设置流程变量
         setProVarListForExGateway(processInstanceData, myTask);
+        //20220725 部门变更相关流程变量的设置
+        setProVarListForChangeDept(processDefinitionService.getById(processInstanceData.getProcessDefinitionId()), processInstanceData);
         //完成任务
         if (ObjectUtil.isNotEmpty(checkProcessVO.getButtonName()) || checkProcessVO.getHaveSelectProcess().equals("是")) {
             String selectedProcess = checkProcessVO.getSelectedProcess();
@@ -633,14 +648,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             processInstanceData.setLoginCurrentStep(stepMap.get("loginName"));
             //注意：下面这个task可能只是当前并发任务中的一个：但也无妨，因为他是为了判断退回，退回连线约定不能放在并发任务（如并行网关）结点中；如果碰到这种情况，Aciviti运行可能报错，但暂时不考虑这种情况了
             Task activieTask = workFlowBean.getActiveTask(processInstanceData.getActProcessInstanceId()).get(0);
-            //
-            /*20220725 todo在这里添加部门变更的逻辑：在Start方法中，先判断流程名字是不是“变更”，然后判断是不是有部门名称，有的话设置两个流程变量#《currentDeptName，XXXX》,#《部门名称，changeDeptNmae
-            这两个名称不相等的话，在此处读user表找出新部门的保密员ID,然后再找到“新部门保密员”（这个节点名要约定）task定义结点，把这个用户信息给他加进去；新部门的部门领导由前一步的保密员选择，这里就不动了
-
-            ; 排他网关上判断这两个是否相等
-
-             */
-
             String currentTaskDefKey = activieTask.getTaskDefinitionKey();
             if (workFlowBean.getReturnedTaskEdge(processInstanceData.getProcessDefinitionId(), myTask.getTaskDefinitionKey(), currentTaskDefKey) != null) {
                 processInstanceData.setProcessStatus("退回");
@@ -722,7 +729,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             });
             processFormValue2Service.saveBatch(processFormValue2List);
         }
-        //变更字段 20220701下移到这里，因为这时 processFormValue1已经写到DB中了，下面的方法是根据processInstanceDataID找的value1表查的：正好也验证下在事务机制下：此时能不能从DB中读出刚改入的值：Y
+        //变更字段 20220701下移到这里，因为这时 processFormValue1已经写到DB中了，下面的方法是根据processInstanceDataID找的value1表查的：
         changeColumnForHandle(processInstanceData, workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()));
         //20220621 保存硬盘信息
         //先删除DiskForHisForProcess表原记录
@@ -755,8 +762,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
         //20220510
         this.saveProcessFormCustomInst(checkProcessVO.getValue1().getValue(), processInstanceData.getId(), processFormValue2List);
-        //20220725 部门变更相关流程变量的设置
-        setProVarListForChangeDept(processDefinitionService.getById(processInstanceData.getProcessDefinitionId()), processInstanceData);
+//        //20220725 部门变更相关流程变量的设置 20220829 挪在complete前
+//        setProVarListForChangeDept(processDefinitionService.getById(processInstanceData.getProcessDefinitionId()), processInstanceData);
         httpSession.removeAttribute("nextUserVO");
         return true;
     }
@@ -787,6 +794,15 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         workFlowBean.deleteProcessInstance(processInstanceData.getActProcessInstanceId());
         //删除diskForHisForProcess
         diskForHisForProcessService.remove(new QueryWrapper<DiskForHisForProcess>().eq("process_instance_data_id", processInstanceData.getId()));
+        //20220817todo增加逻辑：判断要删除的流程实例对尖的流程定义是不是已经过时的（have_display ===否）：如果过时，就将该流程定义对应的定义表definition/task/edge以及activiti相关的流程实例及定义删除
+        ProcessDefinition proDef = processDefinitionService.getById(processInstanceData.getProcessDefinitionId());
+        if(proDef.getHaveDisplay().equals("否")){
+            if(ObjectUtil.isEmpty(processInstanceDataService.getOne(new QueryWrapper<ProcessInstanceData>().eq("process_definition_id",proDef.getId()))))//当前如果还有实例，但不能删除定义
+                processDefinitionService.delete(proDef.getId());
+        }
+
+
+
         return true;
     }
 
@@ -811,7 +827,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //遍历map
         for (Map.Entry<Integer, List<ProcessFormTemplate>> entry : map.entrySet()) {
             Integer asId = asIdMap.get(entry.getKey());
-            //组装map2
+            //组装map2（<基本表名，变更字段List>）
             Map<String, List<ProcessFormTemplate>> map2 = new HashMap<>();
             for (ProcessFormTemplate processFormTemplate : entry.getValue()) {
                 String tableName = processFormTemplate.getName().split("\\.")[2];
@@ -843,7 +859,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 }
                 //
                 for (ProcessFormTemplate processFormTemplate : entry2.getValue()) {
-                    //
                     String columnNameTmp = (processFormTemplate.getName().split(",")[0]).split("\\.")[3];
                     String columnName = StrUtil.toCamelCase(columnNameTmp);
                     //根据变更字段ID取出processFormValue1中对应的值
@@ -856,6 +871,24 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                     } else {
                         pageValue = jsonObject.getString(id + "");
                     }
+                    //20220820为了记录“审批报表专用字段”的变更字段
+                    ProcessInstanceChange changeSpecial = new ProcessInstanceChange();
+                   //if (processFormTemplate.getLabel().split("\\.")[1].equals("责任人") || processFormTemplate.getLabel().split("\\.")[1].equals("责任部门")|| processFormTemplate.getLabel().split("\\.")[1].equals("责任人密级"))
+                    String changeColumnName = processFormTemplate.getLabel().split("\\.")[1];
+                    if(changeColumnName.equals("重装操作系统")||changeColumnName.equals("更换硬盘")||changeColumnName.equals("更换内存")||changeColumnName.equals("更换网卡")){
+                        changeSpecial.setAsId(asId);
+                        changeSpecial.setProcessInstanceDataId(processInstanceData.getId());
+                        changeSpecial.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
+                        changeSpecial.setName(changeColumnName);
+                        changeSpecial.setNewValue(pageValue);
+                        changeSpecial.setIsFinish("否");
+                        changeSpecial.setIsReportTitle("是");
+                        changeSpecial.setZhTableName(asConfigMap.get(tableNameTmp));
+                        changeList.add(changeSpecial);
+                        //以下两个只是个“开关量”：不记入“普通”变更记录
+                        if(changeColumnName.equals("重装操作系统")||changeColumnName.equals("更换硬盘")||changeColumnName.equals("更换内存")||changeColumnName.equals("更换网卡"))
+                            continue;
+                    }
                     if (ObjectUtil.isNotEmpty(pageValue)) {
                         Object dbValueObj = ReflectUtil.getFieldValue(dbObject, columnName);
                         String dbValue = null;
@@ -863,12 +896,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             dbValue = "";
                         } else {
                             dbValue = dbValueObj.toString();
-                            //20220722增加“DeviceCommon表中责任人、责任部门”强制记录的干预:在原值前强制加一个“*”
-                            if (processFormTemplate.getLabel().split("\\.")[1].equals("责任人") || processFormTemplate.getLabel().split("\\.")[1].equals("责任部门"))
-                                dbValue = dbValue + "*";
                         }
                         if (!pageValue.equals(dbValue)) {
-                            //变更字段
                             ProcessInstanceChange change = new ProcessInstanceChange();
                             //20220716 设置生命周期状态;
                             AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(asId);
@@ -877,12 +906,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                                 change.setLifteCycle(processDefinition.getProcessType());
                             else
                                 change.setLifteCycle(processDefinition.getProcessType2());
-
-
                             change.setAsId(asId);
                             change.setProcessInstanceDataId(processInstanceData.getId());
                             change.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
-                            change.setName(processFormTemplate.getLabel().split("\\.")[1]);
+                            change.setName(changeColumnName);
                             change.setOldValue(dbValue);
                             change.setNewValue(pageValue);
                             //
@@ -892,9 +919,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             change.setDisplayName(user.getDisplayName());
                             change.setLoginName(user.getLoginName());
                             change.setModifyDatetime(LocalDateTime.now());
-                            change.setFlag("否");
+                            change.setIsFinish("否");
                             change.setZhTableName(asConfigMap.get(tableNameTmp));
-
                             changeList.add(change);
                         }
                     }
@@ -972,6 +998,25 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                     } else {
                         pageValue = jsonObject.getString(id + "");
                     }
+                    //20220820为了记录“审批报表专用字段”的变更字段
+                    ProcessInstanceChange changeSpecial = new ProcessInstanceChange();
+                    String changeColumnName = processFormTemplate.getLabel().split("\\.")[1];
+                    if(changeColumnName.equals("重装操作系统")||changeColumnName.equals("更换硬盘")||changeColumnName.equals("更换内存")||changeColumnName.equals("更换网卡")){
+                        if (ObjectUtil.isNotEmpty(pageValue)) {//20220829 去空
+                            changeSpecial.setAsId(asId);
+                            changeSpecial.setProcessInstanceDataId(processInstanceData.getId());
+                            changeSpecial.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
+                            changeSpecial.setName(changeColumnName);
+                            changeSpecial.setNewValue(pageValue);
+                            changeSpecial.setIsFinish("否");
+                            changeSpecial.setIsReportTitle("是");
+                            changeSpecial.setZhTableName(asConfigMap.get(tableNameTmp));
+                            changeList.add(changeSpecial);
+                            //以下两个只是个“开关量”：不记入“普通”变更记录 20220829todo加别的开关量
+                            if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘")||changeColumnName.equals("更换内存")||changeColumnName.equals("更换网卡"))
+                                continue;
+                        }
+                    }
                     if (ObjectUtil.isNotEmpty(pageValue)) {//这是变更字段存在值的分支
 
                         Object dbValueObj = ReflectUtil.getFieldValue(dbObject, columnName);
@@ -980,9 +1025,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             dbValue = "";
                         } else {
                             dbValue = dbValueObj.toString();
-                            //20220722增加“DeviceCommon表中责任人、责任部门”强制记录的干预:在原值前强制加一个“*”
-                            if (processFormTemplate.getLabel().split("\\.")[1].equals("责任人") || processFormTemplate.getLabel().split("\\.")[1].equals("责任部门"))
-                                dbValue = dbValue + "*";
                         }
                         if (!pageValue.equals(dbValue)) {
                             //变更字段
@@ -998,7 +1040,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             change.setAsId(asId);
                             change.setProcessInstanceDataId(processInstanceData.getId());
                             change.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
-                            change.setName(processFormTemplate.getLabel().split("\\.")[1]);
+                            change.setName(changeColumnName);
                             change.setOldValue(dbValue);
                             change.setNewValue(pageValue);
                             //
@@ -1008,9 +1050,11 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             change.setDisplayName(user.getDisplayName());
                             change.setLoginName(user.getLoginName());
                             change.setModifyDatetime(LocalDateTime.now());
-                            change.setFlag("否");
+                            if (isFinish)
+                                change.setIsFinish("是");
+                            else
+                                change.setIsFinish("否");
                             change.setZhTableName(asConfigMap.get(tableNameTmp));
-
                             changeList.add(change);
                             //数据对象
                             if (isFinish) {//20220713 有问题todo断点 就没有“变更硬盘”这个字段

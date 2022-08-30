@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sss.yunweiadmin.bean.WorkFlowBean;
 import com.sss.yunweiadmin.common.operate.OperateLog;
+import com.sss.yunweiadmin.common.result.ResponseResult;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.SpringUtil;
 import com.sss.yunweiadmin.model.entity.*;
@@ -171,7 +172,7 @@ public class ProcessInstanceDataController {
     }
 
     //已办任务
-    //20220719回头改
+    //20220719回头改:这个loginNmae/displayName矛盾
     @GetMapping("completeList")
     public IPage<ProcessInstanceData> completeList(int currentPage, int pageSize, String processName, String processType, String handleName, String no, String startDate, String endDate) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
@@ -256,8 +257,25 @@ public class ProcessInstanceDataController {
         }
         return null;
     }
+    //20220806已提工单
+    @GetMapping("listForCommitted")
+    public IPage<ProcessInstanceData> listForCommitted(int currentPage, int pageSize) {
+        SysUser user = (SysUser) httpSession.getAttribute("user");
+        if (user == null) {
+            throw new RuntimeException("用户未登录");
+        }
+        //遍历page并加入score信息
+        IPage<ProcessInstanceData> page =  processInstanceDataService.page(new Page<>(currentPage, pageSize), new QueryWrapper<ProcessInstanceData>().eq("login_name", user.getLoginName()).orderByDesc("id"));
+        List<ProcessInstanceData> list = page.getRecords();
+        for (ProcessInstanceData processInstanceData : list) {
+            this.setProcessInstanceDataScore(processInstanceData);
+        }
+        return page;
+
+    }
 
     //201211111流程实例发起时的校验：如果存在互斥流程实例，则返回互斥的流程实例LIST，当然如果不存在就返回null
+    //20220824 加限制只寻找“资产类型”一致的互斥流程定义的实例
     private List<ProcessInstanceData> validate(ProcessFormValue1 value1, List<ProcessFormValue2> value2List, Integer processInstanceDataId) {//StartProcessVO/CheckProcessVO
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
@@ -268,30 +286,34 @@ public class ProcessInstanceDataController {
         }
         int processDefId = value1.getProcessDefinitionId();
         ProcessDefinition proDef = processDefinitionService.getById(processDefId);
+        if(proDef.getProcessName().contains("故障报修")){//202208034 故障报修流程不判断validate
+            return  null;
+        }
         String processType = proDef.getProcessType();
         //20220528加判空：不能用OBjectUtil(不能判断size=0这种List）
         if (CollUtil.isEmpty(value2List)) {
             return null;
         }
-        //20220721  todo添加逻辑：读所有资产，并只判断流程定义中“主类型”对应的资产
+        //20220721 ：读所有资产，并只判断流程定义中“主类型”对应的资产
         int mainTypeIdForDef = proDef.getAsTypeId();
         List<Integer> mainTypeIdListForDef = asTypeService.getTypeIdList(mainTypeIdForDef);
-        List<ProcessFormValue2>   value2ListForFilter = null;
-        if(CollUtil.isNotEmpty(mainTypeIdListForDef)){
-           value2ListForFilter = value2List.stream().filter(item-> mainTypeIdListForDef.contains( asDeviceCommonService.getById(item.getAsId()).getTypeId())).collect(Collectors.toList());
+        List<ProcessFormValue2> value2ListForFilter = null;
+        if (CollUtil.isNotEmpty(mainTypeIdListForDef)) {
+            value2ListForFilter = value2List.stream().filter(item -> mainTypeIdListForDef.contains(asDeviceCommonService.getById(item.getAsId()).getTypeId())).collect(Collectors.toList());
         }
-        if(CollUtil.isEmpty(value2ListForFilter)){
-          return null;
+        if (CollUtil.isEmpty(value2ListForFilter)) {
+            return null;
         }
         ProcessFormValue2 value2Filterd = value2ListForFilter.get(0);//约定：一个流程只有一个主类型对应资产
-        int assetId =value2Filterd.getAsId();
+        int assetId = value2Filterd.getAsId();
 //        //判空，如果是空，证明是没有关联资产的，直接放行  //20220528暂把这个注释了
 //        if (ObjectUtil.isEmpty(assetId)) return null;
-        //需要加对资产TYPE的判断，只有“计算机类”的设备需要做互斥判断todo
+        //加对资产TYPE的判断，只有信息设备需要做互斥判断
         int typeId = asDeviceCommonService.getById(assetId).getTypeId();
-        //查询资产类型表中typeId对应的level=2/上级分类的名称是不是“计算机”，不是的话，直接放行
+        //查询资产类型表中typeId对应的level=1/上级分类的名称是不是“信息设备”，不是的话，直接放行
         int p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", typeId)).getPid();
-        if (!asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_typeId)).getName().contains("计算机"))
+        int p_p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_typeId)).getPid();
+        if (!asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_p_typeId)).getName().contains("信息设备"))
             return null;
 
         //获取资产ID对应的所有ACTINST IDList
@@ -306,22 +328,25 @@ public class ProcessInstanceDataController {
         List<String> actProcessInsIdList = actProcessInsIdListMap.stream().map(item -> item.get("act_process_instance_id").toString()).collect(Collectors.toList());
         //查出互斥定义的定义IDlist
         List<Map<String, Object>> mutexDefIdListMap;//不可能为空，肯定有值
+        QueryWrapper<ProcessDefinition> queryWrapper= new QueryWrapper<ProcessDefinition>().eq("as_type_id",mainTypeIdForDef);;
         if (processType.contains("申领") || processType.contains("停用")) {
-            mutexDefIdListMap = processDefinitionService.listMaps(new QueryWrapper<ProcessDefinition>().or().like("process_type", "申领").or().like("process_type", "停用").select("id"));
-        } else {
-            mutexDefIdListMap = processDefinitionService.listMaps(new QueryWrapper<ProcessDefinition>().like("process_type", processType).select("id"));
+            mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", "申领").or().like("process_type", "停用").select("id"));
+        } else {//查出同类型流程
+            mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).notLike("process_name","故障报修").select("id"));//20220801 同类型流程要排除“故障报修”：因为故障报修流程在“发起新流程提交时&&老流程并没有关闭”
         }
         List<Integer> mutexDefIdList = mutexDefIdListMap.stream().map(item -> Integer.valueOf(item.get("id").toString())).collect(Collectors.toList());
         //取出互斥的业务实例表
         List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().in("process_definition_id", mutexDefIdList).ne("process_status", "完成").in("act_process_instance_id", actProcessInsIdList));
         return processInstanceDataList;
     }
-    @GetMapping("getOneDeviceByProcessInstId")//20220702加,注意逻辑是根据流程类型中的“资产类型”ID，来查找对应的设备：约定同一个资产类型只有只能选择一个资产：这条需要单独记录在一个地方
+
+    @GetMapping("getOneDeviceByProcessInstId")
+//20220702加,注意逻辑是根据流程类型中的“资产类型”ID，来查找对应的设备：约定同一个资产类型只有只能选择一个资产：这条需要单独记录在一个地方
     public AsDeviceCommon getOneDeviceByProcessInstId(Integer processInstanceDataId) {
         ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
-        List<Integer> assetIdList = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("act_process_instance_id",processInstanceData.getActProcessInstanceId())).stream().map(item->item.getAsId()).collect(Collectors.toList());
-        if(CollUtil.isNotEmpty(assetIdList))
-            return  asDeviceCommonService.getById(assetIdList.get(0));//审批型流程的前置流程：约定：只能选择一个资产
+        List<Integer> assetIdList = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("act_process_instance_id", processInstanceData.getActProcessInstanceId())).stream().map(item -> item.getAsId()).collect(Collectors.toList());
+        if (CollUtil.isNotEmpty(assetIdList))
+            return asDeviceCommonService.getById(assetIdList.get(0));//审批型流程的前置流程：约定：只能选择一个资产
         return null;
 
     }
@@ -333,11 +358,18 @@ public class ProcessInstanceDataController {
         List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstanceId);
         Task myTask = myTaskList.get(0);
         Object nextProcessNameObj = workFlowBean.getProcessVariable(myTask);
-       // ProcessDefinition nextProcess  = processDefinitionService.getOne(new QueryWrapper<ProcessDefinition>().eq("status","启用").eq("have_display","是").eq("process_name",(String)nextProcessNameObj));
-       return processDefinitionService.getOne(new QueryWrapper<ProcessDefinition>().eq("status","启用").eq("have_display","是").eq("process_name",(String)nextProcessNameObj));
+        // ProcessDefinition nextProcess  = processDefinitionService.getOne(new QueryWrapper<ProcessDefinition>().eq("status","启用").eq("have_display","是").eq("process_name",(String)nextProcessNameObj));
+        return processDefinitionService.getOne(new QueryWrapper<ProcessDefinition>().eq("status", "启用").eq("have_display", "是").eq("process_name", (String) nextProcessNameObj));
         //return new StartOrHandleProcessResultVO();
 
     }
+
+    @GetMapping("getOperateRecordForRepair")//20220829加:专门用于故障报修流程：该 流程只有一个处理节点
+    public  ResponseResult getOperateRecordForRepair(Integer processInstanceDataId) {
+        ProcessInstanceNode node = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
+        return ResponseResult.success(node.getComment()+"   " +node.getDisplayName()+" "+ node.getEndDatetime());
+    }
+
     @OperateLog(module = "流程模块", type = "发起流程")
     @PostMapping("endAndStart")//20211112重写
     public StartOrHandleProcessResultVO endAndStart(@RequestBody EndAndStartProcessVO endAndStartProcessVO) {
@@ -347,7 +379,7 @@ public class ProcessInstanceDataController {
             startOrHandleProcessResultVO.setProcessInstanceDataList(processInstanceDataList);
             startOrHandleProcessResultVO.setIsSuccess(false);
         } else {
-            startOrHandleProcessResultVO.setIsSuccess(processInstanceDataService.endAndStart(endAndStartProcessVO));
+        startOrHandleProcessResultVO.setIsSuccess(processInstanceDataService.endAndStart(endAndStartProcessVO));
         }
         return startOrHandleProcessResultVO;
     }
@@ -441,11 +473,11 @@ public class ProcessInstanceDataController {
                 startProcessConditionVO.setButtonNameList(buttonNameList);
             }
             ProcessDefinitionTask startTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", startTaskDefKey));
-            //是否有下一步处理人
-            startProcessConditionVO.setHaveNextUser(startTask.getHaveNextUser());
-            startProcessConditionVO.setHideGroupIds(startTask.getHideGroupIds());
-            startProcessConditionVO.setHideGroupLabel(startTask.getHideGroupLabel());
-            startProcessConditionVO.setHaveSelectAsset(startTask.getHaveSelectAsset());//20220724加
+            BeanUtils.copyProperties(startTask, startProcessConditionVO);//20220828
+//            startProcessConditionVO.setHaveNextUser(startTask.getHaveNextUser());
+//            startProcessConditionVO.setHideGroupIds(startTask.getHideGroupIds());
+//            startProcessConditionVO.setHideGroupLabel(startTask.getHideGroupLabel());
+//            startProcessConditionVO.setHaveSelectAsset(startTask.getHaveSelectAsset());//20220724加
         }
 
         return startProcessConditionVO;
@@ -461,7 +493,7 @@ public class ProcessInstanceDataController {
         //取出我的一个任务
         List<Task> taskList = workFlowBean.getMyTask(actProcessInstanceId);
         if (ObjectUtil.isEmpty(taskList)) {
-            throw new RuntimeException("没有用户任务");
+            throw new RuntimeException("没有用户任务，请尝试刷新列表");
         }
         Task actTask = taskList.get(0);
         //获取多条连线
@@ -475,10 +507,10 @@ public class ProcessInstanceDataController {
         if (checkTask.getHaveComment().equals("是")) {
             if (checkTask.getTaskType().equals("bpmn:approvalTask")) {
                 //审批任务
-                checkTaskVO.setCommentTitle("意见备注");
+                checkTaskVO.setCommentTitle("意见/备注");
             } else {
                 //处理任务
-                checkTaskVO.setCommentTitle("处理备注");
+                checkTaskVO.setCommentTitle("操作记录");
             }
         }
 //        checkTaskVO.setHaveComment(checkTask.getHaveComment());

@@ -3,6 +3,7 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ArrayUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -23,10 +24,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -77,16 +75,41 @@ public class ProcessFormTemplateController {
         return TreeUtil.getFormTemplateTree(list);
     }
 
-    //获取自定义表对应的变更字段的（label/ID）map
-    @GetMapping("getChangeColumnLabelIdMap")
-    public Map<String, String> getChangeColumnLabelIdMap(Integer processDefinitionId) {
+    //获取表单template对应的变更字段/基本字段/自定义表字段 的（label/ID）map;如果是自定义表的字段：label名前加'table_',变更字段：label名直接是“涉密级别”这种（前面没有自定义表名）
+    @GetMapping("getLabelIdMapForItemByAjax")
+    public Map<String, String> getLabelIdMapForItemByAjax(Integer processDefinitionId,String hideGroupIds) {
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
         Map<String, String> map = Maps.newHashMap();
+        List<String> hideGroupMemberLabelList = new ArrayList<>();
+        if(StrUtil.isNotEmpty(hideGroupIds)){
+            String[] hideGroupIdArr = hideGroupIds.split(",");
+            List<String> idList = Stream.of(hideGroupIdArr).collect(Collectors.toList());
+            idList.stream().forEach(item->{
+                ProcessFormTemplate hideGroup = processFormTemplateService.getById(item);//验证下，item/id 此时是字符串会不会有问题？好像可以
+                if(ObjectUtil.isNotEmpty(hideGroup))
+                    hideGroupMemberLabelList.add( hideGroup.getLabel());
+            });
+        }
         for (ProcessFormTemplate processFormTemplate : list) {
+            if(CollUtil.isNotEmpty(hideGroupMemberLabelList)){
+                if(hideGroupMemberLabelList.contains(processFormTemplate.getGroupParentLabel()))//20220821排除掉隐藏字段组内的成员
+                    continue;
+            }
             if ("字段变更类型".equals(processFormTemplate.getFlag())) {
+                map.put(processFormTemplate.getLabel().split("\\.")[1], processFormTemplate.getId().toString());
+            } else if ("基本类型".equals(processFormTemplate.getFlag())){
                 map.put(processFormTemplate.getLabel(), processFormTemplate.getId().toString());
             }
         }
+        //202207331把自定义表字段也加上
+        List<TableTypeVO> list1 = new ArrayList<>();
+        Map<Integer, List<TableTypeVO>>  mapForTableTypeVOList = this.getTableTypeVO(processDefinitionId);
+        for (Map.Entry<Integer,List<TableTypeVO>> entry : mapForTableTypeVOList.entrySet()) {
+            list1.addAll(entry.getValue());
+        }
+        list1.stream().forEach(item->{
+            map.put("table_"+item.getLabel().split("\\.")[1],item.getName());
+        });
         return map;
     }
 
@@ -131,7 +154,7 @@ public class ProcessFormTemplateController {
         }
     }
 
-    //根据已选择的字段组id,筛选出所有需要被显示的(这里指嵌套在选定字段组内的其他字段组)字段组id 。。。包含：可选字段组且已选择的（对应checkGroupIdArr）&&不可选字段组
+    //根据已选择的字段组id,筛选出所有需要被显示的(这里指嵌套在选定字段组内的其他字段组)字段组id 。。。包含：用户界面可选字段组且已选择的（对应checkGroupIdArr）&&不可选字段组
     @GetMapping("getSelectGroupIdList")
     public Set<Integer> getSelectGroupIdList(Integer processDefinitionId, Integer[] checkGroupIdArr) {
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));

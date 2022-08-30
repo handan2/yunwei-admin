@@ -17,15 +17,16 @@
         <result column="email" property="email" />
         <result column="status" property="status" />
         <result column="sort" property="sort" />
-        <result column="create_datetime" property="createDateTime" />
+        <result column="create_datetime" property="createDatetime" />
         <result column="remark" property="remark" />
         <result column="dept_id" property="deptId" />
         <result column="temp" property="temp" />
+        <result column="create_by_user" property="createByUser" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp
+        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp,create_by_user
     </sql>
 
 </mapper>

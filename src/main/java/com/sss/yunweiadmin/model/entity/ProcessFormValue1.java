@@ -40,7 +40,7 @@ public class ProcessFormValue1 implements Serializable {
 
     private String committerType;
 
-    private String committerIdStr;
+    private String committerStr;
 
     private String committerName;
 

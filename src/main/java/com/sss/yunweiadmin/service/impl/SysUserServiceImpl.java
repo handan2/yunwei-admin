@@ -29,20 +29,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private SysRoleUserService sysRoleUserService;
 
     @Override
-    public boolean add(SysUser sysUser) {
+    public int add(SysUser sysUser) {
         List<SysUser> list = this.list(new QueryWrapper<SysUser>().eq("login_name", sysUser.getLoginName()));
         if (list.size() > 0) {
             throw new RuntimeException(sysUser.getLoginName() + "已存在");
+        }
+        List<SysUser> list2 = this.list(new QueryWrapper<SysUser>().eq("id_number", sysUser.getIdNumber()));
+        if (list2.size() > 0) {
+            throw new RuntimeException(sysUser.getIdNumber() + "已存在");
         }
         boolean flag1, flag2;
         sysUser.setPassword(SecureUtil.md5(sysUser.getPassword()));
         flag1 = this.save(sysUser);
         //默认为普通用户
         SysRoleUser sysRoleUser = new SysRoleUser();
-        sysRoleUser.setRoleId(11);
+        sysRoleUser.setRoleId(11);//约定普通用户ID
         sysRoleUser.setUserId(sysUser.getId());
         flag2 = sysRoleUserService.save(sysRoleUser);
-        return flag1 && flag2;
+        //return flag1 && flag2;
+        return sysUser.getId();//20220820改成返回新增用户的ID：为了前端在手工添加代理人后需要获得用户ID(以拼成committer_str)
     }
 
     @Override

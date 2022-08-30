@@ -74,7 +74,9 @@ public class ProcessInstanceChange implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime modifyDatetime;
 
-    private String flag;
+    private String isFinish;
+
+    private String isReportTitle;
 
     private String zhTableName;
 }

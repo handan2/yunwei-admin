@@ -101,10 +101,10 @@ public class AsComputerExcel {
     @ExcelProperty("声卡")
     private String soundCard;
     @ExcelProperty("操作系统安装时间")
-    @DateTimeFormat("yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat("yyyy/MM/dd")
     private String osDateTmp;
     @ExcelIgnore
-    private LocalDateTime osDate;
+    private LocalDate osDate;
     @ExcelProperty("操作系统")
     private String osType;
     @ExcelProperty("CPU个数")

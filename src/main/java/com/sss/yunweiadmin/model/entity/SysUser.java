@@ -109,6 +109,10 @@ public class SysUser implements Serializable {
      */
     private String temp;
     /**
+     * 是否是用户自主创建
+     */
+    private String createByUser;
+    /**
      * 角色IDList
      */
     @TableField(exist = false)

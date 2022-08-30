@@ -79,5 +79,9 @@ public class AsComputerSpecial implements Serializable {
 
     private String haveOut;
 
+    private String haveChangeNetcard;
+
+    private String haveChangeRam;
+
 
 }

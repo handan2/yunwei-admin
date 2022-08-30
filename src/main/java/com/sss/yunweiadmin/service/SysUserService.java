@@ -14,7 +14,7 @@ import java.util.List;
  * @since 2021-04-09
  */
 public interface SysUserService extends IService<SysUser> {
-    boolean add(SysUser sysUser);
+    int add(SysUser sysUser);
 
     boolean delete(Integer[] idArr);
 

@@ -101,8 +101,8 @@ public class SysUserController {
         queryWrapper.orderByDesc("id");
         queryWrapper.orderByDesc("dept_id");
         //20211116
-        IPage<SysUser> page=sysUserService.page(new Page<>(currentPage, pageSize), queryWrapper);
-        page.getRecords().forEach(item->item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId())?item.getDeptId():2).getName()));
+        IPage<SysUser> page = sysUserService.page(new Page<>(currentPage, pageSize), queryWrapper);
+        page.getRecords().forEach(item -> item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : 2).getName()));
         return page;
     }
 
@@ -110,7 +110,7 @@ public class SysUserController {
     @OperateLog(module = "用户模块", type = "添加用户")
     @ResponseResultWrapper
     @PostMapping("add")
-    public boolean add(@RequestBody SysUser sysUser) {
+    public int add(@RequestBody SysUser sysUser) {//20220820返回值类型改成int:返回新增用户的ID：为了前端在手工添加代理人后需要获得用户ID(以拼成committer_str)
         return sysUserService.add(sysUser);
     }
 
@@ -132,6 +132,7 @@ public class SysUserController {
     }
 
     @OperateLog(module = "用户模块", type = "删除用户")
+    @ResponseBody
     @GetMapping("delete")
     @ResponseResultWrapper
     public boolean delete(Integer[] idArr) {
@@ -204,7 +205,7 @@ public class SysUserController {
         List<ProcessDefinition> definitionList = processDefinitionService.list();
         for (ProcessDefinition processDefinition : definitionList) {
             List<String> definitionRoleIdList = Stream.of(processDefinition.getRoleId().split(",")).collect(Collectors.toList());
-            List<Integer> definitionRoleIdListToInt = definitionRoleIdList.stream().map(value->Integer.valueOf(value)).collect(Collectors.toList());
+            List<Integer> definitionRoleIdListToInt = definitionRoleIdList.stream().map(value -> Integer.valueOf(value)).collect(Collectors.toList());
             //判断
             definitionRoleIdListToInt.retainAll(roleIdList);//
             if (ObjectUtil.isNotEmpty(definitionRoleIdListToInt)) {
@@ -239,7 +240,7 @@ public class SysUserController {
         //根据 登录账号 查询出用户
         List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("login_name", loginName));
         //给user/temp字段放部门name
-        userList.forEach(item->item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId())?item.getDeptId():2).getName()));
+        userList.forEach(item -> item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : 2).getName()));
         if (userList.size() != 1) {
             throw new RuntimeException("用户名错误");
         }
@@ -251,7 +252,7 @@ public class SysUserController {
             throw new RuntimeException("密码错误");
         }
         //20211128获取角色极权限代码封装成一个私有函数getUserVO
-        UserVO userVO =getUserVO(dbUser);
+        UserVO userVO = getUserVO(dbUser);
         //20211113dbUser里添加了无关联Table的roleIdList
         dbUser.setRoleIdList(userVO.getRoleIdList());
         //20211120防止重复登陆
@@ -260,7 +261,7 @@ public class SysUserController {
         return userVO;
     }
 
-//20211128张强的 先不研
+    //20211128张强的 先不研
     @GetMapping("/ssoLoginForPost")
     @ResponseResultWrapper
     @ResponseBody
@@ -272,28 +273,28 @@ public class SysUserController {
         return getUserVO(user);
     }
 
-//单点登陆与智企集成
+    //单点登陆与智企集成
     @PostMapping("/ssoLogin")//20220322正式与智企集成时要改成post
     public String ssoLogin(HttpServletRequest request) {
         System.out.println("-----ssoLogin23----");
         //单点登录代码
         String userID = request.getParameter("userID");
-        String userName= request.getParameter("userName");
+        String userName = request.getParameter("userName");
         String PID = request.getParameter("PID");
-        String sessionID= request.getParameter("sessionID");
-        String WSUrl= request.getParameter("WSUrl");
-        String verifySSO= request.getParameter("verifySSO");
-        String projectDetails="<?xml version=\"1.0\" encoding=\"GB2312\"?>" +
+        String sessionID = request.getParameter("sessionID");
+        String WSUrl = request.getParameter("WSUrl");
+        String verifySSO = request.getParameter("verifySSO");
+        String projectDetails = "<?xml version=\"1.0\" encoding=\"GB2312\"?>" +
                 "<root>" +
                 "<data>" +
-                "<sessionID>"+sessionID+"</sessionID>" +
-                "<userID>"+userID+"</userID>" +
-                "<PID>"+PID+"</PID>" +
-                "<verifySSO>"+verifySSO+"</verifySSO>" +
+                "<sessionID>" + sessionID + "</sessionID>" +
+                "<userID>" + userID + "</userID>" +
+                "<PID>" + PID + "</PID>" +
+                "<verifySSO>" + verifySSO + "</verifySSO>" +
                 "</data>" +
                 "</root>";
-        System.out.println("PID:"+projectDetails);
-        String[] param={"common","0","biz.bizCheckSSO",projectDetails};
+        System.out.println("PID:" + projectDetails);
+        String[] param = {"common", "0", "biz.bizCheckSSO", projectDetails};
 
         for (int i = 0; i < 3; i++) {
             String msg = loginWebService(WSUrl, param);
@@ -302,17 +303,17 @@ public class SysUserController {
                 //用户放入session
                 // SysUser user = sysUserService.getById(19);
                 SysUser user = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id_number", PID));
-                if (ObjectUtil.isEmpty( user)) {
+                if (ObjectUtil.isEmpty(user)) {
                     System.out.println("身份证号不存在！");
                     return "redirect:/login";
                 }
-                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id",user.getId()));
+                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
                 if (ObjectUtil.isEmpty(roleUserList)) {
                     throw new RuntimeException("用户没有分配角色");
                 }
                 //20211128添加角色ID
                 List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
-                user.setRoleIdList( roleIdList );
+                user.setRoleIdList(roleIdList);
                 httpSession.removeAttribute("user");
                 httpSession.setAttribute("user", user);
                 //
@@ -323,18 +324,14 @@ public class SysUserController {
         return "redirect:/login";
 
 
-
-
-
-
     }
 
     //20220327
-    public String loginWebService(String WSUrl,String[] param) {
+    public String loginWebService(String WSUrl, String[] param) {
         System.out.println("come into loginWebService");
         try {
-            Service service=new Service();
-            Call call=(Call)service.createCall();
+            Service service = new Service();
+            Call call = (Call) service.createCall();
             call.setTargetEndpointAddress(WSUrl);
             call.setOperationName("runBiz");//设置操作名
             /*设置入口参数*/
@@ -343,22 +340,21 @@ public class SysUserController {
             call.addParameter("processName", XMLType.XSD_STRING, ParameterMode.IN);
             call.addParameter("bizDataXML", XMLType.XSD_STRING, ParameterMode.IN);
             call.setReturnType(XMLType.XSD_STRING);
-            Object obj=call.invoke(param);//obj是代表返回一个XML格式的串
+            Object obj = call.invoke(param);//obj是代表返回一个XML格式的串
 
 //            String xml = "<root><a name = \"第一个元素\"><b>最底层节点值</b></a></root>";
 //            String xml1 = "<root><data><msg>1</msg></data></root>";
-            Document document = XmlUtil.parseXml((String)obj);
+            Document document = XmlUtil.parseXml((String) obj);
             Object msgString = XmlUtil.getByXPath("//root/data/msg", document, XPathConstants.STRING);
-            System.out.println("msgString:"+msgString);
-            return (String)msgString;
-        }catch (Exception e) {
-            System.out.println("=========智慧管理系统登录系统出现异常："+e.getMessage());
+            System.out.println("msgString:" + msgString);
+            return (String) msgString;
+        } catch (Exception e) {
+            System.out.println("=========智慧管理系统登录系统出现异常：" + e.getMessage());
 
             return "redirect:/login";
         }
 
     }
-
 
 
     @ResponseBody
@@ -400,7 +396,7 @@ public class SysUserController {
         List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", ((SysUser) httpSession.getAttribute("user")).getDeptId()));
         List<SysDept> deptList = sysDeptService.list();
         Map<Integer, String> deptMap = deptList.stream().collect(Collectors.toMap(SysDept::getId, SysDept::getName));
-        return userList.stream().map(user -> new ValueLabelVO(user.getId() + "." + user.getDisplayName() + "." + deptMap.get(user.getDeptId()) + "." +user.getSecretDegree(), user.getDisplayName() + "." + deptMap.get(user.getDeptId()))).collect(Collectors.toList());
+        return userList.stream().map(user -> new ValueLabelVO(user.getId() + "." + user.getDisplayName() + "."+ user.getLoginName() + "." + deptMap.get(user.getDeptId()) + "." + user.getSecretDegree(), user.getDisplayName() + "." + deptMap.get(user.getDeptId()))).collect(Collectors.toList());
     }
 
 
@@ -503,23 +499,22 @@ public class SysUserController {
         if (ObjectUtil.isNotEmpty(list0)) {
             List<SysUser> userList = new ArrayList<>();
             //20211116
-            List<SysUser> redundantUserDbList = sysUserService.list(new QueryWrapper<SysUser>().in("login_name",list0.stream().map(item ->item.getLoginName()).collect(Collectors.toList())));
-            if (ObjectUtil.isEmpty(redundantUserDbList)){
+            List<SysUser> redundantUserDbList = sysUserService.list(new QueryWrapper<SysUser>().in("login_name", list0.stream().map(item -> item.getLoginName()).collect(Collectors.toList())));
+            if (ObjectUtil.isEmpty(redundantUserDbList)) {
                 resultExcelList = list0;
 
+            } else {//过滤掉重复的ExcelList
+                Set<String> redundantNoSet = redundantUserDbList.stream().map(item -> item.getLoginName()).collect(Collectors.toSet());
+                resultExcelList = list0.stream().filter(item -> !redundantNoSet.contains(item.getLoginName())).collect(Collectors.toList());
             }
-            else{//过滤掉重复的ExcelList
-                Set<String> redundantNoSet = redundantUserDbList.stream().map(item->item.getLoginName()).collect(Collectors.toSet());
-                resultExcelList = list0.stream().filter(item->!redundantNoSet.contains(item.getLoginName())).collect(Collectors.toList());
-            }
-            if(ObjectUtil.isNotEmpty(resultExcelList)) {
+            if (ObjectUtil.isNotEmpty(resultExcelList)) {
                 for (SysUserExcel sysUserExcel : resultExcelList) {
                     //20211116实际还应判断表格中的身份证号/用户登陆名是不是有重复，有的话也要拒绝；相应设备导入时也是这样：todo后绪添加
-                    if (ObjectUtil.isEmpty(sysUserExcel.getLoginName())||ObjectUtil.isEmpty(sysUserExcel.getDeptName())||ObjectUtil.isEmpty(sysUserExcel.getIdNumber())||ObjectUtil.isEmpty(sysUserExcel.getSecretDegree())) {
-                        throw new RuntimeException( "请检查用户信息的完整性");
+                    if (ObjectUtil.isEmpty(sysUserExcel.getLoginName()) || ObjectUtil.isEmpty(sysUserExcel.getDeptName()) || ObjectUtil.isEmpty(sysUserExcel.getIdNumber()) || ObjectUtil.isEmpty(sysUserExcel.getSecretDegree())) {
+                        throw new RuntimeException("请检查用户信息的完整性");
                     }
-                     SysDept sysDept= sysDeptService.getOne(new QueryWrapper<SysDept>().eq("name",sysUserExcel.getDeptName()));
-                    if(ObjectUtil.isEmpty(sysDept)) throw new RuntimeException( "请检查部门信息的准确性");
+                    SysDept sysDept = sysDeptService.getOne(new QueryWrapper<SysDept>().eq("name", sysUserExcel.getDeptName()));
+                    if (ObjectUtil.isEmpty(sysDept)) throw new RuntimeException("请检查部门信息的准确性");
                     Integer deptId = sysDept.getId();
                     SysUser user = new SysUser();
                     BeanUtils.copyProperties(sysUserExcel, user);
@@ -533,10 +528,10 @@ public class SysUserController {
 //                    sysUserService.add(user);
 //                }
             }
-            if(ObjectUtil.isEmpty(redundantUserDbList)){
+            if (ObjectUtil.isEmpty(redundantUserDbList)) {
                 resultList.add(userList.size() + "条用户被导入");
-            } else{
-                resultList.add(userList.size() + "条用户被导入;用户名称:"+redundantUserDbList.stream().map(item->item.getLoginName()).collect(Collectors.joining(",")) + "已经存在，未导入");
+            } else {
+                resultList.add(userList.size() + "条用户被导入;用户名称:" + redundantUserDbList.stream().map(item -> item.getLoginName()).collect(Collectors.joining(",")) + "已经存在，未导入");
             }
         } else {
             resultList.add("EXCEL中未填入有效用户信息");

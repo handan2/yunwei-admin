@@ -23,11 +23,12 @@
         <result column="port_shemi" property="portShemi" />
         <result column="port_common" property="portCommon" />
         <result column="image_output" property="imageOutput" />
+        <result column="strategy" property="strategy" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, usb, serial, parallel, hongwai, bluetooth, screen_shot, dev1394, connection, ip_bind, vm, doc_share, pcmcia, dev_image, dev_juanying, port_shemi, port_common,image_output
+        id, as_id, usb, serial, parallel, hongwai, bluetooth, screen_shot, dev1394, connection, ip_bind, vm, doc_share, pcmcia, dev_image, dev_juanying, port_shemi, port_common,image_output,strategy
     </sql>
 
 </mapper>

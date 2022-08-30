@@ -59,5 +59,7 @@ public class AsComputerGranted implements Serializable {
 
     private String imageOutput;
 
+    private String strategy;
+
 
 }

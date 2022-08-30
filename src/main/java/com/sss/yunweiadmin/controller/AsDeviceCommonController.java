@@ -1,6 +1,9 @@
 package com.sss.yunweiadmin.controller;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
 import com.alibaba.excel.ExcelWriter;
@@ -23,6 +26,7 @@ import com.sss.yunweiadmin.model.vo.ValueLabelVO;
 import com.sss.yunweiadmin.service.*;
 import com.sss.yunweiadmin.service.impl.AsTypeServiceImpl;
 import lombok.SneakyThrows;
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +37,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * <p>
@@ -83,7 +88,7 @@ public class AsDeviceCommonController {
     }
 
     @GetMapping("list")
-    public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDeptId, String userName, Integer customTableId) {
+    public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDeptId, String userName, Integer customTableId, String stateForExcludeForJsonStr) {
         QueryWrapper<AsDeviceCommon> queryWrapper = new QueryWrapper<>();
         if (ObjectUtil.isNotEmpty(no)) {
             queryWrapper.like("no", no);
@@ -107,6 +112,11 @@ public class AsDeviceCommonController {
         }
         if (ObjectUtil.isNotEmpty(state)) {
             queryWrapper.eq("state", state);
+        }
+        if (StrUtil.isNotEmpty(stateForExcludeForJsonStr)) {//20220817
+            String bbb =stateForExcludeForJsonStr.replaceAll("[\"\\[\\]]","");
+            List<String> stateForExcludeList = Stream.of( bbb.split(",")).collect(Collectors.toList());
+            queryWrapper.notIn("state", stateForExcludeList);
         }
         if (ObjectUtil.isNotEmpty(userDeptId)) {
             String deptName = sysDeptService.getById(userDeptId).getName();

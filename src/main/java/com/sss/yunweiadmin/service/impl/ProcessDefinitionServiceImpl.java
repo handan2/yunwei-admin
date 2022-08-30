@@ -86,7 +86,6 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
                         newHideGroupLabelStringList.add(tmp);
                     }
                 });
-                //20220526todo测试空List,返回空串还是null
                 item.setHideGroupIds(newHideGroupIdStringList.stream().collect(Collectors.joining(",")));
                 item.setHideGroupLabel(newHideGroupLabelStringList.stream().collect(Collectors.joining(",")));
             }
@@ -161,14 +160,14 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         processDefinitionTaskService.remove(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId));
         processDefinitionEdgeService.remove(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId));
         processFormTemplateService.remove(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
-        //是否有流程定义的版本
-        if (ObjectUtil.isNotEmpty(processDefinition.getBaseId())) {
-            //回退到上一个版本
-            Integer beforeId = processDefinition.getBeforeId();
-            ProcessDefinition beforeProcessDefinition = this.getById(beforeId);
-            beforeProcessDefinition.setHaveDisplay("是");
-            this.updateById(beforeProcessDefinition);
-        }
+        //恢复老版本：20220817我觉得没必要：先注释这段逻辑
+//        if (ObjectUtil.isNotEmpty(processDefinition.getBaseId())) {
+//            //回退到上一个版本
+//            Integer beforeId = processDefinition.getBeforeId();
+//            ProcessDefinition beforeProcessDefinition = this.getById(beforeId);
+//            beforeProcessDefinition.setHaveDisplay("是");
+//            this.updateById(beforeProcessDefinition);
+//        }
 
         return true;
     }
