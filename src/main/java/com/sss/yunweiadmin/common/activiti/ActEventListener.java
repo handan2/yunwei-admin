@@ -80,12 +80,12 @@ public class ActEventListener implements ActivitiEventListener {
                     NextUserVO nextUserVO = (NextUserVO) httpSession.getAttribute("nextUserVO");
                    //设置了下一步处理人的情况
                     if (nextUserVO != null) {
-                        userList = userTaskBean.getUserList(nextUserVO.getOperatorType(), nextUserVO.getOperatorTypeValue(), nextUserVO.getHaveStarterDept(),processInstanceData.getId());
+                        userList = userTaskBean.getUserList(nextUserVO.getOperatorType(), nextUserVO.getOperatorTypeIds(), nextUserVO.getHaveStarterDept(),processInstanceData.getId());
                     } else {//20211208 todo在getUserList（）添加一种情况，task表的type字段是“发起人”的情况；
                         if (ObjectUtil.isNotEmpty(processInstanceData)) {
-                            userList = userTaskBean.getUserList(processDefinitionTask.getOperatorType(), processDefinitionTask.getOperatorTypeValue(), processDefinitionTask.getHaveStarterDept(), processInstanceData.getId());
+                            userList = userTaskBean.getUserList(processDefinitionTask.getOperatorType(), processDefinitionTask.getOperatorTypeIds(), processDefinitionTask.getHaveStarterDept(), processInstanceData.getId());
                         } else//处理发起节点的下个节点的情况（用户发起流程动作时：会在创建第二个activ节点后才创建NODE，所以此时data表依旧为空），此时processInstanceData里还是null,下面相应参数给个”占位符“
-                            userList = userTaskBean.getUserList(processDefinitionTask.getOperatorType(), processDefinitionTask.getOperatorTypeValue(), processDefinitionTask.getHaveStarterDept(), 0);
+                            userList = userTaskBean.getUserList(processDefinitionTask.getOperatorType(), processDefinitionTask.getOperatorTypeIds(), processDefinitionTask.getHaveStarterDept(), 0);
                     }
                     if (ObjectUtil.isNotEmpty(userList)) {
                         userList.forEach(user -> taskEntity.addCandidateUser(user.getLoginName()));

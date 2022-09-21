@@ -2,6 +2,9 @@ package com.sss.yunweiadmin.service;
 
 import com.sss.yunweiadmin.model.entity.ProcessFormTemplate;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.sss.yunweiadmin.model.vo.FormTemplateVO;
+
+import java.util.List;
 
 /**
  * <p>
@@ -12,5 +15,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2021-07-29
  */
 public interface ProcessFormTemplateService extends IService<ProcessFormTemplate> {
-
+    List<FormTemplateVO> getFormTemplateTree(List<ProcessFormTemplate> initList);
 }

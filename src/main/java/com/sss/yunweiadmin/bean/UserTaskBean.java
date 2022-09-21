@@ -37,14 +37,14 @@ public class UserTaskBean {
         ProcessDefinitionTask currentTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", currentTaskDefKey));
         if (preTask.getHaveNextUser().equals("是")) {
             NextUserVO nextUserVO = (NextUserVO) httpSession.getAttribute("nextUserVO");
-            return getUserList(nextUserVO.getOperatorType(), nextUserVO.getOperatorTypeValue(), nextUserVO.getHaveStarterDept(),processInstanceDataId);
+            return getUserList(nextUserVO.getOperatorType(), nextUserVO.getOperatorTypeIds(), nextUserVO.getHaveStarterDept(),processInstanceDataId);
         } else {
-            return getUserList(currentTask.getOperatorType(), currentTask.getOperatorTypeValue(), currentTask.getHaveStarterDept(),processInstanceDataId);
+            return getUserList(currentTask.getOperatorType(), currentTask.getOperatorTypeIds(), currentTask.getHaveStarterDept(),processInstanceDataId);
         }
     }
 //todo改造：这个函数及上面那个都需要添加一个流程实例ID的参数
     //listener里调用他，实参要加
-    public List<SysUser> getUserList(String operatorType, String operatorTypeValue, String haveStarterDept,Integer processInstanceDataId) {
+    public List<SysUser> getUserList(String operatorType, String operatorTypeIds, String haveStarterDept,Integer processInstanceDataId) {
         List<SysUser> userList;
         if (operatorType.equals("角色")) {
             if (ObjectUtil.isNotEmpty(haveStarterDept)) {
@@ -54,16 +54,16 @@ public class UserTaskBean {
                  */
                 SysUser currentUser = (SysUser) httpSession.getAttribute("user");
                 List<SysUser> userTmp = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", currentUser.getDeptId()));
-                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", Arrays.asList(operatorTypeValue.split(","))).in("user_id", userTmp.stream().map(SysUser::getId).collect(Collectors.toList())));
+                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", Arrays.asList(operatorTypeIds.split(","))).in("user_id", userTmp.stream().map(SysUser::getId).collect(Collectors.toList())));
                 userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
             } else {
-                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", Arrays.asList(operatorTypeValue.split(","))));
+                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", Arrays.asList(operatorTypeIds.split(","))));
                 userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
             }
         } else if (operatorType.equals("用户")) {
-           // List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("user_id", Arrays.asList(operatorTypeValue.split(","))));
+           // List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("user_id", Arrays.asList(operatorTypeIds.split(","))));
           //20220528改造，直接利用ID
-            userList = sysUserService.listByIds( Arrays.asList(operatorTypeValue.split(",")));
+            userList = sysUserService.listByIds( Arrays.asList(operatorTypeIds.split(",")));
             // userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
         } else {// 20211208最后一种情况：task表的type字段是“发起人”的情况；实际上在调用本方法的主方法里都已经查过一遍nodeList,从性能角度看，后续可考虑这分支上移到父方法中
             //断点：这个函数需要多传个参数：流程实例ID，方便我从流程实例的首个node点取“发起人”

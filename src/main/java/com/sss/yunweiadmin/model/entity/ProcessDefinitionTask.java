@@ -46,12 +46,12 @@ public class ProcessDefinitionTask implements Serializable {
     /**
      * 角色id集合，或者 用户id集合
      */
-    private String operatorTypeValue;
+    private String operatorTypeIds;
 
     /**
      * 角色名称集合，或者 用户名称集合
      */
-    private String operatorTypeLabel;
+    private String operatorTypeStr;
 
     /**
      * 是否勾选提交人部门

@@ -89,5 +89,8 @@ public class ProcessFormTemplate implements Serializable {
      */
     private String visible;
 
+    private String editable;
+
+    private String datasource;
 
 }

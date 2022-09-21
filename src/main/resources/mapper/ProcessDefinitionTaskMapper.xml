@@ -10,8 +10,8 @@
         <result column="task_def_key" property="taskDefKey" />
         <result column="task_name" property="taskName" />
         <result column="operator_type" property="operatorType" />
-        <result column="operator_type_value" property="operatorTypeValue" />
-        <result column="operator_type_label" property="operatorTypeLabel" />
+        <result column="operator_type_ids" property="operatorTypeIds" />
+        <result column="operator_type_str" property="operatorTypeStr" />
         <result column="have_starter_dept" property="haveStarterDept" />
         <result column="have_comment" property="haveComment" />
         <result column="have_next_user" property="haveNextUser" />
@@ -26,7 +26,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, task_type, task_def_key, task_name, operator_type, operator_type_value, operator_type_label, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id,hide_group_ids,hide_group_label,have_select_asset,have_select_process
+        id, task_type, task_def_key, task_name, operator_type, operator_type_ids, operator_type_str, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id,hide_group_ids,hide_group_label,have_select_asset,have_select_process
     </sql>
 
 </mapper>

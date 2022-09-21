@@ -184,7 +184,7 @@ public class ProcessDefinitionController {
 
     @GetMapping("getByName")
     public ProcessDefinition getByName(String processDefinitionName) {
-        List<ProcessDefinition> list = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_name", processDefinitionName).orderByDesc("id"));
+        List<ProcessDefinition> list = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("process_name", processDefinitionName).orderByDesc("id"));
         if (CollUtil.isNotEmpty(list))
             return list.get(0);
         else

@@ -117,4 +117,10 @@ public class SysUser implements Serializable {
      */
     @TableField(exist = false)
     private List<Integer> roleIdList;
+
+    /**
+     * 角色IDList 20220907添加，为了前端校验“硬盘变更”信息必填的时机
+     */
+    @TableField(exist = false)
+    private List<String> roleNameList;
 }

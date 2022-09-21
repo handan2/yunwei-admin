@@ -1,5 +1,6 @@
 package com.sss.yunweiadmin.model.vo;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.sss.yunweiadmin.model.entity.SysPermission;
 import com.sss.yunweiadmin.model.entity.SysUser;
 import lombok.Data;
@@ -21,7 +22,9 @@ public class UserVO {
     private Map<Integer, SysPermission> startProcessButtonMap;
     //查询
     private Map<String, SysPermission> queryMap;
-    //角色List
-    private  List<Integer> roleIdList;
+//    //角色id List：已 放入user表的“排除”字段
+//    private  List<Integer> roleIdList;
+//    //角色name List
+//    private List<String> roleNameList;
 }
 

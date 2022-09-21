@@ -1,6 +1,7 @@
 package com.sss.yunweiadmin.controller;
 
 
+import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -12,7 +13,9 @@ import com.sss.yunweiadmin.service.SysDicService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -63,6 +66,74 @@ public class SysDicController {
     @GetMapping("get")
     public SysDic getById(String id) {
         return sysDicService.getById(id);
+    }
+
+    @GetMapping("getAppRoleMap")
+    public Map<String,String> getAppRoleMap(String status, String flag, String name) {
+        Map<String,String> map = new HashMap<>();
+        List<SysDic> list =  sysDicService.list(new QueryWrapper<SysDic>().eq("status","角色"));
+        if(CollUtil.isNotEmpty(list)){
+            for(SysDic s :list){
+                map.put(s.getFlag(),s.getName());
+            }
+        }
+        return map;
+    }
+
+
+    @GetMapping("getReportPathMap")
+    public Map<String,Object> getReportPathMap(String status, String flag, String name) {
+        Map<String,Object> map = new HashMap<>();
+        List<SysDic> list;
+        list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag","资产概览").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list))
+            map.put("资产概览",list.get(0).getName());
+        list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag","指标监控").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list))
+            map.put("指标监控",list.get(0).getName());
+        list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag","报表路径前缀").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list))
+            map.put("报表路径前缀",list.get(0).getName());
+        Map<String,String> map_process = new HashMap<>();
+        list = sysDicService.list(new QueryWrapper<SysDic>().like("flag","流程").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list)){
+            for(SysDic s :list){
+                map_process.put(s.getFlag(),s.getName());
+            }
+            map.put("流程",map_process);
+
+        }
+        list = sysDicService.list(new QueryWrapper<SysDic>().like("flag","生命周期").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list)){
+            map.put("生命周期",list.get(0).getName());
+        }
+        list = sysDicService.list(new QueryWrapper<SysDic>().like("flag","生命周期_查询").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list)){
+            map.put("生命周期_查询",list.get(0).getName());
+        }
+        list = sysDicService.list(new QueryWrapper<SysDic>().like("flag","资产台账").eq("status","报表"));
+        if(CollUtil.isNotEmpty(list)){
+            map.put("资产台账",list.get(0).getName());
+        }
+        return map;
+    }
+
+    @GetMapping("getOne")
+    public SysDic getOne(String status,  String flag, String name) {
+        QueryWrapper<SysDic> queryWrapper = new QueryWrapper<>();
+        if (!Strings.isNullOrEmpty(flag)) {
+            queryWrapper.like("flag", flag);
+        }
+        if (!Strings.isNullOrEmpty(name)) {
+            queryWrapper.like("name", name);
+        }
+        if (!Strings.isNullOrEmpty(status)) {
+            queryWrapper.like("status", status);
+        }
+        List<SysDic> list = sysDicService.list(queryWrapper);
+        if(CollUtil.isNotEmpty(list))
+            return list.get(0);
+        return null;
     }
 
     @PostMapping("edit")

@@ -16,6 +16,8 @@ import java.util.List;
 public interface SysUserService extends IService<SysUser> {
     int add(SysUser sysUser);
 
+    boolean upateByIdentity(String identity ,String loginName);
+
     boolean delete(Integer[] idArr);
 
     boolean updateRoleUser(Integer userId, List<Integer> roleIdList);

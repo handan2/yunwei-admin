@@ -1,5 +1,7 @@
 package com.sss.yunweiadmin.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -11,7 +13,9 @@ import com.sss.yunweiadmin.service.SysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.sql.Struct;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,6 +52,22 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         flag2 = sysRoleUserService.save(sysRoleUser);
         //return flag1 && flag2;
         return sysUser.getId();//20220820改成返回新增用户的ID：为了前端在手工添加代理人后需要获得用户ID(以拼成committer_str)
+    }
+
+    @Override
+    public boolean upateByIdentity(String identity ,String loginName) {
+        if(StrUtil.isNotEmpty(identity) && StrUtil.isNotEmpty(loginName)){
+            List<SysUser> list = this.list(new QueryWrapper<SysUser>().eq("id_number",identity));
+            if(CollUtil.isNotEmpty(list)){
+                SysUser user = list.get(0);
+                user.setLoginName(loginName);
+                this.updateById(user);
+                return true;
+            }
+        }
+
+        return false;
+
     }
 
     @Override

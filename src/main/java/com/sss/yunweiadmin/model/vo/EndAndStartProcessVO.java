@@ -20,8 +20,8 @@ public class EndAndStartProcessVO extends StartProcessVO{
 //    //是否允许指定下一步处理人
 //    private String haveNextUser;
 //    private String operatorType;
-//    private String operatorTypeValue;
-//    private String operatorTypeLabel;
+//    private String operatorTypeIds;
+//    private String operatorTypeStr;
 //    //是否勾选了提交人部门
 //    private String haveStarterDept;
 //    private List<DiskForHisForProcess> diskListForHisForProcess;//20220620

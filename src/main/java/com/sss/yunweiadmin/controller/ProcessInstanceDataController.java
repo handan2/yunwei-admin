@@ -15,6 +15,7 @@ import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.vo.*;
 import com.sss.yunweiadmin.service.*;
 import org.activiti.engine.task.Task;
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.method.P;
@@ -68,8 +69,22 @@ public class ProcessInstanceDataController {
     //流程实例 todo把查询条件换成VO
     @GetMapping("list")
     //接受参数是int时，不能没有值，会报null不能赋给int,但integer可以
-    public IPage<ProcessInstanceData> list(int currentPage, int pageSize, String processName, String processStatus, String processType, String displayName, String deptName, String handleName, String no, String startDate, String endDate, Integer id) {
+    public IPage<ProcessInstanceData> list(int currentPage, int pageSize, String processName, String processStatus, String displayName, String deptName, String handleName,String name,  String no, String startDate, String endDate, Integer id, String processType) {
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().orderByDesc("id");
+        if (ObjectUtil.isNotEmpty(name)) {//20220920name表示资产名称
+            List<Map<String, Object>> listMap = asDeviceCommonService.listMaps(new QueryWrapper<AsDeviceCommon>().like("name",name).select("id"));
+            List<Integer> asIdList = listMap.stream().map(item->Integer.parseInt(item.get("id").toString())).collect(Collectors.toList());
+            if(CollUtil.isNotEmpty(asIdList)){
+                List<Map<String, Object>> listMap2 = processFormValue2Service.listMaps(new QueryWrapper<ProcessFormValue2>().in("as_id",asIdList).select("act_process_instance_id"));
+                List<Integer> actInstIdList = listMap2.stream().map(item->Integer.parseInt(item.get("act_process_instance_id").toString())).collect(Collectors.toList());
+                if(CollUtil.isNotEmpty(actInstIdList))
+                      queryWrapper.in("act_process_instance_id",actInstIdList);
+                else
+                    return null;
+            } else
+                return null;
+
+        }
         if (ObjectUtil.isNotEmpty(id)) {
             System.out.println(id);
             queryWrapper.eq("id", id);
@@ -169,6 +184,52 @@ public class ProcessInstanceDataController {
             processInstanceData.setScore(0);
         }
 
+    }
+
+   //“新”已办任务：（登陆者）本人处理过的任务
+    @GetMapping("handledList")
+    public IPage<ProcessInstanceData> handledList(int currentPage, int pageSize, String processName, String processType, String startDate) {
+        SysUser user = (SysUser) httpSession.getAttribute("user");
+        if (user == null) {
+            throw new RuntimeException("用户未登录");
+        }
+        QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().orderByDesc("id");
+        //根据node表取出当前登陆者处理过的流程idList（包含提交的）
+        List<Map<String,Object>> listMaps = processInstanceNodeService.listMaps(new QueryWrapper<ProcessInstanceNode>().eq("login_name",user.getLoginName()).select("process_instance_data_id"));
+        if(CollUtil.isNotEmpty(listMaps)){
+            List<Integer> idList = listMaps.stream().map(item->Integer.valueOf(item.get("process_instance_data_id").toString())).collect(Collectors.toList());
+            if(CollUtil.isNotEmpty(idList)){
+                queryWrapper.in("id",idList);
+            }
+        }
+
+        if (ObjectUtil.isNotEmpty(processName)) {
+            queryWrapper.like("processName", processName);
+        }
+        if (ObjectUtil.isNotEmpty(processType)) {
+            List<ProcessDefinition> definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("process_type", processType));
+            if (ObjectUtil.isNotEmpty(definitionList)) {
+                queryWrapper.in("process_definition_id", definitionList.stream().map(ProcessDefinition::getId).collect(Collectors.toList()));
+            } else {
+                queryWrapper.in("process_definition_id", new ArrayList<>());
+            }
+        }
+
+
+        if (ObjectUtil.isNotEmpty(startDate)) {
+            String[] dateArr = startDate.split(",");
+            queryWrapper.ge("start_datetime", dateArr[0] + " 00:00:00");
+            queryWrapper.le("start_datetime", dateArr[1] + " 00:00:00");
+
+        }
+
+        //遍历page并加入score信息
+        IPage<ProcessInstanceData> page = processInstanceDataService.page(new Page<>(currentPage, pageSize), queryWrapper);
+        List<ProcessInstanceData> list = page.getRecords();
+        for (ProcessInstanceData processInstanceData : list) {
+            this.setProcessInstanceDataScore(processInstanceData);
+        }
+        return page;
     }
 
     //已办任务
@@ -313,7 +374,8 @@ public class ProcessInstanceDataController {
         //查询资产类型表中typeId对应的level=1/上级分类的名称是不是“信息设备”，不是的话，直接放行
         int p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", typeId)).getPid();
         int p_p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_typeId)).getPid();
-        if (!asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_p_typeId)).getName().contains("信息设备"))
+        //20220919 添加p_p_typeId == 0：用于满足“应用系统”的情况:资产类别的level=2,即p_p_typeId == 0
+        if (p_p_typeId == 0 || !asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_p_typeId)).getName().contains("信息设备"))
             return null;
 
         //获取资产ID对应的所有ACTINST IDList
@@ -433,6 +495,7 @@ public class ProcessInstanceDataController {
     public boolean modify(@RequestBody ModifyProcessFormVO modifyProcessFormVO) {
         return processInstanceDataService.modifyProcessForm(modifyProcessFormVO);
     }
+
 
     @GetMapping("get")
     public ProcessInstanceData getById(String id) {

@@ -66,6 +66,8 @@ public class AsDeviceCommon implements Serializable {
 
     private String userTel;
 
+    private String idNumber;
+
     private String manufacturer;
 
     private String model;
@@ -95,6 +97,7 @@ public class AsDeviceCommon implements Serializable {
     private String remark;
     private String temp;
     private String problem;
+    private String haveOut;
 
 
 }

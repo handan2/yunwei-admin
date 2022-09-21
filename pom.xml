@@ -182,6 +182,15 @@
         </dependency>
         <!-- axis 1.4 jar end -->
     </dependencies>
+
+<!--    20220915-->
+<!--    <dependency>-->
+<!--        <groupId>com.thetransactioncompany</groupId>-->
+<!--        <artifactId>cors-filter</artifactId>-->
+<!--        <version>[ version ]</version>-->
+<!--    </dependency>-->
+
+
     <!--设置maven仓库-->
     <repositories>
         <repository>

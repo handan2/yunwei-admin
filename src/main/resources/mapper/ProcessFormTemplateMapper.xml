@@ -18,11 +18,13 @@
         <result column="default_value" property="defaultValue" />
         <result column="process_definition_id" property="processDefinitionId" />
         <result column="visible" property="visible" />
+        <result column="editable" property="editable" />
+        <result column="datasource" property="datasource" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, label, name, type, flag, group_layout, group_parent_label, have_group_select, required, tooltip, value, default_value, process_definition_id
+        id, label, name, type, flag, group_layout, group_parent_label, have_group_select, required, tooltip, value, default_value, process_definition_id,visible,editable,datasource
     </sql>
 
 </mapper>

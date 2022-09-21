@@ -17,11 +17,12 @@
         <result column="sysadmin_tmp" property="sysadminTmp" />
         <result column="safeadmin_tmp" property="safeadminTmp" />
         <result column="auditadmin_tmp" property="auditadminTmp" />
+        <result column="rolename_str" property="rolenameStr" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, sysadmin_id, safeadmin_id, auditadmin_id, username_tmp, operate_type_tmp, useroperate_type_tmp, roleoperate_type_tmp, rolename_tmp, sysadmin_tmp, safeadmin_tmp, auditadmin_tmp
+        id, as_id, sysadmin_id, safeadmin_id, auditadmin_id, username_tmp, operate_type_tmp, useroperate_type_tmp, roleoperate_type_tmp, rolename_tmp, sysadmin_tmp, safeadmin_tmp, auditadmin_tmp,rolename_str
     </sql>
 
 </mapper>

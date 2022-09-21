@@ -29,8 +29,8 @@ public class CheckProcessVO {
     //是否允许指定下一步处理人
     private String haveNextUser;//这个是可以从DB中直接读的，
     private String operatorType;//这个是下一步处理人信息：DB中没有值，只能从前端读
-    private String operatorTypeValue;//这个是下一步处理人信息：DB中没有值，只能从前端读
-    private String operatorTypeLabel;//这个是下一步处理人信息：DB中没有值，只能从前端读
+    private String operatorTypeIds;//这个是下一步处理人信息：DB中没有值，只能从前端读
+    private String operatorTypeStr;//这个是下一步处理人信息：DB中没有值，只能从前端读
     //20220626加
     private String haveSelectProcess;//这个是可以从DB中直接读的，
     private String selectedProcess;

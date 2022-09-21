@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.common.utils;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ReflectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -167,6 +168,7 @@ public class TreeUtil {
      * 表单模板树
      * 20211207select变更字段的value值(选项字段)，做下判断与处理：根据约定（字符串格式）规则
      * 决定是否查下DB/把结果再塞回options相应的字段值中
+     * 20220918 此方法已经拷贝到processTemplateServiceImpl.java中
      */
     public static List<FormTemplateVO> getFormTemplateTree(List<ProcessFormTemplate> initList) {
         if (CollUtil.isEmpty(initList)) throw new RuntimeException("集合为空！");
@@ -179,8 +181,14 @@ public class TreeUtil {
         for (ProcessFormTemplate processFormTemplate : initList) {//组装两类map
             FormTemplateVO formTemplateVO = new FormTemplateVO();
             BeanUtils.copyProperties(processFormTemplate, formTemplateVO);
-            //20211207todo 这里添判断下(processFormTemplate.type===下拉单选不可编辑||下拉单选可编辑)&&select变更字段的value值(选项字段)是不是要设置数据源，是的话，做下处理
+            //20220918todo 这里添判断下(processFormTemplate.type===下拉单选不可编辑||下拉单选可编辑)&&select变更字段的value值(选项字段)是不是要设置数据源，是的话，做下处理
+            if(StrUtil.isNotEmpty(formTemplateVO.getDatasource())){//实际最好加一个processName的约束：不过这个static方法好像不能autoWired相关service
+                if(formTemplateVO.getLabel().equals("角色分配")){
 
+
+                }
+
+            }
             map.put(formTemplateVO.getId(), formTemplateVO);
 
             if (formTemplateVO.getFlag().equals("字段组类型")) {

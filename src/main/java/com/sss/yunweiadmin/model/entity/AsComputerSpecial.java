@@ -77,8 +77,6 @@ public class AsComputerSpecial implements Serializable {
 
     private String haveChangeDisk;
 
-    private String haveOut;
-
     private String haveChangeNetcard;
 
     private String haveChangeRam;

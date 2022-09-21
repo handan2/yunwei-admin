@@ -47,5 +47,7 @@ public class AsApplicationSpecial implements Serializable {
 
     private String auditadminTmp;
 
+    private String rolenameStr;
+
 
 }

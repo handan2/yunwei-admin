@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.StatisticsMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.Statistics">
+        <id column="id" property="id" />
+        <result column="period" property="period" />
+        <result column="as_type_id" property="asTypeId" />
+        <result column="amount" property="amount" />
+        <result column="rate" property="rate" />
+        <result column="reInstall_amount" property="reinstallAmount" />
+        <result column="create_time" property="createTime" />
+        <result column="miji" property="miji" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, period, as_type_id, amount, rate, reInstall_amount, create_time,miji
+    </sql>
+
+</mapper>

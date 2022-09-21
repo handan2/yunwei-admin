@@ -19,6 +19,8 @@ import java.util.List;
  * @since 2021-10-08
  */
 public interface AsDeviceCommonService extends IService<AsDeviceCommon> {
+
+    boolean addStatistics();
     boolean add(AssetVO assetVO);
 
     boolean edit(AssetVO assetVO);

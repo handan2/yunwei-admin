@@ -30,14 +30,13 @@
         <result column="aff_device_dec" property="affDeviceDec" />
         <result column="have_reinstall" property="haveReinstall" />
         <result column="have_change_disk" property="haveReinstall" />
-        <result column="have_out" property="haveOut" />
         <result column="have_change_netcard" property="haveChangeNetcard" />
         <result column="have_change_ram" property="haveChangeRam" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, net_interface, ram, cdrom, video_card, mac_backup, sound_card, os_date, os_type, cpu_total, disk_total, disk_size, disk_mode1, disk_mode2, disk_mode3, disk_mode4, disk_sn1, disk_sn2, disk_sn3, disk_sn4,disk_for_render,disk_changed_dec,aff_device_dec,have_reinstall,have_change_disk,have_out,have_change_netcard,have_change_ram
+        id, as_id, net_interface, ram, cdrom, video_card, mac_backup, sound_card, os_date, os_type, cpu_total, disk_total, disk_size, disk_mode1, disk_mode2, disk_mode3, disk_mode4, disk_sn1, disk_sn2, disk_sn3, disk_sn4,disk_for_render,disk_changed_dec,aff_device_dec,have_reinstall,have_change_disk,have_change_netcard,have_change_ram
     </sql>
 
 </mapper>

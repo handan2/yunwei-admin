@@ -47,10 +47,11 @@ public class ProcessFormTemplateController {
     @Autowired
     private AsConfigService asConfigService;
     @Autowired
-    AsTypeService asTypeService;
+    private AsTypeService asTypeService;
     @Autowired
-    AsDeviceCommonService asDeviceCommonService;
-
+    private AsDeviceCommonService asDeviceCommonService;
+    @Autowired
+    private ProcessDefinitionService processDefinitionService;
 
 
 
@@ -72,43 +73,58 @@ public class ProcessFormTemplateController {
     @GetMapping("getFormTemplateTree")
     public List<FormTemplateVO> getFormTemplateTree(Integer processDefinitionId) {
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
-        return TreeUtil.getFormTemplateTree(list);
+        return processFormTemplateService.getFormTemplateTree(list);
+        // return TreeUtil.getFormTemplateTree(list);
     }
 
     //获取表单template对应的变更字段/基本字段/自定义表字段 的（label/ID）map;如果是自定义表的字段：label名前加'table_',变更字段：label名直接是“涉密级别”这种（前面没有自定义表名）
     @GetMapping("getLabelIdMapForItemByAjax")
-    public Map<String, String> getLabelIdMapForItemByAjax(Integer processDefinitionId,String hideGroupIds) {
+    public Map<String, String> getLabelIdMapForItemByAjax(Integer processDefinitionId, String hideGroupIds) {
+        if(ObjectUtil.isEmpty(processDefinitionId))
+            return null;
+        ProcessDefinition processDefinition = processDefinitionService.getById(processDefinitionId);
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
         Map<String, String> map = Maps.newHashMap();
         List<String> hideGroupMemberLabelList = new ArrayList<>();
-        if(StrUtil.isNotEmpty(hideGroupIds)){
+        if (StrUtil.isNotEmpty(hideGroupIds)) {
             String[] hideGroupIdArr = hideGroupIds.split(",");
             List<String> idList = Stream.of(hideGroupIdArr).collect(Collectors.toList());
-            idList.stream().forEach(item->{
+            idList.stream().forEach(item -> {
                 ProcessFormTemplate hideGroup = processFormTemplateService.getById(item);//验证下，item/id 此时是字符串会不会有问题？好像可以
-                if(ObjectUtil.isNotEmpty(hideGroup))
-                    hideGroupMemberLabelList.add( hideGroup.getLabel());
+                if (ObjectUtil.isNotEmpty(hideGroup))
+                    hideGroupMemberLabelList.add(hideGroup.getLabel());
             });
         }
         for (ProcessFormTemplate processFormTemplate : list) {
-            if(CollUtil.isNotEmpty(hideGroupMemberLabelList)){
-                if(hideGroupMemberLabelList.contains(processFormTemplate.getGroupParentLabel()))//20220821排除掉隐藏字段组内的成员
+            if (CollUtil.isNotEmpty(hideGroupMemberLabelList)) {
+                if (hideGroupMemberLabelList.contains(processFormTemplate.getGroupParentLabel()))//20220821排除掉隐藏字段组内的成员
                     continue;
             }
             if ("字段变更类型".equals(processFormTemplate.getFlag())) {
                 map.put(processFormTemplate.getLabel().split("\\.")[1], processFormTemplate.getId().toString());
-            } else if ("基本类型".equals(processFormTemplate.getFlag())){
+            } else if ("基本类型".equals(processFormTemplate.getFlag())) {
                 map.put(processFormTemplate.getLabel(), processFormTemplate.getId().toString());
             }
         }
         //202207331把自定义表字段也加上
         List<TableTypeVO> list1 = new ArrayList<>();
-        Map<Integer, List<TableTypeVO>>  mapForTableTypeVOList = this.getTableTypeVO(processDefinitionId);
-        for (Map.Entry<Integer,List<TableTypeVO>> entry : mapForTableTypeVOList.entrySet()) {
+        Map<Integer, List<TableTypeVO>> mapForTableTypeVOList = this.getTableTypeVO(processDefinitionId);
+        for (Map.Entry<Integer, List<TableTypeVO>> entry : mapForTableTypeVOList.entrySet()) {
             list1.addAll(entry.getValue());
         }
-        list1.stream().forEach(item->{
-            map.put("table_"+item.getLabel().split("\\.")[1],item.getName());
+        list1.stream().forEach(item -> {//20220905 todo对外设入网流程，两类设备的“涉密级别”做个区分，计算机类为“table_涉密级别2”
+            if(processDefinition.getProcessName().contains("外设声像及办公自动化申领")||processDefinition.getProcessName().contains("外设声像及办公自动化变更")){
+                if(item.getLabel().contains("涉密级别") && item.getLabel().contains("计算机"))
+                    map.put("table_计算机_" + item.getLabel().split("\\.")[1], item.getName());
+                if(item.getLabel().contains("涉密级别") && item.getLabel().contains("外设"))
+                    map.put("table_外设_" + item.getLabel().split("\\.")[1], item.getName());
+                if(item.getLabel().contains("资产编号") && item.getLabel().contains("计算机"))
+                    map.put("table_计算机_" + item.getLabel().split("\\.")[1], item.getName());
+                if(item.getLabel().contains("资产编号") && item.getLabel().contains("外设"))
+                    map.put("table_外设_" + item.getLabel().split("\\.")[1], item.getName());
+            }
+
+            map.put("table_" + item.getLabel().split("\\.")[1], item.getName());
         });
         return map;
     }
@@ -265,18 +281,21 @@ public class ProcessFormTemplateController {
                 obj = service.getOne(new QueryWrapper<Object>().eq("as_id", asDeviceCommonId));
             }
             if (obj != null) {
-                //读实例中相应自定义表的具体字段值：这里的toString()是把所有字段不管啥类型都转成string&&资产表中不能有NULL值否则会报错
-                String value = ReflectUtil.getFieldValue(obj, StrUtil.toCamelCase(arr[3])).toString();
-                if (!Strings.isNullOrEmpty(value)) {
-                    if ("type_id".equals(arr[3])) {
-                        String typeName = asTypeService.getById(Integer.valueOf(value)).getName();
-                        map.put(name, typeName);
-                    } else
-                        map.put(name, value);
+                //读实例中相应自定义表的具体字段值：这里的toString()是把所有字段不管啥类型都转成string
+                Object o = ReflectUtil.getFieldValue(obj, StrUtil.toCamelCase(arr[3]));
+                if (ObjectUtil.isNotEmpty(o)) {//资产表中不能有NULL值否则会报错:这里加了判断
+                    String value = o.toString();
+                    if (!Strings.isNullOrEmpty(value)) {
+                        if ("type_id".equals(arr[3])) {
+                            String typeName = asTypeService.getById(Integer.valueOf(value)).getName();
+                            map.put(name, typeName);
+                        } else
+                            map.put(name, value);
+                    }
                 }
             }
         }
-        ;
+
         VO.setMap(map);
         VO.setDiskList(diskList);
         return VO;

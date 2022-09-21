@@ -8,7 +8,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class NextUserVO {
     private String operatorType;
-    private String operatorTypeValue;
+    private String operatorTypeIds;
     //是否勾选了提交人部门
     private String haveStarterDept;
 }

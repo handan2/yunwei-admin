@@ -1,6 +1,7 @@
 package com.sss.yunweiadmin.controller;
 
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.XmlUtil;
 import cn.hutool.crypto.SecureUtil;
@@ -125,6 +126,17 @@ public class SysUserController {
     }
 
     @ResponseBody
+    @OperateLog(module = "用户模块", type = "编辑用户")
+    @GetMapping("upateByIdentity")
+    @ResponseResultWrapper
+    public boolean upateByIdentity(String identity ,String loginName) {
+        System.out.println("sysUser");
+
+        return sysUserService.upateByIdentity(identity ,loginName);
+
+    }
+
+    @ResponseBody
     @GetMapping("get")
     @ResponseResultWrapper
     public SysUser getById(String id) {
@@ -146,13 +158,13 @@ public class SysUserController {
         UserVO userVO = new UserVO();
         //根据用户获取角色
         List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
-        if (ObjectUtil.isEmpty(roleUserList)) {
+        if (CollUtil.isEmpty(roleUserList)) {
             throw new RuntimeException("用户没有分配角色");
         }
         List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
         //根据角色获取权限
         List<SysRolePermission> rolePermissionList = sysRolePermissionService.list(new QueryWrapper<SysRolePermission>().in("role_id", roleIdList));
-        if (ObjectUtil.isEmpty(rolePermissionList)) {
+        if (CollUtil.isEmpty(rolePermissionList)) {
             throw new RuntimeException("用户没有分配菜单");
         }
         //根据权限获取完整的权限
@@ -226,7 +238,8 @@ public class SysUserController {
         userVO.setDataListButtonMap(dataListButtonMap);
         userVO.setStartProcessButtonMap(startProcessButtonMap);
         userVO.setQueryMap(queryMap);
-        userVO.setRoleIdList(roleIdList);//20211113
+       //userVO.setRoleIdList(roleIdList);//20211113
+
         return userVO;
     }
 
@@ -251,10 +264,25 @@ public class SysUserController {
         if (!dbPassword.equals(pagePassword)) {
             throw new RuntimeException("密码错误");
         }
+
+
+        //20220907
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", dbUser.getId()));
+        if (CollUtil.isEmpty(roleUserList)) {
+            throw new RuntimeException("用户没有分配角色");
+        }
+        List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
+        dbUser.setRoleIdList(roleIdList);
+        List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id",roleIdList));
+        List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
+        dbUser.setRoleNameList(roleNameList);
+
+
+
         //20211128获取角色极权限代码封装成一个私有函数getUserVO
         UserVO userVO = getUserVO(dbUser);
         //20211113dbUser里添加了无关联Table的roleIdList
-        dbUser.setRoleIdList(userVO.getRoleIdList());
+       // dbUser.setRoleIdList(userVO.getRoleIdList());
         //20211120防止重复登陆
         httpSession.removeAttribute("user");//todo测试
         httpSession.setAttribute("user", dbUser);
@@ -314,6 +342,9 @@ public class SysUserController {
                 //20211128添加角色ID
                 List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
                 user.setRoleIdList(roleIdList);
+                List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id",roleIdList));
+                List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
+                user.setRoleNameList(roleNameList);
                 httpSession.removeAttribute("user");
                 httpSession.setAttribute("user", user);
                 //
@@ -392,6 +423,10 @@ public class SysUserController {
     //是那种选择流程发起责任人时的提示框组件内容
     //20211203完善：限定了查询本部门的人（查询条件可从前台传也可直接读session）;value里把人员密级也带了进去
     public List<ValueLabelVO> getUserVL() {
+        SysUser user1 = (SysUser) httpSession.getAttribute("user");
+        if (user1 == null) {
+            throw new RuntimeException("用户未登录");
+        }
         List<ValueLabelVO> list = new ArrayList<>();
         List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", ((SysUser) httpSession.getAttribute("user")).getDeptId()));
         List<SysDept> deptList = sysDeptService.list();

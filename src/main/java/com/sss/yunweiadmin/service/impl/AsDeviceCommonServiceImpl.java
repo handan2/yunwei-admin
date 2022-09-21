@@ -2,9 +2,12 @@
 
 package com.sss.yunweiadmin.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.common.collect.ImmutableMap;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
 import com.sss.yunweiadmin.mapper.AsDeviceCommonMapper;
 import com.sss.yunweiadmin.model.entity.*;
@@ -14,14 +17,16 @@ import com.sss.yunweiadmin.model.excel.AsNetworkDeviceSpecialExcel;
 import com.sss.yunweiadmin.model.excel.AsSecurityProductsSpecialExcel;
 import com.sss.yunweiadmin.model.vo.AssetVO;
 import com.sss.yunweiadmin.service.*;
+import org.activiti.engine.impl.cmd.SaveTaskCmd;
 import org.apache.xmlbeans.impl.schema.XQuerySchemaTypeSystem;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,7 +54,8 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
     AsTypeService asTypeService;
     @Autowired
     AsApplicationSpecialService asApplicationSpecialService;
-
+    @Autowired
+    StatisticsService statisticsService;
 
     //20211115 不管啥类型，把所有专有表清清
     @Override
@@ -62,10 +68,63 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         asSecurityProductsSpecialService.remove(new QueryWrapper<AsSecurityProductsSpecial>().in("as_id", idArr));
         asApplicationSpecialService.remove(new QueryWrapper<AsApplicationSpecial>().in("as_id", idArr));
         //删除硬盘信息
-        List<AsDeviceCommon> diskList = this.list(new QueryWrapper<AsDeviceCommon>().in("host_as_id",idArr));
-        this.removeByIds(diskList.stream().map(item->item.getId()).collect(Collectors.toList()));
+        List<AsDeviceCommon> diskList = this.list(new QueryWrapper<AsDeviceCommon>().in("host_as_id", idArr));
+        this.removeByIds(diskList.stream().map(item -> item.getId()).collect(Collectors.toList()));
         //删除asDeviceCommon“主设备”
         this.removeByIds(idArr);
+        return true;
+    }
+
+    private Statistics classifyStatics(LocalDate date_end,List<Integer> listAsId,String miji,String period,int asTypeId){
+        LocalDate date_now = LocalDate.now();
+       // List<Integer> listAsId = listMap.stream().map(item->Integer.parseInt(item.get("id").toString())).collect(Collectors.toList());
+        //指定周期内&&计算机类别的操作系统安装数量
+        Statistics statistics = new Statistics();
+        statistics.setPeriod(period);
+        statistics.setAsTypeId(asTypeId);
+        statistics.setMiji(miji);
+        statistics.setCreateTime(LocalDateTime.now());
+        statistics.setAmount(listAsId.size());
+        if(CollUtil.isNotEmpty(listAsId)){//queryRapper/in语句中参数中：list为0会报错
+            List<AsComputerSpecial> listAsComputerSpecialOSdateFiltered = asComputerSpecialService.list(new QueryWrapper<AsComputerSpecial>().between("os_date", date_end,  date_now).in("as_id",listAsId));
+            statistics.setReinstallAmount(listAsComputerSpecialOSdateFiltered.size());
+        } else {
+            statistics.setReinstallAmount(0);
+        }
+        return statistics;
+      //  statisticsService.save(statistics);
+    }
+
+    @Override
+    public boolean addStatistics() {//目前只考虑涉密：密级后续由参数传进来，不全部都统计
+        statisticsService.remove(new QueryWrapper<>());//清空所有记录
+        List<Statistics> statisticsList = new ArrayList<>();
+        //先增加“桌面计算机” 的本年度重装查询
+        LocalDate date_now = LocalDate.now();
+        LocalDate date_end;
+        Map<String, Integer> periodMap = ImmutableMap.of("本年度", 365, "本季度", 91, "本月", 30);//<周期，“回退”天数>
+        for(Map.Entry<String, Integer> entryPeriod : periodMap.entrySet()){
+            date_end = date_now.minusDays(entryPeriod.getValue());
+            Integer[] allowedTypeIdArray= {23,22,21,8,9};//需要记录的typeId
+            List<Integer> list =  Arrays.asList(allowedTypeIdArray);
+            List<AsDeviceCommon> asDeviceCommonList = this.list(new QueryWrapper<AsDeviceCommon>().in("type_id", list).ne("state","停用").ne("state","报废").ne("state","库存").and(qw -> qw.eq("miji", "秘密").or().eq("miji", "机密")));
+            Map<Integer,List<Integer>> mapList = new HashMap<>();//<类型ID，资产IdList>
+            for(Integer typeId : allowedTypeIdArray){
+                mapList.put(typeId,new ArrayList<Integer>());
+            }
+            //组装mapList
+            for(AsDeviceCommon a : asDeviceCommonList){
+                mapList.get(a.getTypeId()).add(a.getId());
+            }
+            //遍历mapList
+            for (Map.Entry<Integer,List<Integer>> entry : mapList.entrySet()) {
+                Statistics statistics = classifyStatics(date_end,entry.getValue(),"涉密",entryPeriod.getKey(),entry.getKey());
+                if(ObjectUtil.isNotEmpty(statistics))
+                    statisticsList.add(statistics);
+            }
+        }
+        if(CollUtil.isNotEmpty(statisticsList))
+            statisticsService.saveBatch(statisticsList);
         return true;
     }
 
@@ -92,7 +151,14 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             //20220620 保存硬盘信息
             List<AsDeviceCommon> diskListForHis = assetVO.getDiskListForHis();
             if (diskListForHis != null) {
-                flag = flag && this.saveBatch(diskListForHis.stream().map(item->{item.setHostAsId(asDeviceCommon.getId());item.setMiji(asDeviceCommon.getMiji());item.setUserName(asDeviceCommon.getMiji());item.setNetType(asDeviceCommon.getNetType());item.setUserDept(asDeviceCommon.getUserDept());return item;}).collect(Collectors.toList()));//20220614这个flag设置有点小问题：暂不改
+                flag = flag && this.saveBatch(diskListForHis.stream().map(item -> {
+                    item.setHostAsId(asDeviceCommon.getId());
+                    item.setMiji(asDeviceCommon.getMiji());
+                    item.setUserName(asDeviceCommon.getMiji());
+                    item.setNetType(asDeviceCommon.getNetType());
+                    item.setUserDept(asDeviceCommon.getUserDept());
+                    return item;
+                }).collect(Collectors.toList()));//20220614这个flag设置有点小问题：暂不改
             }
         } else if (asTypeId == 5) {
             //网络设备
@@ -253,11 +319,11 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 asComputerGranted.setAsId(asDeviceCommon.getId());
                 //
                 List<AsDeviceCommon> asDeviceCommonListForDisk = new ArrayList<>();
-              //  asDeviceCommonList.add(asDeviceCommon);
+                //  asDeviceCommonList.add(asDeviceCommon);
                 asComputerSpecialList.add(asComputerSpecial);
                 asComputerGrantedList.add(asComputerGranted);
                 //20220623组织硬盘信息，后面还要加对“逗号隔开”的处理
-                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn1())) {
+                if (ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn1())) {
                     AsDeviceCommon asDeviceCommon1 = new AsDeviceCommon();
                     asDeviceCommon1.setSn(asComputerExcel.getDiskSn1());
                     asDeviceCommon1.setModel(asComputerExcel.getDiskMode1());
@@ -271,7 +337,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon1);
                 }
-                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn2())) {
+                if (ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn2())) {
                     AsDeviceCommon asDeviceCommon2 = new AsDeviceCommon();
                     asDeviceCommon2.setSn(asComputerExcel.getDiskSn2());
                     asDeviceCommon2.setModel(asComputerExcel.getDiskMode2());
@@ -285,7 +351,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon2);
                 }
-                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn3())) {
+                if (ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn3())) {
                     AsDeviceCommon asDeviceCommon3 = new AsDeviceCommon();
                     asDeviceCommon3.setSn(asComputerExcel.getDiskSn3());
                     asDeviceCommon3.setModel(asComputerExcel.getDiskMode3());
@@ -299,7 +365,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     //注意还需要一个hostASId（后面那个asDeviceCommon的保存得上移到这里，且不能批处理了），硬盘设备序列号没赋值
                     asDeviceCommonListForDisk.add(asDeviceCommon3);
                 }
-                if(ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn4())) {
+                if (ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn4())) {
                     AsDeviceCommon asDeviceCommon4 = new AsDeviceCommon();
                     asDeviceCommon4.setSn(asComputerExcel.getDiskSn4());
                     asDeviceCommon4.setModel(asComputerExcel.getDiskMode4());
@@ -316,7 +382,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 this.saveBatch(asDeviceCommonListForDisk);
             }
             //
-           // this.saveBatch(asDeviceCommonList);
+            // this.saveBatch(asDeviceCommonList);
             asComputerSpecialService.saveBatch(asComputerSpecialList);
             asComputerGrantedService.saveBatch(asComputerGrantedList);
         }

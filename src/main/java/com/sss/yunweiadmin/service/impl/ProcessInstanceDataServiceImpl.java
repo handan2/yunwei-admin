@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpSession;
+import java.sql.Struct;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -110,8 +111,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 ProcessDefinitionTask taskForChangeDeptForBaomiUser = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().like("task_name", "新部门保密员").eq("process_definition_id", processDefinition.getId()));
                 //更改这个Task记录里的处理人配置信息
                 taskForChangeDeptForBaomiUser.setOperatorType("用户");
-                taskForChangeDeptForBaomiUser.setOperatorTypeValue(baomiUserIdForChangeDept + "");
-                taskForChangeDeptForBaomiUser.setOperatorTypeLabel("新部门保密员");
+                taskForChangeDeptForBaomiUser.setOperatorTypeIds(baomiUserIdForChangeDept + "");
+                taskForChangeDeptForBaomiUser.setOperatorTypeStr("新部门保密员");
                 processDefinitionTaskService.updateById(taskForChangeDeptForBaomiUser);
                 map.put("currentDeptName", currentDeptName);
                 map.put("changeDeptName", changeDeptName);
@@ -135,7 +136,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         if (CollUtil.isEmpty(proVarList)) return;
         ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new QueryWrapper<ProcessFormValue1>().eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()));
         List<ProcessFormValue2> formValue2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("form_value1_id", processFormValue1.getId()));
-        if (CollUtil.isEmpty(formValue2List)) return;
+       // if (CollUtil.isEmpty(formValue2List)) return;//20220920 注释掉，新用户入网流程就没有关联资产
         List<AsConfig> asConfigList = asConfigService.list(new QueryWrapper<AsConfig>().select("distinct en_table_name,zh_table_name"));
         JSONObject jsonObject = JSONObject.parseObject(processFormValue1.getValue());
         //20220722处理非变更字段中的proVar
@@ -198,7 +199,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         AsConfig asConfig = asConfigService.getOne(new QueryWrapper<AsConfig>().eq("en_table_name", tableName).eq("en_column_name", columnName));
                         String columnZhName = asConfig.getZhColumnName();
                         if (proVarList.contains(columnZhName)) {
-                            mapForProVar.put(columnZhName, pageValue);
+                            mapForProVar.put(columnZhName,  pageValue);
                         }
 
 //
@@ -248,6 +249,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 processFormCustomInst.setColumnValue(ObjectUtil.isNotEmpty(entry.getValue()) ? entry.getValue().toString() : "");
                 processFormCustomInst.setProcessInstanceDataId(processInstanceId);
                 String assetId = map.get(keyArray[0]);
+                if(StrUtil.isEmpty(assetId))//20220908排除有自定义表没有选资产的情况：如外设变更流程中，上传机未变更&未选资产
+                    continue;
                 processFormCustomInst.setAsId(Integer.parseInt(assetId));
                 Integer type_id = asDeviceCommonService.getById(assetId).getTypeId();
                 Integer Level2AsTypeId = asTypeService.getLevel2AsTypeById(type_id).getId();//20220510换成asid todo断点
@@ -397,7 +400,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
         //nextUserVO放入session
         if (endAndStartProcessVO.getHaveNextUser().equals("是")) {
-            NextUserVO nextUserVO = new NextUserVO(endAndStartProcessVO.getOperatorType(), endAndStartProcessVO.getOperatorTypeValue(), endAndStartProcessVO.getHaveNextUser());
+            NextUserVO nextUserVO = new NextUserVO(endAndStartProcessVO.getOperatorType(), endAndStartProcessVO.getOperatorTypeIds(), endAndStartProcessVO.getHaveNextUser());
             httpSession.setAttribute("nextUserVO", nextUserVO);
         }
         //第二个ActTask创建；20220608 startEvent执行完后activeTask，一般只会有一activeTask(即“发起者”那个节点)&&流程的发起者一般也同样是“发起者”那个处理候选人：直接查activeTask即可：不过暂不改
@@ -457,8 +460,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //20220703注释掉
 //        if (ObjectUtil.isNotEmpty(endAndStartProcessVO.getHaveNextUser()) && endAndStartProcessVO.getHaveNextUser().equals("是")) {
 //            processInstanceNode.setOperatorType(endAndStartProcessVO.getOperatorType());
-//            processInstanceNode.setOperatorTypeValue(endAndStartProcessVO.getOperatorTypeValue());
-//            processInstanceNode.setOperatorTypeLabel(endAndStartProcessVO.getOperatorTypeLabel());
+//            processInstanceNode.setOperatorTypeIds(endAndStartProcessVO.getOperatorTypeIds());
+//            processInstanceNode.setOperatorTypeStr(endAndStartProcessVO.getOperatorTypeStr());
 //        }
         processInstanceNodeService.save(processInstanceNode);
         //把ID记录入preProInstData
@@ -516,7 +519,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
         //nextUserVO放入session
         if (startProcessVO.getHaveNextUser().equals("是")) {
-            NextUserVO nextUserVO = new NextUserVO(startProcessVO.getOperatorType(), startProcessVO.getOperatorTypeValue(), startProcessVO.getHaveNextUser());
+            NextUserVO nextUserVO = new NextUserVO(startProcessVO.getOperatorType(), startProcessVO.getOperatorTypeIds(), startProcessVO.getHaveNextUser());
             httpSession.setAttribute("nextUserVO", nextUserVO);
         }
         //第二个ActTask创建；20220608 startEvent执行完后activeTask，一般只会有一activeTask(即“发起者”那个节点)&&流程的发起者一般也同样是“发起者”那个处理候选人：直接查activeTask即可：不过暂不改
@@ -582,8 +585,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //20220703注释掉
 //        if (ObjectUtil.isNotEmpty(startProcessVO.getHaveNextUser()) && startProcessVO.getHaveNextUser().equals("是")) {
 //            processInstanceNode.setOperatorType(startProcessVO.getOperatorType());
-//            processInstanceNode.setOperatorTypeValue(startProcessVO.getOperatorTypeValue());
-//            processInstanceNode.setOperatorTypeLabel(startProcessVO.getOperatorTypeLabel());
+//            processInstanceNode.setOperatorTypeIds(startProcessVO.getOperatorTypeIds());
+//            processInstanceNode.setOperatorTypeStr(startProcessVO.getOperatorTypeStr());
 //        }
         processInstanceNodeService.save(processInstanceNode);
         //20220620 保存硬盘信息
@@ -611,7 +614,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         String processStatus = processInstanceData.getProcessStatus();
         //checkProcessVO放入session
         if (checkProcessVO.getHaveNextUser().equals("是")) {
-            NextUserVO nextUserVO = new NextUserVO(checkProcessVO.getOperatorType(), checkProcessVO.getOperatorTypeValue(), checkProcessVO.getHaveNextUser());
+            NextUserVO nextUserVO = new NextUserVO(checkProcessVO.getOperatorType(), checkProcessVO.getOperatorTypeIds(), checkProcessVO.getHaveNextUser());
             httpSession.setAttribute("nextUserVO", nextUserVO);
         }
         //取出我的一个任务
@@ -693,8 +696,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //20220703注释掉
 //        if (ObjectUtil.isNotEmpty(checkProcessVO.getHaveNextUser()) && checkProcessVO.getHaveNextUser().equals("是")) {
 //            processInstanceNode.setOperatorType(checkProcessVO.getOperatorType());
-//            processInstanceNode.setOperatorTypeValue(checkProcessVO.getOperatorTypeValue());
-//            processInstanceNode.setOperatorTypeLabel(checkProcessVO.getOperatorTypeLabel());
+//            processInstanceNode.setOperatorTypeIds(checkProcessVO.getOperatorTypeIds());
+//            processInstanceNode.setOperatorTypeStr(checkProcessVO.getOperatorTypeStr());
 //        }
         if (ObjectUtil.isNotEmpty(checkProcessVO.getComment()) && checkProcessVO.getHaveComment().equals("是")) {
             processInstanceNode.setComment(checkProcessVO.getComment());
@@ -790,6 +793,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         processFormValue1Service.remove(new QueryWrapper<ProcessFormValue1>().eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()).eq("process_definition_id", processInstanceData.getProcessDefinitionId()));
         //删除processFormValue2
         processFormValue2Service.remove(new QueryWrapper<ProcessFormValue2>().eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()).eq("process_definition_id", processInstanceData.getProcessDefinitionId()));
+        //删除自定义表快照20220920
+        processFormCustomInstService.remove(new QueryWrapper<ProcessFormCustomInst>().eq("process_instance_data_id", processInstanceData.getId()));
         //删除流程实例
         workFlowBean.deleteProcessInstance(processInstanceData.getActProcessInstanceId());
         //删除diskForHisForProcess
@@ -1012,7 +1017,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             changeSpecial.setIsReportTitle("是");
                             changeSpecial.setZhTableName(asConfigMap.get(tableNameTmp));
                             changeList.add(changeSpecial);
-                            //以下两个只是个“开关量”：不记入“普通”变更记录 20220829todo加别的开关量
+                            //以下只是个“开关量”：
                             if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘")||changeColumnName.equals("更换内存")||changeColumnName.equals("更换网卡"))
                                 continue;
                         }
@@ -1057,10 +1062,14 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                             change.setZhTableName(asConfigMap.get(tableNameTmp));
                             changeList.add(change);
                             //数据对象
-                            if (isFinish) {//20220713 有问题todo断点 就没有“变更硬盘”这个字段
+                            if (isFinish) {
                                 ReflectUtil.setFieldValue(dbObject, columnName, pageValue);
-                                if (columnName.contains("变更硬盘") || columnName.contains("硬盘变更"))//20220625加
+                                //20220625注意留意：这些清空字段不能与正常字段重名
+                                if (columnName.contains("计算机策略") ||columnName.contains("故障描述") ||columnName.contains("新接入外设") || columnName.contains("硬盘变更"))
                                     ReflectUtil.setFieldValue(dbObject, columnName, "");
+                                if (columnName.contains("操作系统安装时间")) {//20220915
+                                    asDeviceCommonService.addStatistics();
+                                }
                             }
                         }
                     }

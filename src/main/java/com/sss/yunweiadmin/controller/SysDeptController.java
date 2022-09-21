@@ -113,8 +113,8 @@ public class SysDeptController extends BaseController<SysDept> {
             for(SysUser user:userList){
                 TreeSelectVO treeSelectVO1 = new TreeSelectVO();
                 treeSelectVO1.setTitle(user.getDisplayName());
-                treeSelectVO1.setKey(user.getId());
-                treeSelectVO1.setValue(user.getId());
+                treeSelectVO1.setKey(user.getId()+"."+user.getDisplayName()+"."+user.getSecretDegree()+"."+obj.getName()+"."+user.getIdNumber());//
+                treeSelectVO1.setValue(user.getId());//+user.getDisplayName()+"."+user.getSecretDegree()+"."+obj.getName());//20220903改造：之前只是存id
                 treeList2.add(treeSelectVO1);
             }
             if(CollUtil.isNotEmpty(treeList2))

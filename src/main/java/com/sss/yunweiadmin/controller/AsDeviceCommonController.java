@@ -15,6 +15,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.TreeUtil;
@@ -73,10 +74,18 @@ public class AsDeviceCommonController {
     DiskService diskService;
     @Autowired
     ProcessFormCustomTypeService processFormCustomTypeService;
+    @Autowired
+    StatisticsService statisticsService;
 
     @GetMapping("test")
     public List<Integer> test(int typeId) {
         return asTypeService.getTypeIdList(typeId);
+    }
+
+    @GetMapping("statistics")
+    public boolean statistics()
+    {
+        return asDeviceCommonService.addStatistics();
     }
 
     //20211115
@@ -90,6 +99,7 @@ public class AsDeviceCommonController {
     @GetMapping("list")
     public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDeptId, String userName, Integer customTableId, String stateForExcludeForJsonStr) {
         QueryWrapper<AsDeviceCommon> queryWrapper = new QueryWrapper<>();
+        queryWrapper.ne("type_id",30);//20220905把硬盘排除
         if (ObjectUtil.isNotEmpty(no)) {
             queryWrapper.like("no", no);
         }
@@ -101,7 +111,7 @@ public class AsDeviceCommonController {
             String str = processFormCustomTypeService.getById(customTableId).getProps();
             JSONObject jsonObject = JSON.parseObject(str);
             int asTypeId = jsonObject.getInteger("asTypeId");
-            List<Integer> typeIdList = asTypeService.getTypeIdList(asTypeId);
+            List<Integer> typeIdList = asTypeService.getTypeIdList(asTypeId);//获取当前类型ID及子类型的IDList
             queryWrapper.in("type_id", typeIdList);
         }
         if (ObjectUtil.isNotEmpty(name)) {
@@ -125,6 +135,7 @@ public class AsDeviceCommonController {
         if (ObjectUtil.isNotEmpty(userName)) {
             queryWrapper.eq("user_name", userName);
         }
+  
         IPage<AsDeviceCommon> page = asDeviceCommonService.page(new Page<>(currentPage, pageSize), queryWrapper);
         //20211115临时借用temp字段存储设备类型
         page.getRecords().stream().forEach(item -> item.setTemp(asTypeService.getById(item.getTypeId()).getName()));
@@ -132,8 +143,26 @@ public class AsDeviceCommonController {
     }
 
     @GetMapping("getAsDeviceCommonNoVL")
-    public List<ValueLabelVO> getAsDeviceCommonNoVL() {
-        List<AsDeviceCommon> list = asDeviceCommonService.list();
+    public List<ValueLabelVO> getAsDeviceCommonNoVL(Integer userDeptId, Integer customTableId, String stateForExcludeForJsonStr) {
+        QueryWrapper<AsDeviceCommon> queryWrapper = new QueryWrapper<>();
+        queryWrapper.ne("type_id",30);//20220905把硬盘排除
+        if (ObjectUtil.isNotEmpty(customTableId)) {//20220716
+            String str = processFormCustomTypeService.getById(customTableId).getProps();
+            JSONObject jsonObject = JSON.parseObject(str);
+            int asTypeId = jsonObject.getInteger("asTypeId");
+            List<Integer> typeIdList = asTypeService.getTypeIdList(asTypeId);//获取当前类型ID及子类型的IDList
+            queryWrapper.in("type_id", typeIdList);
+        }
+        if (StrUtil.isNotEmpty(stateForExcludeForJsonStr)) {//20220817
+            String bbb =stateForExcludeForJsonStr.replaceAll("[\"\\[\\]]","");
+            List<String> stateForExcludeList = Stream.of( bbb.split(",")).collect(Collectors.toList());
+            queryWrapper.notIn("state", stateForExcludeList);
+        }
+        if (ObjectUtil.isNotEmpty(userDeptId)) {
+            String deptName = sysDeptService.getById(userDeptId).getName();
+            queryWrapper.eq("user_dept", deptName);
+        }
+        List<AsDeviceCommon> list = asDeviceCommonService.list(queryWrapper);
         return list.stream().map(item -> new ValueLabelVO(item.getNo(), item.getNo())).collect(Collectors.toList());
     }
 
@@ -144,16 +173,35 @@ public class AsDeviceCommonController {
         return asTypeService.getLevel2AsTypeById(typeId);
     }
 
+//    @GetMapping("getByNo")
+//    public AsDeviceCommon getByNo(String no) {
+//        if (ObjectUtil.isNotEmpty(no)) {
+//            List<AsDeviceCommon> list = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("no", no));
+//            if (CollUtil.isNotEmpty(list))
+//                return list.get(0);
+//        }
+//        return null;
+//    }
+
+
     //与前端path.js里路径对应，所有的页面都是用的这个，先不改了
     @GetMapping("get")
-    public AssetVO getById(Integer id) {
+    public AssetVO get(Integer id,String no) {
         AssetVO assetVO = new AssetVO();
-        AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(id);
+        AsDeviceCommon asDeviceCommon = new AsDeviceCommon();
+        QueryWrapper<AsDeviceCommon> queryWrapper = new QueryWrapper<>();
+        if(ObjectUtil.isNotEmpty(id))
+            queryWrapper.eq("id",id);
+        if(ObjectUtil.isNotEmpty(no))
+            queryWrapper.eq("no",no);
+       List<AsDeviceCommon> list = asDeviceCommonService.list(queryWrapper);
+       if(CollUtil.isNotEmpty(list))
+           asDeviceCommon = list.get(0);
         assetVO.setAsDeviceCommon(asDeviceCommon);
         //资产类型：去查了相应的第二层typeID,但未处理typeID是第一级的情况 ，这里还有问题：应用系统分类肯定是第一级，这里未处理，其实放在eles里就行，那个资产签怎么展示呢？
         AsType asType = getLevel2AsTypeById(asDeviceCommon.getTypeId());
         Integer asTypeId = asType.getId();
-        if (asTypeId == 4) {
+        if (asTypeId == 4 || asTypeId == 29) {
             //计算机
             AsComputerSpecial asComputerSpecial = asComputerSpecialService.getOne(new QueryWrapper<AsComputerSpecial>().eq("as_id", id));
             if (asComputerSpecial != null) {
