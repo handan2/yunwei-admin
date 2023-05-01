@@ -20,7 +20,7 @@ import java.util.List;
 public class WebMvcConfig extends WebMvcConfigurationSupport {
     @Override
     protected void addInterceptors(InterceptorRegistry registry) {
-        //配置ResponseResultInterceptor
+        //配置ResponseResultInterceptor;
         registry.addInterceptor(new ResponseResultInterceptor()).addPathPatterns("/**");
         //配置登录拦截器， excludeList搭配下面的拦截器使用
         List<String> excludeList = new ArrayList<>();
@@ -30,7 +30,7 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
         excludeList.add("/login");
         excludeList.add("/ssologin");
         excludeList.add("/redirect");
-        excludeList.add("/sysUser/ssoLoginForPost");
+        excludeList.add("/sysUser/printLogin");
         excludeList.add("/*.js");
         excludeList.add("/*.css");
         //registry.addInterceptor(new LoginInterceptor()).addPathPatterns("/**").excludePathPatterns(excludeList);

@@ -17,10 +17,12 @@ import com.sss.yunweiadmin.service.SysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 /**
  * <p>
@@ -37,7 +39,9 @@ public class SysDeptController extends BaseController<SysDept> {
     @Autowired
     private SysDeptService sysDeptService;
     @Autowired
-    private  SysUserService sysUserService;
+    private SysUserService sysUserService;
+    @Autowired
+    HttpSession httpSession;
 
     @Override
     @GetMapping("list")
@@ -86,38 +90,67 @@ public class SysDeptController extends BaseController<SysDept> {
 
     @GetMapping("getDeptTree")
     public List<TreeSelectVO> getDeptTree() {
-        List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().orderByAsc("sort").eq("remark","基层部门"));
+        List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().orderByAsc("sort").eq("remark", "基层部门"));
         return TreeUtil.getTreeSelectVO(list);
     }
+
     //穿梭框里的部门人员树，，仅查询第第三层部门成员 todo改名
     @GetMapping("getDeptUserTree")
     public List<TreeTransferVO> getDeptUserTree() {
         List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().notIn("id", 1, 2).orderByAsc("sort"));
         return TreeUtil.getSelectDeptUserTree(list);
     }
+
+    //20221119专用于给变更责任人传本部门人员列表：因为暂限定本部门人员，如果是所有部门，应调用此方法下面的方法
+    @GetMapping("getDeptUserTreeSelect2")
+    public List<TreeSelectVO> getDeptUserTreeSelect2() {
+        SysUser currentUser = (SysUser) httpSession.getAttribute("user");
+        SysDept obj = sysDeptService.getOne(new QueryWrapper<SysDept>().eq("id", currentUser.getDeptId()));
+//        List<TreeSelectVO> treeList = new ArrayList<>();
+//        TreeSelectVO treeSelectVO = new TreeSelectVO();
+//        treeSelectVO.setTitle(obj.getName());
+//        treeSelectVO.setKey(obj.getId());
+//        treeSelectVO.setValue(obj.getId() + 100000);//为了不和子结点的value重复
+//        treeSelectVO.setSelectable(false);//部门这级不可选
+//        treeList.add(treeSelectVO);
+        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", obj.getId()));
+        List<TreeSelectVO> treeList2 = new ArrayList<>();
+        for (SysUser user : userList) {
+            TreeSelectVO treeSelectVO1 = new TreeSelectVO();
+            treeSelectVO1.setTitle(user.getDisplayName());
+            treeSelectVO1.setKey(user.getId() + "." + user.getDisplayName() + "." + user.getSecretDegree() + "." + obj.getName() + "." + user.getIdNumber());//
+            treeSelectVO1.setValue(user.getId());//+user.getDisplayName()+"."+user.getSecretDegree()+"."+obj.getName());//20220903改造：之前只是存id
+            treeList2.add(treeSelectVO1);
+        }
+//        if (CollUtil.isNotEmpty(treeList2))
+//            treeSelectVO.setChildren(treeList2);
+        return treeList2;
+
+    }
+
     //20211121获得treeSelect部门人员那种tree，仅查询第第三层部门成员
     @GetMapping("getDeptUserTreeSelect")
-    public  List<TreeSelectVO> getDeptUserTreeSelect() {
+    public List<TreeSelectVO> getDeptUserTreeSelect() {
         List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().eq("pid", 2).orderByAsc("sort"));
         if (CollUtil.isEmpty(list)) throw new RuntimeException("集合为空！");
-        List<TreeSelectVO> treeList =new ArrayList<>();
-        for(SysDept obj:list){
+        List<TreeSelectVO> treeList = new ArrayList<>();
+        for (SysDept obj : list) {
             TreeSelectVO treeSelectVO = new TreeSelectVO();
             treeSelectVO.setTitle(obj.getName());
             treeSelectVO.setKey(obj.getId());
-            treeSelectVO.setValue(obj.getId()+100000);//为了不和子结点的value重复
+            treeSelectVO.setValue(obj.getId() + 100000);//为了不和子结点的value重复
             treeSelectVO.setSelectable(false);//部门这级不可选
             treeList.add(treeSelectVO);
-            List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id",obj.getId()));
-            List<TreeSelectVO> treeList2 =new ArrayList<>();
-            for(SysUser user:userList){
+            List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", obj.getId()));
+            List<TreeSelectVO> treeList2 = new ArrayList<>();
+            for (SysUser user : userList) {
                 TreeSelectVO treeSelectVO1 = new TreeSelectVO();
                 treeSelectVO1.setTitle(user.getDisplayName());
-                treeSelectVO1.setKey(user.getId()+"."+user.getDisplayName()+"."+user.getSecretDegree()+"."+obj.getName()+"."+user.getIdNumber());//
+                treeSelectVO1.setKey(user.getId() + "." + user.getDisplayName() + "." + user.getSecretDegree() + "." + obj.getName() + "." + user.getIdNumber());//
                 treeSelectVO1.setValue(user.getId());//+user.getDisplayName()+"."+user.getSecretDegree()+"."+obj.getName());//20220903改造：之前只是存id
                 treeList2.add(treeSelectVO1);
             }
-            if(CollUtil.isNotEmpty(treeList2))
+            if (CollUtil.isNotEmpty(treeList2))
                 treeSelectVO.setChildren(treeList2);
         }
         return treeList;

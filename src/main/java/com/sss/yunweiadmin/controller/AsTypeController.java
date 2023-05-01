@@ -50,6 +50,18 @@ public class AsTypeController {
         return TreeUtil.getTreeSelectVO(list);
     }
 
+    @GetMapping("getAsTypeTreeNotIncludeSelf")
+    public List<TreeSelectVO> getAsTypeTreeNotIncludeSelf(Integer rootId) {
+        //20211119 加入sort
+        List<AsType> list = null;
+        if (ObjectUtil.isNotEmpty(rootId)) {
+            List<Integer> idList = asTypeService.getTypeIdListNotIncludeSelf(rootId);
+            list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid", "sort").in("id", idList));
+        } else
+            list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid", "sort"));
+        return TreeUtil.getTreeSelectVO(list);
+    }
+
     @GetMapping("getLevelTwoInFoAssetAsTypeLV")
     public List<ValueLabelVO> getLevelTwoInFoAssetAsTypeLV() {//信息设备的（下级）子分类
         return asTypeService.list(new QueryWrapper<AsType>().eq("level", 2).eq("pid", 1)).stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());

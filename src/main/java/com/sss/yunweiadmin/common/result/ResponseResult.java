@@ -39,6 +39,6 @@ public class ResponseResult {
     }
 
     public static ResponseResult fail(String msg) {
-        return new ResponseResult(0, msg, msg);
+        return new ResponseResult(0, "", msg);//20230207
     }
 }

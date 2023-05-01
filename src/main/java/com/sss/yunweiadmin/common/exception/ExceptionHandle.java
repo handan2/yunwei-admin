@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 @RestControllerAdvice
 @Slf4j
@@ -15,14 +16,16 @@ public class ExceptionHandle {
 
     //前端提示异常
     @ExceptionHandler(PageTipException.class)
-    public ResponseResult pageTipException(HttpServletRequest request, Exception e) {
+    public ResponseResult pageTipException(HttpServletRequest request, HttpServletResponse response, Exception e) {
+        response.setCharacterEncoding("UTF-8");
         return ResponseResult.fail(e.getMessage().length() > 50 ? "java代码错误" : e.getMessage());
     }
 
     //未知异常
     @ExceptionHandler(Exception.class)
-    public ResponseResult exception(HttpServletRequest request, Exception e) {
+    public ResponseResult exception(HttpServletRequest request, HttpServletResponse response, Exception e) {
         //记录异常信息到日志
+        response.setCharacterEncoding("UTF-8");
         log.error("url={}", request.getRequestURL());
         log.error("method={}", request.getMethod());
         //目前只能获取get请求的参数，post获取不到！！！

@@ -15,6 +15,6 @@ import java.util.List;
  * @since 2022-08-24
  */
 public interface InfoNoService extends IService<InfoNo> {
-    String addExcel(List<InfoNoExcel> list, String haveCover);
+    String addExcel(List<InfoNoExcel> list, String importMode);
 
 }

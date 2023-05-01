@@ -65,6 +65,11 @@
             <artifactId>mariadb-java-client</artifactId>
             <scope>runtime</scope>
         </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.mariadb.jdbc</groupId>-->
+<!--            <artifactId>mariadb-java-client</artifactId>-->
+<!--            <scope>runtime</scope>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
@@ -123,7 +128,8 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.5.8</version>
+<!--            <version>5.5.8</version>-->
+            <version>5.8.12</version>
         </dependency>
         <!--activiti6-->
         <dependency>
@@ -145,7 +151,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
-            <version>2.2.11</version>
+            <version>3.0.0-beta1</version>
         </dependency>
         <!-- fastjson -->
         <dependency>
@@ -181,6 +187,13 @@
             <version>1.4</version>
         </dependency>
         <!-- axis 1.4 jar end -->
+        <!--    20230328-->
+        <dependency>
+            <groupId>commons-fileupload</groupId>
+            <artifactId>commons-fileupload</artifactId>
+            <version>1.4</version>
+        </dependency>
+
     </dependencies>
 
 <!--    20220915-->

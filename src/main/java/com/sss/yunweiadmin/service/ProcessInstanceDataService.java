@@ -23,4 +23,6 @@ public interface ProcessInstanceDataService extends IService<ProcessInstanceData
     boolean modifyProcessForm(ModifyProcessFormVO modifyProcessFormVO);
 
     boolean delete(ProcessInstanceData processInstanceData);
+
+    CheckTaskVO getCheckTaskVO(Integer processDefinitionId, String actProcessInstanceId);
 }

@@ -45,7 +45,7 @@ public class AsComputerSpecial implements Serializable {
 
     private String osType;
 
-    private Integer cpuTotal;
+    private String cpu;
 
     private Integer diskTotal;
 

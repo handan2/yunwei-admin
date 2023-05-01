@@ -93,7 +93,6 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         });
 
 
-
         flag3 = processDefinitionTaskService.saveBatch(taskList);
 
         if (ObjectUtil.isNotEmpty(edgeList)) {
@@ -144,14 +143,24 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
     public boolean delete(Integer processDefinitionId) {
         ProcessDefinition processDefinition = this.getById(processDefinitionId);
         String deployId = processDefinition.getDeployId();
-        //是否发起了流程实例
+
+        //deployId有值：代表曾发起过流程实例
         if (ObjectUtil.isNotEmpty(deployId)) {
-            //已经发起了流程实例
-            List<ProcessInstanceData> dataList = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").eq("process_definition_id", processDefinitionId));
-            if (ObjectUtil.isNotEmpty(dataList)) {
+            //20221105对有实例的流程定义名称标记下、界面上也不再让他显示
+            processDefinition.setProcessName(processDefinition.getProcessName() + "(旧)");
+            processDefinition.setHaveDisplay("否");
+            processDefinition.setDeployId("");
+            this.updateById(processDefinition);
+            //对未完成的流程实例直接删除
+            processInstanceDataService.remove(new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").eq("process_definition_id", processDefinitionId));
+            List<ProcessInstanceData> dataList = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().eq("process_status", "完成").eq("process_definition_id", processDefinitionId));
+            if (CollUtil.isNotEmpty(dataList)) {//含有已完成实例
                 for (ProcessInstanceData processInstanceData : dataList) {
-                    processInstanceDataService.delete(processInstanceData);
+                    processInstanceData.setActProcessInstanceId("");
+                    processInstanceDataService.updateById(processInstanceData);
                 }
+                workFlowBean.deleteDeploy(deployId);
+                return true;
             }
             workFlowBean.deleteDeploy(deployId);
         }

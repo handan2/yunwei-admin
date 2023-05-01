@@ -13,9 +13,9 @@ public class LoginInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
         SysUser user = (SysUser) request.getSession().getAttribute("user");
         if (user == null) {
-            //用户未登录,重定向到登录页面；不起作用：no,20211128
+            //用户未登录1,重定向到登录页面；不起作用：no,20211128
             // response.sendRedirect(request.getContextPath() + "/login");
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         return true;
     }

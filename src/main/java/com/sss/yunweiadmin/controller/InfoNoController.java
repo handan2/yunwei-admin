@@ -78,7 +78,7 @@ public class InfoNoController {
     public boolean add1() {
         InfoNo a =new InfoNo();
         a.setValue("aaaa");
-        a.setNetType("内网");
+        a.setNetType("国密网");
         a.setD("2022/08/25");
         return infoNoService.save(a);
     }
@@ -109,18 +109,21 @@ public class InfoNoController {
     public List<ValueLabelVO> getInfoNoVL(String netType,String miji) {
         List<ValueLabelVO> list = new ArrayList<>();
         QueryWrapper<InfoNo> queryWrapper = new QueryWrapper<>();
-        if(StrUtil.isNotEmpty(netType))
+        if(StrUtil.isNotEmpty(netType))//20221007目前前端申领流程中没有传这个参数
             queryWrapper.eq("net_type", netType);
-        queryWrapper.eq("status","空闲");
         if(StrUtil.isNotEmpty(miji)) {
-            if(miji.equals("秘密")||miji.equals("机密"))
-                queryWrapper.eq("net_type", "内网");
-            else if(miji.equals("普通商密"))
+            if(miji.equals("秘密")||miji.equals("机密")) {
+                queryWrapper.eq("net_type", "国密网");
+                queryWrapper.eq("status","空闲");
+            }
+            else if(miji.equals("普通商密"))//试验网可以多个机器用一个信息点号
                 queryWrapper.eq("net_type", "试验网");
-            else if(miji.equals("非密"))
+            else if(miji.equals("非密")) {
                 queryWrapper.eq("net_type", "商密网");
+                queryWrapper.eq("status","空闲");
+            }
         }
-        queryWrapper.eq("status","空闲");
+
         List<InfoNo> infoNoList = infoNoService.list(queryWrapper);
         return infoNoList.stream().map(infoNo -> new ValueLabelVO(infoNo.getValue(),infoNo.getValue())).collect(Collectors.toList());
        // return infoNoList.stream().map(infoNo -> new ValueLabelVO(infoNo.getValue()+"."+infoNo.getNetType(),infoNo.getValue()+"."+infoNo.getNetType())).collect(Collectors.toList());
@@ -147,9 +150,9 @@ public class InfoNoController {
         List<InfoNoExcel> list = listener.getData();
         //表单
         JSONObject jsonObject = JSON.parseObject(formValue);
-        String haveCover = jsonObject.getString("haveCover");
+        String importMode = jsonObject.getString("importMode");
         List<String> resultList = new ArrayList<>();
-        resultList.add(infoNoService.addExcel(list, haveCover));
+        resultList.add(infoNoService.addExcel(list, importMode));
         return resultList;
     }
 

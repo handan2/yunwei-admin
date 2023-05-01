@@ -24,6 +24,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.lang.reflect.Field;
 import java.net.SocketTimeoutException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +105,9 @@ public class testProcess {
         String[] a11 = {a,b};
         System.out.println(a11[0]);
 
+         String[] sns = "aa".split("\\,");
+    System.out.println(sns.length);
+
         IService service = (IService) SpringUtil.getBean("asDeviceCommonServiceImpl");
 
         Object dbObject = null;
@@ -121,7 +126,6 @@ public class testProcess {
 
     @Test
     public void testReflect() throws IllegalAccessException {
-
         System.out.println(ObjectUtil.isNotEmpty(""));
     //    Person a= new Person("john","xxxxxxxxxx");
   //      System.out.println(taskService);
@@ -196,6 +200,16 @@ public class testProcess {
         String processDefinitionKey = "MyProcess";
         runtimeService.startProcessInstanceByKey(processDefinitionKey);
         System.out.println("start sucessfully");
+    }
+
+    @Test
+    public void testLocalDate() {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime date = LocalDateTime.parse("2022-02-01 11:11:11",fmt);
+
+        DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        String dateStr =  date.toLocalDate().format(fmt2);
+        System.out.println(dateStr);
     }
 
 //

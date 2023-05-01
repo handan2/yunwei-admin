@@ -55,6 +55,7 @@ public class ProcessFormTemplateController {
 
 
 
+
     //20220521加， 应该已不用
     @GetMapping("getGroupKT")
     public List<KeyTitleVO> getGroupKT(Integer processDefinitionId) {
@@ -64,79 +65,32 @@ public class ProcessFormTemplateController {
 
     /**
      * 20211201这个是发起流程实例时获取所有的temploate记录（并以id/label/name/type/flag属性组装成基本成员）返回给页面的数据
-     * 参考这里解析temlate表的逻辑新写一个action来传变更字段相应的map（id/label）集合返回给前端:已
-     * <p>
-     * 20211207 todo在这里做下对流程实例发起时select变更字段的value值(选项字段)，做下判断与处理：根据约定（字符串格式）规则
-     * 决定是否查下DB/把结果再塞回options相应的字段值中；当然这里实际要改的是TreeUtil.getFormTemplateTree(list);
+     * 参考这里解析template表的逻辑新写一个action来传变更字段相应的map（id/label）集合返回给前端:已
      */
 
     @GetMapping("getFormTemplateTree")
-    public List<FormTemplateVO> getFormTemplateTree(Integer processDefinitionId) {
+    public List<FormTemplateVO> getFormTemplateTree(Integer processDefinitionId,String actProcessInstanceId) {//20221103 添加Integer actProcessInstanceId
+
+
         List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
-        return processFormTemplateService.getFormTemplateTree(list);
+        return processFormTemplateService.getFormTemplateTree(list,processDefinitionId,actProcessInstanceId);
         // return TreeUtil.getFormTemplateTree(list);
     }
 
     //获取表单template对应的变更字段/基本字段/自定义表字段 的（label/ID）map;如果是自定义表的字段：label名前加'table_',变更字段：label名直接是“涉密级别”这种（前面没有自定义表名）
     @GetMapping("getLabelIdMapForItemByAjax")
     public Map<String, String> getLabelIdMapForItemByAjax(Integer processDefinitionId, String hideGroupIds) {
-        if(ObjectUtil.isEmpty(processDefinitionId))
-            return null;
-        ProcessDefinition processDefinition = processDefinitionService.getById(processDefinitionId);
-        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
-        Map<String, String> map = Maps.newHashMap();
-        List<String> hideGroupMemberLabelList = new ArrayList<>();
-        if (StrUtil.isNotEmpty(hideGroupIds)) {
-            String[] hideGroupIdArr = hideGroupIds.split(",");
-            List<String> idList = Stream.of(hideGroupIdArr).collect(Collectors.toList());
-            idList.stream().forEach(item -> {
-                ProcessFormTemplate hideGroup = processFormTemplateService.getById(item);//验证下，item/id 此时是字符串会不会有问题？好像可以
-                if (ObjectUtil.isNotEmpty(hideGroup))
-                    hideGroupMemberLabelList.add(hideGroup.getLabel());
-            });
-        }
-        for (ProcessFormTemplate processFormTemplate : list) {
-            if (CollUtil.isNotEmpty(hideGroupMemberLabelList)) {
-                if (hideGroupMemberLabelList.contains(processFormTemplate.getGroupParentLabel()))//20220821排除掉隐藏字段组内的成员
-                    continue;
-            }
-            if ("字段变更类型".equals(processFormTemplate.getFlag())) {
-                map.put(processFormTemplate.getLabel().split("\\.")[1], processFormTemplate.getId().toString());
-            } else if ("基本类型".equals(processFormTemplate.getFlag())) {
-                map.put(processFormTemplate.getLabel(), processFormTemplate.getId().toString());
-            }
-        }
-        //202207331把自定义表字段也加上
-        List<TableTypeVO> list1 = new ArrayList<>();
-        Map<Integer, List<TableTypeVO>> mapForTableTypeVOList = this.getTableTypeVO(processDefinitionId);
-        for (Map.Entry<Integer, List<TableTypeVO>> entry : mapForTableTypeVOList.entrySet()) {
-            list1.addAll(entry.getValue());
-        }
-        list1.stream().forEach(item -> {//20220905 todo对外设入网流程，两类设备的“涉密级别”做个区分，计算机类为“table_涉密级别2”
-            if(processDefinition.getProcessName().contains("外设声像及办公自动化申领")||processDefinition.getProcessName().contains("外设声像及办公自动化变更")){
-                if(item.getLabel().contains("涉密级别") && item.getLabel().contains("计算机"))
-                    map.put("table_计算机_" + item.getLabel().split("\\.")[1], item.getName());
-                if(item.getLabel().contains("涉密级别") && item.getLabel().contains("外设"))
-                    map.put("table_外设_" + item.getLabel().split("\\.")[1], item.getName());
-                if(item.getLabel().contains("资产编号") && item.getLabel().contains("计算机"))
-                    map.put("table_计算机_" + item.getLabel().split("\\.")[1], item.getName());
-                if(item.getLabel().contains("资产编号") && item.getLabel().contains("外设"))
-                    map.put("table_外设_" + item.getLabel().split("\\.")[1], item.getName());
-            }
-
-            map.put("table_" + item.getLabel().split("\\.")[1], item.getName());
-        });
-        return map;
+        return processFormTemplateService.getLabelIdMapForItemByAjax(processDefinitionId,hideGroupIds);
     }
 
     //用于给tree组件赋值:获得需要在提交时可供界面上选择来显示的group
     @GetMapping("getFormTemplateGroupTreeForSelect")
     public List<TreeSelectVO> getFormTemplateGroupTreeForSelect(Integer processDefinitionId) {
         List<ProcessFormTemplate> list1 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
-        //20220517todo要判断空
-        if (CollUtil.isEmpty(list1)) {
-            throw new RuntimeException("自定义字段为空，该流程定义可能不存在");
-        }
+        //20220517todo要判断空；20221202先注释掉
+//        if (CollUtil.isEmpty(list1)) {
+//            throw new RuntimeException("自定义字段为空，该流程定义可能不存在");
+//        }
         Map<String, String> map1 = list1.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate::getHaveGroupSelect));
 
         List<ProcessFormTemplate> list2 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组").eq("have_group_select", "是"));
@@ -207,40 +161,41 @@ public class ProcessFormTemplateController {
         return selectGroupIdSet;
     }
 
-    //用于自定义表相关字段的渲染;格式：<自定义表的ID,对应的字段VOList<VO: "label": "计算机信息表.资产编号","name": "16.计算机信息表.as_device_common.no.75">>//自定义表的记录相应源表/字段的那个字段叫props:里面是json格式;
+    //用于自定义表相关字段的渲染;格式：<自定义表的ID,对应的字段VOList<VO: "label": "计算机信息表.设备编号","name": "16.计算机信息表.as_device_common.no.75">>//自定义表的记录相应源表/字段的那个字段叫props:里面是json格式;
     //示例中最后那个“75”代表as_config中的对应ID
     //asConfigController也有同名getTableTypeVO方法
     @GetMapping("getTableTypeVO")
     public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) {
-        Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
-        //1.取出所有的表类型的名称
-        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
-        List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
-            String tableId = item.getType().split("\\.")[0];
-            return Integer.parseInt(tableId);
-        }).collect(Collectors.toList());
-        if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
-            //2.根据表名称取出processFormCustomType
-            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().in("id", tableIdList));
-            //3.
-            for (ProcessFormCustomType processFormCustomType : typeList) {
-                List<TableTypeVO> tmpList = Lists.newArrayList();
-
-                String props = processFormCustomType.getProps();
-                Map<String, List<AsConfig>> tmpMap = ProcessFormCustomTypeUtil.parseProps(props);//String代表英文table名称
-                tmpMap.entrySet().stream().forEach(item -> {
-                    item.getValue().forEach(item2 -> {
-                        TableTypeVO tableTypeVO = new TableTypeVO();
-                        tableTypeVO.setLabel(processFormCustomType.getName() + "." + item2.getZhColumnName());
-                        tableTypeVO.setName(processFormCustomType.getId() + "." + processFormCustomType.getName() + "." + item.getKey() + "." + item2.getEnColumnName() + "." + item2.getId());
-                        tmpList.add(tableTypeVO);
-                    });
-                });
-
-                map.put(processFormCustomType.getId(), tmpList);
-            }
-        }
-        return map;
+        return processFormTemplateService.getTableTypeVO(processDefinitionId);
+//        Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
+//        //1.取出所有的表类型的名称
+//        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+//        List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
+//            String tableId = item.getType().split("\\.")[0];
+//            return Integer.parseInt(tableId);
+//        }).collect(Collectors.toList());
+//        if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
+//            //2.根据表名称取出processFormCustomType
+//            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().in("id", tableIdList));
+//            //3.
+//            for (ProcessFormCustomType processFormCustomType : typeList) {
+//                List<TableTypeVO> tmpList = Lists.newArrayList();
+//
+//                String props = processFormCustomType.getProps();
+//                Map<String, List<AsConfig>> tmpMap = ProcessFormCustomTypeUtil.parseProps(props);//String代表英文table名称
+//                tmpMap.entrySet().stream().forEach(item -> {
+//                    item.getValue().forEach(item2 -> {
+//                        TableTypeVO tableTypeVO = new TableTypeVO();
+//                        tableTypeVO.setLabel(processFormCustomType.getName() + "." + item2.getZhColumnName());
+//                        tableTypeVO.setName(processFormCustomType.getId() + "." + processFormCustomType.getName() + "." + item.getKey() + "." + item2.getEnColumnName() + "." + item2.getId());
+//                        tmpList.add(tableTypeVO);
+//                    });
+//                });
+//
+//                map.put(processFormCustomType.getId(), tmpList);
+//            }
+//        }
+//        return map;
     }
 
     //20211129获取流程实例中自定义表各字段的相应实例数据; 格式<"16.计算机信息表.as_device_common.no.75","J0601111">；这个函数只有在流程发起时选择资产后的填充相应字段时被调用

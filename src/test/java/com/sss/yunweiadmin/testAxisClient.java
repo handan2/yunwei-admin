@@ -9,14 +9,52 @@ import javax.xml.rpc.ParameterMode;
 import javax.xml.rpc.ServiceException;
 import javax.xml.xpath.XPathConstants;
 import java.rmi.RemoteException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Random;
 
 import org.apache.axis.handlers.soap.SOAPService;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 public class testAxisClient {
+    //测试反射/获得所有属性名
+    @Test
+    public void testReflect() throws Exception{
+        Class<?> clazz = Class.forName("com.sss.yunweiadmin.model.excel.AsComputerDownload");
+        System.out.println("===============本类属性===============");
+        // 取得本类的全部属性
+        Field[] field = clazz.getDeclaredFields();
+        for (int i = 0; i < field.length; i++) {
+            // 权限修饰符
+            int mo = field[i].getModifiers();
+            String priv = Modifier.toString(mo);
+            // 属性类型
+            Class<?> type = field[i].getType();
+            System.out.println(priv + " " + type.getName() + " " + field[i].getName() + ";");
+        }
+    }
+
+    //测试解析xml
+    @Test
+    public void random() {
+        String baomiNo = "0094";
+        LocalDateTime date = LocalDateTime.now();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyHHmmssSSS");
+        String dateStr = date.format(fmt);
+        Random rnd = new Random();
+        int code = rnd.nextInt(1000) + 100;
+        String randomNum = Integer.toString(code);
+
+            baomiNo = baomiNo + "D";
+
+        baomiNo = baomiNo + dateStr + randomNum;
+        System.out.println(baomiNo);
+    }
    //测试解析xml
     @Test
     public void abc2(){

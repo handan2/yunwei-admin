@@ -17,4 +17,5 @@ public interface AsTypeService extends IService<AsType> {
     AsType getLevel2AsTypeById(Integer typeId);
     AsType getAsType(String typeName);
     List<Integer> getTypeIdList(Integer typeId);
+    List<Integer> getTypeIdListNotIncludeSelf(Integer typeId);
 }

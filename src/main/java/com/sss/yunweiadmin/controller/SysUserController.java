@@ -3,6 +3,7 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.XmlUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.alibaba.excel.EasyExcel;
@@ -11,6 +12,8 @@ import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.read.metadata.ReadSheet;
 import com.alibaba.excel.support.ExcelTypeEnum;
 import com.alibaba.excel.write.metadata.WriteSheet;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -104,6 +107,82 @@ public class SysUserController {
         //20211116
         IPage<SysUser> page = sysUserService.page(new Page<>(currentPage, pageSize), queryWrapper);
         page.getRecords().forEach(item -> item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : 2).getName()));
+        return page;
+    }
+
+    @ResponseBody
+    @ResponseResultWrapper
+    @GetMapping("userRoleGiveList")
+    //因为noForm/List对参数进行了类型转化：数组变成了（非json格式的）字符串，所以这里暂用 roleIdList接收Str类型 && 在函数体内再转化下
+    public IPage<SysUser> userRoleGiveList(int currentPage, int pageSize, String loginName, String displayName, Integer deptId,String roleIdList) {
+        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        String [] roleStrArr = null;
+        List<Integer> roleIdList0 = null;
+        if (!Strings.isNullOrEmpty(roleIdList)) {
+//            roleIdList.replace("[","");
+//            roleIdList.replace("]","");
+            roleStrArr =  roleIdList.replace("[","").replace("]","").split(",");
+            List<String> roleIdStrList = Stream.of( roleStrArr).collect(Collectors.toList());
+            roleIdList0 = roleIdStrList.stream().map(item->Integer.valueOf(item)).collect(Collectors.toList());
+            //初筛后的用户
+            List<Map<String,Object>> userIdMapList = sysRoleUserService.listMaps(new QueryWrapper<SysRoleUser>().in("role_id",roleIdList0).select("user_id"));
+            List<Integer> userIdList  =  userIdMapList.stream().map(item->Integer.parseInt(item.get("user_id").toString())).collect(Collectors.toList());
+            List<Integer> selectedRoleIdList = roleIdList0;//下面那个“ finalRoleIdList.forEach()”提示"lambda表达式中的变量应为最终变量或为有效的最终变量"而使用自动修改模式自动加的变量：暂不研
+            List<Integer> userIdListFiltered = userIdList.stream().filter(item->{
+                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", item));
+                if (CollUtil.isEmpty(roleUserList)) {
+                    throw new RuntimeException("用户ID为"+item+"的用户没有分配角色");
+                }
+                List<Integer> roleIdListForIndividual = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
+                boolean hasAllSelectedRole = true;
+                if (CollUtil.isNotEmpty(roleUserList)) {
+                    for(Integer selectedRoleId : selectedRoleIdList){
+                        if(!roleIdListForIndividual.contains(selectedRoleId))
+                            hasAllSelectedRole = false;
+                    };
+                }
+               return hasAllSelectedRole;
+            }).collect(Collectors.toList());;
+
+            if(CollUtil.isNotEmpty(userIdListFiltered)){
+
+
+                queryWrapper.in("id",userIdListFiltered);
+            }
+            else
+                queryWrapper.eq("id",-1);//角色查不到用户，直接让“他查询结果为空”
+
+        }
+        if (!Strings.isNullOrEmpty(loginName)) {
+            queryWrapper.like("login_name", loginName);
+        }
+        if (!Strings.isNullOrEmpty(displayName)) {
+            queryWrapper.like("display_name", displayName);
+        }
+        if (deptId != null) {
+            queryWrapper.eq("dept_id", deptId);
+        }
+        queryWrapper.orderByDesc("id");
+        queryWrapper.orderByDesc("dept_id");
+
+
+
+
+        //20211116
+        IPage<SysUser> page = sysUserService.page(new Page<>(currentPage, pageSize), queryWrapper);
+        page.getRecords().forEach(item ->{
+            item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : 2).getName());
+            //根据用户获取角色
+            List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", item.getId()));
+            if (CollUtil.isEmpty(roleUserList)) {
+                throw new RuntimeException(item.getLoginName()+"用户没有分配角色");
+            }
+            List<Integer> roleIdList2 = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
+            List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id",roleIdList2));
+            String roleNameStr = roleList.stream().map(SysRole::getName).collect(Collectors.joining(","));
+            item.setRoleNameStr(roleNameStr);
+            }
+        );
         return page;
     }
 
@@ -289,18 +368,44 @@ public class SysUserController {
         return userVO;
     }
 
-    //20211128张强的 先不研
-    @GetMapping("/ssoLoginForPost")
+    //20211128 用于单点登陆/打印标签登陆 第一次跳转到前端界面时，由前端页面再发起一个ajax来获取userVO:因为第一次访问action的
+    //登陆请求是从URL地址栏||别的系统界面上链接发起来的：不能接受我的系统的action返回值；
+    @GetMapping("/ssoLoginForUserVO")
     @ResponseResultWrapper
     @ResponseBody
     public UserVO ssoLoginForPost() {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         return getUserVO(user);
     }
+    //20230201 todo 完成打印时，（航盾先访问我的前端页面，由我）发来的身份检验;在asDeviceCommon/ListForPrint发起
+    @GetMapping("/printLogin")
+    public String printLogin(String PID) {
+        System.out.println("-----ssoLogin23----");
+        SysUser user = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id_number", PID));
+        if (ObjectUtil.isEmpty(user)) {
+            System.out.println("身份证号不存在！");
+            return "redirect:/login";
+        }
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
+        if (ObjectUtil.isEmpty(roleUserList)) {
+            throw new RuntimeException("用户没有分配角色");
+        }
+        //20211128添加角色ID
+        List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
+        user.setRoleIdList(roleIdList);
+        List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id",roleIdList));
+        List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
+        user.setRoleNameList(roleNameList);
+        httpSession.removeAttribute("user");
+        httpSession.setAttribute("user", user);
 
+        return "index";
+
+
+    }
     //单点登陆与智企集成
     @PostMapping("/ssoLogin")//20220322正式与智企集成时要改成post
     public String ssoLogin(HttpServletRequest request) {
@@ -425,13 +530,16 @@ public class SysUserController {
     public List<ValueLabelVO> getUserVL() {
         SysUser user1 = (SysUser) httpSession.getAttribute("user");
         if (user1 == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         List<ValueLabelVO> list = new ArrayList<>();
-        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", ((SysUser) httpSession.getAttribute("user")).getDeptId()));
+        //过滤掉有基本要素有空缺的人员
+        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", ((SysUser) httpSession.getAttribute("user")).getDeptId()).ne("login_name","").ne("id_number","").ne("secret_degree",""));
         List<SysDept> deptList = sysDeptService.list();
         Map<Integer, String> deptMap = deptList.stream().collect(Collectors.toMap(SysDept::getId, SysDept::getName));
-        return userList.stream().map(user -> new ValueLabelVO(user.getId() + "." + user.getDisplayName() + "."+ user.getLoginName() + "." + deptMap.get(user.getDeptId()) + "." + user.getSecretDegree(), user.getDisplayName() + "." + deptMap.get(user.getDeptId()))).collect(Collectors.toList());
+
+        //20221109Label字段由user.getDisplayName() + "." + deptMap.get(user.getDeptId()改为user.getDisplayName()
+        return userList.stream().map(user -> new ValueLabelVO(user.getId() + "." + user.getDisplayName() + "."+ user.getLoginName() + "." + deptMap.get(user.getDeptId()) + "." + user.getSecretDegree() + "." + user.getIdNumber(), user.getDisplayName() )).collect(Collectors.toList());
     }
 
 
@@ -483,7 +591,7 @@ public class SysUserController {
         //取出登录用户
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         return user;
     }
@@ -497,6 +605,7 @@ public class SysUserController {
         response.setContentType("application/vnd.ms-excel");
         response.setCharacterEncoding("utf-8");
         String fileName = URLEncoder.encode("用户模板（非密）", "UTF-8");
+      //  String fileName = URLEncoder.encode("test", "UTF-8");
         response.setHeader("Content-disposition", "attachment;filename=" + fileName + ".xls");
         //
         ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).useDefaultStyle(false).excelType(ExcelTypeEnum.XLS).build();
@@ -514,7 +623,7 @@ public class SysUserController {
     @PostMapping("upload1")
     @ResponseResultWrapper
     @SneakyThrows
-    public List<String> importAsset(MultipartFile[] files, String formValue) {
+    public List<String> importUser(MultipartFile[] files, String formValue) {
         List<String> resultList = new ArrayList<>();
         //
         MultipartFile file = files[0];
@@ -559,9 +668,21 @@ public class SysUserController {
                     userList.add(user);
                 }
                 sysUserService.saveBatch(userList);
-//                for (SysUser user : userList) {
-//                    sysUserService.add(user);
-//                }
+                //20221202
+                List<Integer> idList = userList.stream().map(item->item.getId()).collect(Collectors.toList());
+              //  List<SysRoleUser> sysRoleUserList =sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("id",idList));
+                List<SysRoleUser> sysRoleUserList = new ArrayList<>();
+                for(Integer i :idList){
+                    SysRoleUser sysRoleUser = new SysRoleUser();
+                    sysRoleUser.setUserId(i);
+                    sysRoleUser.setRoleId(11);//普通用户的角色ID
+                    sysRoleUserList.add(sysRoleUser);
+                }
+                if(CollUtil.isNotEmpty(sysRoleUserList)){
+                    sysRoleUserService.saveBatch(sysRoleUserList);
+                }
+               // sysRoleUserService.update
+//
             }
             if (ObjectUtil.isEmpty(redundantUserDbList)) {
                 resultList.add(userList.size() + "条用户被导入");

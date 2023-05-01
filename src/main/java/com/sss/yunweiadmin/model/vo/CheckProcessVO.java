@@ -36,4 +36,12 @@ public class CheckProcessVO {
     private String selectedProcess;
     //20220621加：为了最后流程结束保存结果时用
     private List<DiskForHisForProcess> diskListForHisForProcess;
+    //20221117 增加终端报修处理人（要传给下一个流程）填写的一些组件值
+    private String haveOut;
+    private String haveChangeRam;
+    private String haveReinstall;
+    private String haveChangeNetCard;
+    private String haveChangeDisk;
+    private String haveOtherOperate;
+
 }

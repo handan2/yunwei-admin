@@ -47,6 +47,8 @@ public class WorkFlowBean {
     ProcessDefinitionTaskService processDefinitionTaskService;
     @Autowired
     ProcessDefinitionEdgeService processDefinitionEdgeService;
+    @Autowired
+    ProcessDefinitionService processDefinitionService;
 
     public void setProVarList(Task actTask,Map map){
         taskService.setVariables(actTask.getId(), map);
@@ -120,6 +122,10 @@ public class WorkFlowBean {
             List<String> displayList = new ArrayList<>();
             //登录名称
             List<String> loginList = new ArrayList<>();
+            //任务节点类型
+            String taskType = null;
+            List<ProcessDefinitionTask> taskDefList = processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id",processDefinitionId).ne("task_name",""));
+            Map<String, String> taskMap = taskDefList.stream().collect(Collectors.toMap(ProcessDefinitionTask::getTaskDefKey, v -> v.getTaskType(), (key1, key2) -> key2));
             //历史处理节点
             List<ProcessInstanceNode> list = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceDataId));
             Map<String, ProcessInstanceNode> map = list.stream().collect(Collectors.toMap(ProcessInstanceNode::getTaskDefKey, v -> v, (key1, key2) -> key2));
@@ -128,10 +134,12 @@ public class WorkFlowBean {
 
             for (Task task : taskList) {
                 ProcessInstanceNode processInstanceNode = map.get(task.getTaskDefinitionKey());
+                taskType = taskMap.get(task.getTaskDefinitionKey());
                 if (processInstanceNode != null) {
                     //存在历史节点，使用历史处理人
                     displayList.add(processInstanceNode.getTaskName() + "[" + processInstanceNode.getDisplayName() + "]");
                     loginList.add(processInstanceNode.getLoginName());
+
                 } else {
                     //获取处理人
                     //20211210修改实参
@@ -144,6 +152,7 @@ public class WorkFlowBean {
             }
             resultMap.put("displayName", String.join(",", displayList));
             resultMap.put("loginName", String.join(",", loginList));
+            resultMap.put("taskType", taskType);
         }
         return resultMap;
     }
@@ -237,6 +246,8 @@ public class WorkFlowBean {
         List< ProcessDefinitionTask> lastUserTaskList =processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id",processDefId).in("task_def_key",edgeList.stream().map(item->item.getSourceId()).collect(Collectors.toList())).like("task_type","task"));
         if(lastUserTaskList.size() == 1){//限制直连结束节点只有一个userTask且处理人必须是发起人
             if(lastUserTaskList.get(0).getOperatorType().equals("发起人"))
+                return lastUserTaskList.get(0);
+            else if(processDefinitionService.getById(processDefId).getProcessName().contains("归库"))//20221225新增：归库时因授权发起人是安中，所以这里直接放过审核吧
                 return lastUserTaskList.get(0);
         }
         return null;

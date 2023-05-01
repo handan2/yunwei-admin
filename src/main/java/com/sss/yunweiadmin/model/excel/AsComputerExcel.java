@@ -12,11 +12,11 @@ import java.time.LocalDateTime;
 @Data
 public class AsComputerExcel {
     //AsDeviceCommon
-    @ExcelProperty("资产编号")
+    @ExcelProperty("设备编号")
     private String no;
-    @ExcelProperty("资产类别")
+    @ExcelProperty("设备类别")
     private String typeName;
-    @ExcelProperty("资产名称")
+    @ExcelProperty("设备名称")
     @ColumnWidth(20)
     private String name;
     @ExcelProperty("保密编号")
@@ -79,7 +79,7 @@ public class AsComputerExcel {
     private String discardDateTmp;
     @ExcelIgnore
     private LocalDate discardDate;
-    @ExcelProperty("IP地址")
+    @ExcelProperty("管理IP地址")
     private String ip;
     @ExcelProperty("MAC地址")
     private String mac;
@@ -90,7 +90,7 @@ public class AsComputerExcel {
     //AsComputerSpecial
     @ExcelProperty("网络接口")
     private String netInterface;
-    @ExcelProperty(" 物理内存(MB)")
+    @ExcelProperty("物理内存(MB)")
     private Integer ram;
     @ExcelProperty("光驱")
     private String cdrom;
@@ -100,18 +100,21 @@ public class AsComputerExcel {
     private String macBackup;
     @ExcelProperty("声卡")
     private String soundCard;
+    //20221115 这个类里的@DateTimeFormat字符串转字符串时，这个@DateTimeFormat不起作用：原字符串啥格式也行&&原样转入；
+    // 是经测发现，excel的日期类型如2021/11/12: 用 @DateTimeFormat("yyyy/MM/dd")也能直接转成相应"yyyy/MM/dd"字符串 && 用 @DateTimeFormat("yyyy-MM-dd")也能直接转成用 yyyy-MM-dd字符串
+    // 小结:这个注解可以把excel里日期格式（如果是字符串<20220104试了下自定义格式的‘2022-01-01 00：00：00’也不起作用>，将不起作用）的时间数据（按注解里的参数格式）转成字符串
     @ExcelProperty("操作系统安装时间")
-    @DateTimeFormat("yyyy/MM/dd")
+    @DateTimeFormat("yyyy-MM-dd")
     private String osDateTmp;
     @ExcelIgnore
     private LocalDate osDate;
     @ExcelProperty("操作系统")
     private String osType;
-    @ExcelProperty("CPU个数")
-    private Integer cpuTotal;
+    @ExcelProperty("CPU")
+    private String cpu;
     @ExcelProperty("硬盘个数")
     private Integer diskTotal;
-    @ExcelProperty("硬盘总容量")
+    @ExcelProperty("硬盘总容量(GB)")
     private Integer diskSize;
     @ExcelProperty("硬盘型号1")
     private String diskMode1;

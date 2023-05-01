@@ -95,5 +95,7 @@ public class ProcessDefinitionTask implements Serializable {
     private String haveSelectAsset;
 
     private String haveSelectProcess;
+    private String hideItemLabels;
+    private String editItemLabels;
 
 }

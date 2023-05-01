@@ -2,10 +2,12 @@ package com.sss.yunweiadmin.controller;
 
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import com.sss.yunweiadmin.bean.WorkFlowBean;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResult;
@@ -16,15 +18,17 @@ import com.sss.yunweiadmin.model.vo.*;
 import com.sss.yunweiadmin.service.*;
 import org.activiti.engine.task.Task;
 import org.checkerframework.checker.units.qual.A;
+import org.omg.CORBA.OBJ_ADAPTER;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.method.P;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -65,13 +69,48 @@ public class ProcessInstanceDataController {
     ScoreService scoreService;
     @Autowired
     AsTypeService asTypeService;
+    @Autowired
+    RecordForReportService recordForReportService;
+   //20230314
+    @GetMapping("lock")
+    public void lock(HttpServletRequest request, Integer processInstanceDataId, String taskName){
+        SysUser user = (SysUser) request.getSession().getAttribute("user");
+        if(ObjectUtil.isNotEmpty(user) && ObjectUtil.isNotEmpty(processInstanceDataId)){
+            ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
+           // processInstanceData.setLockDatetime(LocalDateTime.now());
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String dateStr = LocalDateTime.now().format(fmt);
+            List<String> lockUserListNew  = new ArrayList<>();
+            if(ObjectUtil.isNotEmpty(processInstanceData.getLockUsername())){
+                String [] lockUserStrArr = processInstanceData.getLockUsername().split(",");
+                // boolean isExsit = false;
+
+                if(ArrayUtil.isNotEmpty(lockUserStrArr)){
+                    for(String item :lockUserStrArr){
+                        String[] itemArr = item.split("\\|");
+                        if(itemArr[0].equals(taskName)){
+                            //跳过
+                        } else
+                            lockUserListNew.add(item);
+                    }
+
+                }
+            }
+            lockUserListNew.add(taskName + "|" + user.getDisplayName() + "|" + dateStr);
+            processInstanceData.setLockUsername(lockUserListNew.stream().collect(Collectors.joining(",")));
+            processInstanceDataService.updateById(processInstanceData);
+        }
+
+
+    }
+
 
     //流程实例 todo把查询条件换成VO
     @GetMapping("list")
     //接受参数是int时，不能没有值，会报null不能赋给int,但integer可以
-    public IPage<ProcessInstanceData> list(int currentPage, int pageSize, String processName, String processStatus, String displayName, String deptName, String handleName,String name,  String no, String startDate, String endDate, Integer id, String processType) {
+    public IPage<ProcessInstanceData> list(int currentPage, int pageSize, String processName, String processStatus, String displayName, String deptName, String handleName,String name,  String no, String startDate, String endDate, Integer id, String processType,String orderNum) {
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().orderByDesc("id");
-        if (ObjectUtil.isNotEmpty(name)) {//20220920name表示资产名称
+        if (ObjectUtil.isNotEmpty(name)) {//20220920name表示设备名称
             List<Map<String, Object>> listMap = asDeviceCommonService.listMaps(new QueryWrapper<AsDeviceCommon>().like("name",name).select("id"));
             List<Integer> asIdList = listMap.stream().map(item->Integer.parseInt(item.get("id").toString())).collect(Collectors.toList());
             if(CollUtil.isNotEmpty(asIdList)){
@@ -85,12 +124,14 @@ public class ProcessInstanceDataController {
                 return null;
 
         }
+        if (ObjectUtil.isNotEmpty(orderNum)) {
+            queryWrapper.eq("order_num", orderNum);
+        }
         if (ObjectUtil.isNotEmpty(id)) {
-            System.out.println(id);
             queryWrapper.eq("id", id);
         }
         if (ObjectUtil.isNotEmpty(processName)) {
-            queryWrapper.like("processName", processName);
+            queryWrapper.like("process_Name", processName);
         }
         if (ObjectUtil.isNotEmpty(processStatus)) {
             queryWrapper.eq("process_status", processStatus);
@@ -151,7 +192,7 @@ public class ProcessInstanceDataController {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
 
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("id");
         if (ObjectUtil.isNotEmpty(processName)) {
@@ -191,7 +232,7 @@ public class ProcessInstanceDataController {
     public IPage<ProcessInstanceData> handledList(int currentPage, int pageSize, String processName, String processType, String startDate) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().orderByDesc("id");
         //根据node表取出当前登陆者处理过的流程idList（包含提交的）
@@ -238,7 +279,7 @@ public class ProcessInstanceDataController {
     public IPage<ProcessInstanceData> completeList(int currentPage, int pageSize, String processName, String processType, String handleName, String no, String startDate, String endDate) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().eq("process_status", "完成").eq("login_name", user.getLoginName()).orderByDesc("id");
 
@@ -323,7 +364,7 @@ public class ProcessInstanceDataController {
     public IPage<ProcessInstanceData> listForCommitted(int currentPage, int pageSize) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         //遍历page并加入score信息
         IPage<ProcessInstanceData> page =  processInstanceDataService.page(new Page<>(currentPage, pageSize), new QueryWrapper<ProcessInstanceData>().eq("login_name", user.getLoginName()).orderByDesc("id"));
@@ -340,7 +381,7 @@ public class ProcessInstanceDataController {
     private List<ProcessInstanceData> validate(ProcessFormValue1 value1, List<ProcessFormValue2> value2List, Integer processInstanceDataId) {//StartProcessVO/CheckProcessVO
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         if (ObjectUtil.isEmpty(value1)) {
             return null;
@@ -374,7 +415,7 @@ public class ProcessInstanceDataController {
         //查询资产类型表中typeId对应的level=1/上级分类的名称是不是“信息设备”，不是的话，直接放行
         int p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", typeId)).getPid();
         int p_p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_typeId)).getPid();
-        //20220919 添加p_p_typeId == 0：用于满足“应用系统”的情况:资产类别的level=2,即p_p_typeId == 0
+        //20220919 添加p_p_typeId == 0：用于满足“应用系统”的情况:设备类别的level=2,即p_p_typeId == 0
         if (p_p_typeId == 0 || !asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_p_typeId)).getName().contains("信息设备"))
             return null;
 
@@ -391,10 +432,10 @@ public class ProcessInstanceDataController {
         //查出互斥定义的定义IDlist
         List<Map<String, Object>> mutexDefIdListMap;//不可能为空，肯定有值
         QueryWrapper<ProcessDefinition> queryWrapper= new QueryWrapper<ProcessDefinition>().eq("as_type_id",mainTypeIdForDef);;
-        if (processType.contains("申领") || processType.contains("停用")) {
-            mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", "申领").or().like("process_type", "停用").select("id"));
+        if (processType.contains("申领") || processType.contains("归库")) {//20221225增加“报废”：“报废”是授权发起，没必要做判断：仅判断“别的流程发起时，能不能有他”
+            mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", "申领").or().like("process_type", "归库").or().like("process_type", "报废").select("id"));
         } else {//查出同类型流程
-            mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).notLike("process_name","故障报修").select("id"));//20220801 同类型流程要排除“故障报修”：因为故障报修流程在“发起新流程提交时&&老流程并没有关闭”
+            mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).notLike("process_name","故障报修").select("id"));//20220801 同类型流程要排除“故障报修”：因为故障报修流程与被授权的流程类型都是“维修”：在“发起新流程提交时&&老流程并没有关闭”
         }
         List<Integer> mutexDefIdList = mutexDefIdListMap.stream().map(item -> Integer.valueOf(item.get("id").toString())).collect(Collectors.toList());
         //取出互斥的业务实例表
@@ -429,7 +470,24 @@ public class ProcessInstanceDataController {
     @GetMapping("getOperateRecordForRepair")//20220829加:专门用于故障报修流程：该 流程只有一个处理节点
     public  ResponseResult getOperateRecordForRepair(Integer processInstanceDataId) {
         ProcessInstanceNode node = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
-        return ResponseResult.success(node.getComment()+"   " +node.getDisplayName()+" "+ node.getEndDatetime());
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String dateStr = node.getEndDatetime().format(fmt);
+        return ResponseResult.success(node.getComment()+"   " +node.getDisplayName()+" "+ dateStr);
+    }
+    @GetMapping("getOldProValueForRepair")//20230223加:专门用于故障报修流程：该 流程只有一个处理节点
+    public  Map getOldProValueForRepair(Integer processInstanceDataId) {
+        ProcessInstanceNode node = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String dateStr = node.getEndDatetime().format(fmt);
+        String problemDec = "";
+        Map<String, String> map = new HashMap<>();
+        List<RecordForReport> list = recordForReportService.list(new QueryWrapper<RecordForReport>().eq("process_instance_data_id",processInstanceDataId));
+        if(CollUtil.isNotEmpty(list)){
+            RecordForReport recordForReport = list.get(0);
+            problemDec = recordForReport.getValue();
+        }
+        map.put("problemDec",problemDec);
+        return map;
     }
 
     @OperateLog(module = "流程模块", type = "发起流程")
@@ -465,7 +523,7 @@ public class ProcessInstanceDataController {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         System.out.println(startProcessVO.getValue2List().get(0).getAsId());
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         return processInstanceDataService.start(startProcessVO);
     }
@@ -476,7 +534,7 @@ public class ProcessInstanceDataController {
     public StartOrHandleProcessResultVO handle(@RequestBody CheckProcessVO checkProcessVO) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
-            throw new RuntimeException("用户未登录");
+            throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         StartOrHandleProcessResultVO startOrHandleProcessResultVO = new StartOrHandleProcessResultVO();
         List<ProcessInstanceData> processInstanceDataList = this.validate(checkProcessVO.getValue1(), checkProcessVO.getValue2List(), checkProcessVO.getProcessInstanceDataId());
@@ -498,7 +556,8 @@ public class ProcessInstanceDataController {
 
 
     @GetMapping("get")
-    public ProcessInstanceData getById(String id) {
+    public ProcessInstanceData getById(String id) {//2020313 添加isForHandle参数
+     //   ProcessInstanceData processInstanceData = ProcessInstanceDataService.getOn
         return processInstanceDataService.getById(id);
     }
 
@@ -546,44 +605,9 @@ public class ProcessInstanceDataController {
         return startProcessConditionVO;
     }
 
-    @GetMapping("getCheckTaskVO")
+    @GetMapping("getCheckTaskVO")//20221103 把这个方法实体写在service同名方法中，方便template调用他
     public CheckTaskVO getCheckTaskVO(Integer processDefinitionId, String actProcessInstanceId) {
-        SysUser user = (SysUser) httpSession.getAttribute("user");
-        if (user == null) {
-            throw new RuntimeException("用户未登录");
-        }
-        CheckTaskVO checkTaskVO = new CheckTaskVO();
-        //取出我的一个任务
-        List<Task> taskList = workFlowBean.getMyTask(actProcessInstanceId);
-        if (ObjectUtil.isEmpty(taskList)) {
-            throw new RuntimeException("没有用户任务，请尝试刷新列表");
-        }
-        Task actTask = taskList.get(0);
-        //获取多条连线
-        List<String> buttonNameList = workFlowBean.getButtonNameList(processDefinitionId, actTask.getTaskDefinitionKey());
-        if (ObjectUtil.isNotEmpty(buttonNameList)) {
-            checkTaskVO.setButtonNameList(buttonNameList);
-        }
-        //是否允许 意见，修改表单，下一步处理人
-        ProcessDefinitionTask checkTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", actTask.getTaskDefinitionKey()));
-        BeanUtils.copyProperties(checkTask, checkTaskVO);
-        if (checkTask.getHaveComment().equals("是")) {
-            if (checkTask.getTaskType().equals("bpmn:approvalTask")) {
-                //审批任务
-                checkTaskVO.setCommentTitle("意见/备注");
-            } else {
-                //处理任务
-                checkTaskVO.setCommentTitle("操作记录");
-            }
-        }
-//        checkTaskVO.setHaveComment(checkTask.getHaveComment());
-//        checkTaskVO.setHaveEditForm(checkTask.getHaveEditForm());
-//        checkTaskVO.setHaveNextUser(checkTask.getHaveNextUser());
-//        checkTaskVO.setHaveOperate(checkTask.getHaveOperate());
-//        checkTaskVO.setHideGroupIds(checkTask.getHideGroupIds());
-//        checkTaskVO.setHideGroupLabel(checkTask.getHideGroupLabel());
-//        checkTaskVO.setHaveSelectAsset(checkTask.getHaveSelectAsset());
-        return checkTaskVO;
+        return processInstanceDataService.getCheckTaskVO(processDefinitionId, actProcessInstanceId);
     }
 
     @GetMapping("getActiveTaskDefKeyList")

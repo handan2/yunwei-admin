@@ -60,6 +60,12 @@ public class AsComputerGranted implements Serializable {
     private String imageOutput;
 
     private String strategy;
-
+    private String printer;
+  //  private String havePrinter;
+//    private String violateForReturn;
+//    private String changeForReturn;
+//    private String baomiCommentForReturn;
+//    private String yunweiCommentForReturn;
+//    private String violateDetailForReturn;
 
 }

@@ -101,4 +101,16 @@ public class ProcessInstanceData implements Serializable {
 
     private int preProcessInstanceId;
     private int postProcessInstanceId;
+    /**
+     * 工单编号
+     */
+    private String orderNum;
+    /**
+     * 锁定时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime lockDatetime;
+
+    private String lockUsername;
+
 }

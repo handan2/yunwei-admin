@@ -42,6 +42,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (list2.size() > 0) {
             throw new RuntimeException(sysUser.getIdNumber() + "已存在");
         }
+        //限制了本部门的重名情况，这种由管理员手工添加吧
+        List<SysUser> list3 = this.list(new QueryWrapper<SysUser>().eq("display_name", sysUser.getDisplayName()).eq("dept_id",sysUser.getDeptId()));
+        if (list3.size() > 0) {
+            throw new RuntimeException(sysUser.getIdNumber() + "已存在");
+        }
         boolean flag1, flag2;
         sysUser.setPassword(SecureUtil.md5(sysUser.getPassword()));
         flag1 = this.save(sysUser);

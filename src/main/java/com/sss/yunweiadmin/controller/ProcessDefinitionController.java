@@ -121,7 +121,7 @@ public class ProcessDefinitionController {
         return treeList;
     }
 
-    //20211114
+    //20211114 判断 idListString中是不是包含当前登陆用户角色idList（中的其中一个成员）
     private boolean processVisable(String idListString) {
         List<String> definitionRoleIdList = Stream.of(idListString.split(",")).collect(Collectors.toList());
         List<Integer> definitionRoleIdListToInt = definitionRoleIdList.stream().map(value -> Integer.valueOf(value)).collect(Collectors.toList());
@@ -140,21 +140,40 @@ public class ProcessDefinitionController {
         return true;
     }
 
-    //20220626加,L和V一样：都是Label
+  /* 20220626加,L和V一样：都是Label
+  * 目前用于前端界面中的“后续流程”select的option选项
+  * 如果（主）授权流程种类后续增多的话，可考虑把主/被授权流程对照关系放在sys_dic中，这里再从sys_dic中读
+  * */
     @GetMapping("getProcessDefLV")
-    public List<ValueLabelVO> getProcessDefLV(String processName) {
+    public List<ValueLabelVO> labelIdMapForItemByAjaxgetProcessDefLV(String processName) {
         QueryWrapper queryWrapper = new QueryWrapper<ProcessDefinition>();
         queryWrapper.eq("status", "启用");
         queryWrapper.eq("have_display", "是");
-        if (processName.contains("报修"))
+        //约定了几个授权流程的流程名
+        if (processName.contains("报修")){
             queryWrapper.eq("start_limited_by_check", "是");
+            queryWrapper.notLike("process_name", "归还");
+            queryWrapper.notLike("process_name", "报废");
+        } else if (processName.contains("便携机借用")){
+            queryWrapper.eq("start_limited_by_check", "是");
+            queryWrapper.like("process_name", "便携机归还");
+        } else if (processName.contains("外设声像及办公自动化归库")){
+            // queryWrapper.eq("start_limited_by_check", "是");
+            queryWrapper.like("process_name", "外设声像及办公自动化报废");
+        } else if (processName.contains("计算机归库")){
+            // queryWrapper.eq("start_limited_by_check", "是");
+            queryWrapper.like("process_name", "计算机报废");
+        }
         List<ProcessDefinition> list = processDefinitionService.list(queryWrapper);
         // Map<String,Integer> map = list.stream().collect(Collectors.toMap(ProcessDefinition::getProcessName,ProcessDefinition::getId));
-        return list.stream().map(item -> new ValueLabelVO(item.getProcessName(), item.getProcessName())).collect(Collectors.toList());
+        List<ValueLabelVO> resultList = list.stream().map(item -> new ValueLabelVO(item.getProcessName(), item.getProcessName())).collect(Collectors.toList());
+        ValueLabelVO vo = new ValueLabelVO("无后续流程","无后续流程");
+        resultList.add(vo);
+        return resultList;
     }
 
     @GetMapping("list")
-    public IPage<ProcessDefinition> list(int currentPage, int pageSize, String processName, String processType) {
+    public IPage<ProcessDefinition> list(int currentPage, int pageSize, String processName, String processType, String status) {
         QueryWrapper<ProcessDefinition> queryWrapper = new QueryWrapper<ProcessDefinition>().eq("have_display", "是").orderByAsc("sort");
         if (ObjectUtil.isNotEmpty(processName)) {
             queryWrapper.like("process_name", processName);
@@ -163,6 +182,7 @@ public class ProcessDefinitionController {
             queryWrapper.like("process_type", processType);
         }
         // 20211114查了两遍DB;20220715 这个ProcessDefiniton/role_id应改成 role_idlist
+        //这里（通过读取Session中用户信息）用户角色过滤出“授权可见”流程
         List<ProcessDefinition> processDefinitionListLegal = processDefinitionService.list().stream().filter(item -> this.processVisable(item.getRoleId())).collect(Collectors.toList());
         //第一遍，取出合法授权defIdList，第二遍读Page
         List<Integer> processDefinitionIdListLegal = processDefinitionListLegal.stream().map(item -> item.getId()).collect(Collectors.toList());
@@ -171,7 +191,11 @@ public class ProcessDefinitionController {
             queryWrapper.in("id", processDefinitionIdListLegal);
         }
         //只读启用状态的流程定义
-        queryWrapper.eq("status", "启用");
+        if (ObjectUtil.isNotEmpty(status)){
+            queryWrapper.eq("status", status);
+        }
+
+
         IPage<ProcessDefinition> page1 = processDefinitionService.page(new Page<>(currentPage, pageSize), queryWrapper);
         page1.getRecords().forEach(item -> item.setBpmnXml(""));
         return page1;
@@ -207,11 +231,12 @@ public class ProcessDefinitionController {
         LinkedHashMap<String, ArrayList<ProcessFormTemplate>> formTemplateMap = new LinkedHashMap<>();
         formTemplateMap.put("firstData", new ArrayList<>());
         for (ProcessFormTemplate processFormTemplate : formList) {
-            if ((processFormTemplate.getFlag().equals("基本类型") || processFormTemplate.getFlag().equals("表类型") || processFormTemplate.getFlag().equals("字段变更类型")) && Strings.isNullOrEmpty(processFormTemplate.getGroupParentLabel())) {
+            // Strings.isNullOrEmpty(processFormTemplate.getGroupParentLabel()):约束了第一个if只有根目录下的相应字段才能加入firesData
+            if ((processFormTemplate.getFlag().equals("基本类型") || processFormTemplate.getFlag().equals("表类型") || processFormTemplate.getFlag().equals("字段变更类型")|| processFormTemplate.getFlag().equals("隔离符")) && Strings.isNullOrEmpty(processFormTemplate.getGroupParentLabel())) {
                 formTemplateMap.get("firstData").add(processFormTemplate);
             } else if (processFormTemplate.getFlag().equals("字段组类型")) {
                 formTemplateMap.get("firstData").add(processFormTemplate);
-            } else {
+            } else {//第二层及以下的formtiem:这些元素都链接在上一层templateVO中
                 if (formTemplateMap.get(processFormTemplate.getGroupParentLabel()) != null) {
                     formTemplateMap.get(processFormTemplate.getGroupParentLabel()).add(processFormTemplate);
                 } else {

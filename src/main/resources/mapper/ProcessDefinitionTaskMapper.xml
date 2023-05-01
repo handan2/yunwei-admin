@@ -22,11 +22,13 @@
         <result column="hide_group_label" property="hideGroupLabel" />
         <result column="have_select_asset" property="haveSelectAsset" />
         <result column="have_select_process" property="haveSelectProcess" />
+        <result column="hide_item_labels" property="hideItemLabels" />
+        <result column="edit_item_labels" property="editItemLabels" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, task_type, task_def_key, task_name, operator_type, operator_type_ids, operator_type_str, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id,hide_group_ids,hide_group_label,have_select_asset,have_select_process
+        id, task_type, task_def_key, task_name, operator_type, operator_type_ids, operator_type_str, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id,hide_group_ids,hide_group_label,have_select_asset,have_select_process,hide_item_labels,edit_item_labels
     </sql>
 
 </mapper>

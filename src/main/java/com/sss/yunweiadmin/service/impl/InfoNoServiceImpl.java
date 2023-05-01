@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> implements InfoNoService {
     @Override
-    public String addExcel(List<InfoNoExcel> excelList, String haveCover){
+    public String addExcel(List<InfoNoExcel> excelList, String importMode){
         //去掉db中存在的信息点号，剩下页面上需要导入的信息点号
         List<InfoNoExcel> pageList;
         //db中存在的信息点号
@@ -36,12 +36,12 @@ public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> impleme
         //处理日期类型
        // ExcelDateUtil.converToDate(excelList, InfoExcel.class);
         /*
-            haveCover=是，先删除，后全部插入信息点号
-            haveCover=否，插入不在db中的信息点号
+            importMode=是，先删除，后全部插入信息点号
+            importMode=否，插入不在db中的信息点号
          */
         //20211116读出DB与EXCEL资产号重复的记录; 20220825 有时间根据下面调整的结果把张强的资产导入代码改了
         List<InfoNo> dupList = this.list(new QueryWrapper<InfoNo>().in("value", excelList.stream().map(InfoNoExcel::getValue).collect(Collectors.toList())));
-        if (haveCover.equals("是")) {//可 重复&覆盖，把重复的从DB删除
+        if (importMode.equals("是")) {//可 重复&覆盖，把重复的从DB删除
             if (ObjectUtil.isNotEmpty(dupList)) {
                 dbList = dupList;
                 List<Integer> idList = dupList.stream().map(InfoNo::getId).collect(Collectors.toList());
@@ -69,7 +69,7 @@ public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> impleme
                 this.save(InfoNo);
             }
         }
-        if (haveCover.equals("是")) {
+        if (importMode.equals("是")) {
             int pageCount = pageList.size() - dbList.size();
             return "导入" + pageCount + "条资产;信息点号：" + dbList.stream().map(InfoNo::getValue).collect(Collectors.joining(",")) + ",已经被覆盖";
         } else {

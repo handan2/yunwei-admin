@@ -41,7 +41,23 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
         //}
 
     }
+    //对比上个：获取当前类型的子类型的IDList（不含本身）
+    @Override
+    public List<Integer> getTypeIdListNotIncludeSelf(Integer typeId) {
+        List<Integer> typeIdList = new ArrayList<>();
+        //typeIdList.add(typeId);
+        // int Typelevel = this.getById(typeId).getLevel();
+//        if (Typelevel == 3) {//3是叶子结点
+//            return typeIdList;
+//        } else{
+        List<AsType> asTypeList = this.list(new QueryWrapper<AsType>().eq("pid",typeId));
+        if(ObjectUtil.isNotEmpty(asTypeList)){
+            List<Integer> asTypeIdList = asTypeList.stream().map(item->item.getId()).collect(Collectors.toList());
+            asTypeIdList.forEach(item->typeIdList.addAll(this.getTypeIdList(item)));
+        }
+        return  typeIdList;
 
+    }
     @Override
     //20211115获取第二层分类的asType ; 这里未处理level=1的情况
     public AsType  getLevel2AsTypeById(Integer typeId) {

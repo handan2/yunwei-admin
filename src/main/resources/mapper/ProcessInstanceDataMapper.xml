@@ -20,11 +20,14 @@
         <result column="end_datetime" property="endDatetime"/>
         <result column="pre_process_instance_id" property="preProcessInstanceId"/>
         <result column="post_process_instance_id" property="postProcessInstanceId"/>
-    </resultMap>
+        <result column="order_num" property="orderNum"/>
+        <result column="lock_datetime" property="lockDatetime"/>
+        <result column="lock_username" property="lockUsername"/>
+</resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime,pre_process_instance_id,post_process_instance_id
+        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime,pre_process_instance_id,post_process_instance_id,order_num,lock_datetime,lock_username
     </sql>
 
 </mapper>
