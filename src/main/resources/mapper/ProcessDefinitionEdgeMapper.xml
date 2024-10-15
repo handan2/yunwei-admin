@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ProcessDefinitionEdgeMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessDefinitionEdge">
+        <id column="id" property="id" />
+        <result column="edge_id" property="edgeId" />
+        <result column="source_id" property="sourceId" />
+        <result column="target_id" property="targetId" />
+        <result column="edge_name" property="edgeName" />
+        <result column="button_name" property="buttonName" />
+        <result column="edge_direction" property="edgeDirection" />
+        <result column="var_name" property="varName" />
+        <result column="conditionn" property="conditionn" />
+        <result column="process_definition_id" property="processDefinitionId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, edge_id, source_id, target_id, edge_name, button_name, edge_direction, var_name, conditionn, process_definition_id
+    </sql>
+
+</mapper>

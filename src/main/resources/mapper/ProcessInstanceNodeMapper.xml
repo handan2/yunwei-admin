@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ProcessInstanceNodeMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessInstanceNode">
+        <id column="id" property="id"/>
+        <result column="process_instance_data_id" property="processInstanceDataId"/>
+        <result column="task_def_key" property="taskDefKey"/>
+        <result column="task_name" property="taskName"/>
+        <result column="login_name" property="loginName"/>
+        <result column="display_name" property="displayName"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="comment" property="comment"/>
+        <result column="operate" property="operate"/>
+        <result column="button_name" property="buttonName"/>
+        <result column="selected_process" property="selectedProcess"/>
+        <result column="start_datetime" property="startDatetime"/>
+        <result column="end_datetime" property="endDatetime"/>
+        <result column="assigin" property="assigin"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, process_instance_data_id, task_def_key, task_name, login_name, display_name, dept_name, comment, operate,  button_name, selected_process,start_datetime, end_datetime,assigin
+    </sql>
+
+</mapper>

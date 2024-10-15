@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ScoreMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.Score">
+        <id column="id" property="id" />
+        <result column="node_type" property="nodeType" />
+        <result column="node_name" property="nodeName" />
+        <result column="display_name" property="displayName" />
+        <result column="login_name" property="loginName" />
+        <result column="score" property="score" />
+        <result column="business_id" property="businessId" />
+        <result column="comment" property="comment" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, node_type, node_name, display_name, login_name, score, business_id, comment
+    </sql>
+
+</mapper>

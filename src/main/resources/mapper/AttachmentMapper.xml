@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.AttachmentMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.Attachment">
+        <id column="ID" property="id" />
+        <result column="name" property="name" />
+        <result column="ROUTE" property="route" />
+        <result column="type" property="type" />
+        <result column="MIJI" property="miji" />
+        <result column="size" property="size" />
+        <result column="SOURCE_ID" property="sourceId" />
+        <result column="STATUS" property="status" />
+        <result column="CREATE_DATETIME" property="createDatetime" />
+        <result column="LASTUSE_DATETIME" property="lastuseDatetime" />
+        <result column="REMARK" property="remark" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        ID, name, ROUTE, type, MIJI, size, SOURCE_ID, STATUS, CREATE_DATETIME, LASTUSE_DATETIME, REMARK
+    </sql>
+
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.InspectionMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.Inspection">
+        <id column="id" property="id" />
+        <result column="inspector" property="inspector" />
+        <result column="inspect_date" property="inspectDate" />
+        <result column="no" property="no" />
+        <result column="type" property="type" />
+        <result column="mode" property="mode" />
+        <result column="net_type" property="netType" />
+        <result column="miji" property="miji" />
+        <result column="user_dept" property="userDept" />
+        <result column="user_name" property="userName" />
+        <result column="label" property="label" />
+        <result column="system" property="system" />
+        <result column="safe_soft" property="safeSoft" />
+        <result column="illegal_access" property="illegalAccess" />
+        <result column="files" property="files" />
+        <result column="others" property="others" />
+        <result column="creator" property="creator" />
+        <result column="create_datetime" property="createDatetime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, inspector, inspect_date, no, mode, type, net_type, miji, user_dept, user_name, label, system, safe_soft, illegal_access, files, others, creator, create_datetime
+    </sql>
+
+</mapper>

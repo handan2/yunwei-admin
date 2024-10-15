@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.ProcessInstanceDataMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.ProcessInstanceData">
+        <id column="id" property="id"/>
+        <result column="process_definition_id" property="processDefinitionId"/>
+        <result column="process_name" property="processName"/>
+        <result column="business_id" property="businessId"/>
+        <result column="act_process_instance_id" property="actProcessInstanceId"/>
+        <result column="process_status" property="processStatus"/>
+        <result column="display_current_step" property="displayCurrentStep"/>
+        <result column="login_current_step" property="loginCurrentStep"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="display_name" property="displayName"/>
+        <result column="login_name" property="loginName"/>
+        <result column="start_datetime" property="startDatetime"/>
+        <result column="end_datetime" property="endDatetime"/>
+        <result column="pre_process_instance_id" property="preProcessInstanceId"/>
+        <result column="post_process_instance_id" property="postProcessInstanceId"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="attachment_ids" property="attachmentIds"/>
+        <result column="lock_datetime" property="lockDatetime"/>
+        <result column="lock_username" property="lockUsername"/>
+        <result column="last_commit_datetime" property="lastCommitDatetime"/>
+</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime,pre_process_instance_id,post_process_instance_id,order_num,attachment_ids,lock_datetime,lock_username,last_commit_datetime
+    </sql>
+
+</mapper>
