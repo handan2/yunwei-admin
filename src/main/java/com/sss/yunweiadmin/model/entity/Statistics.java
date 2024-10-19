@@ -40,5 +40,5 @@ public class Statistics implements Serializable {
 
     private String miji;
 
-
+    private Integer orgId;
 }

@@ -79,4 +79,6 @@ public class ProcessInstanceChange implements Serializable {
     private String isReportTitle;
 
     private String zhTableName;
+
+    private Integer orgId;
 }

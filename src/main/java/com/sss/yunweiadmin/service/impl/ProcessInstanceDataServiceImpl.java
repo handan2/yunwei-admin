@@ -609,9 +609,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         String preActProcessInstanceId = preProcessInstanceData.getActProcessInstanceId();
         String processStatus = preProcessInstanceData.getProcessStatus();
 
-
-
-
+        LocalDateTime localDateTime = LocalDateTime.now();
 
         //取出我的一个任务
         List<Task> myTaskListForPre = workFlowBean.getMyTask(preActProcessInstanceId);
@@ -742,6 +740,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         processInstanceData.setLoginName(user.getLoginName());
         processInstanceData.setDeptName(dept.getName());
         processInstanceData.setStartDatetime(LocalDateTime.now());
+        processInstanceData.setLastCommitDatetime(localDateTime);//20241015
         processInstanceDataService.save(processInstanceData);//保存成功后mybatis会把主键/ID传回参数processInstanceData中
 
         //20240829
@@ -750,6 +749,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         Map<Integer, Map> prcIDAndHandlerMap = new HashMap<>();//<1000884,<taskName,userList>>
         httpSession.setAttribute("currentStepHandler", prcIDAndHandlerMap);//20240823 current在本项目中等于“下一步”
         prcIDAndHandlerMap.put(processInstanceData.getId(),taskAndHandlerMap);
+
+
 
         //第二个节点（也第一个ActTask，“发起”节点）创建；20220608 startEvent执行完后activeTask，一般只会有一activeTask(即“发起者”那个节点)&&流程的发起者一般也同样是“发起者”那个处理候选人：直接查activeTask即可：不过暂不改
         List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstance.getId());
@@ -800,7 +801,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             }
         }
 
-        LocalDateTime localDateTime = LocalDateTime.now();
+
         processInstanceNode.setStartDatetime(localDateTime);
         processInstanceNode.setEndDatetime(localDateTime);
         if (ObjectUtil.isNotEmpty(endAndStartProcessVO.getButtonName())) {
@@ -1088,6 +1089,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         httpSession.setAttribute("currentStepHandler", prcIDAndHandlerMap);//20240823 current在本项目中等于“下一步”
         prcIDAndHandlerMap.put(processInstanceData.getId(),taskAndHandlerMap);
 
+        LocalDateTime localDateTime = LocalDateTime.now();
+
 
         //取出我的一个任务
         List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstanceId);
@@ -1147,6 +1150,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                     processInstanceData.setProcessStatus("审批中");
                 }
             }
+            processInstanceData.setLastCommitDatetime(localDateTime);//20241015
         }
         processInstanceDataService.updateById(processInstanceData);
         //插入流程节点数据

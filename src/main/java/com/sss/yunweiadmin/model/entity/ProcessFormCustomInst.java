@@ -37,5 +37,5 @@ public class ProcessFormCustomInst implements Serializable {
 
     private Integer processInstanceDataId;
 
-
+    private Integer orgId;
 }

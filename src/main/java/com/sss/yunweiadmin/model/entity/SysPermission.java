@@ -52,4 +52,5 @@ public class SysPermission implements Serializable {
     @TableField(exist = false)
     List<SysPermission> children;
 
+    private Integer orgId;
 }

@@ -37,5 +37,5 @@ public class Score implements Serializable {
 
     private String comment;
 
-
+    private Integer orgId;
 }

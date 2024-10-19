@@ -128,4 +128,6 @@ public class SysUser implements Serializable {
      */
     @TableField(exist = false)
     private String roleNameStr;
+
+    private Integer orgId;
 }

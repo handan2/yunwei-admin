@@ -38,5 +38,5 @@ public class ProcessFormType implements Serializable {
      */
     private String status;
 
-
+    private Integer orgId;
 }

@@ -50,5 +50,5 @@ public class DiskForHisForProcess implements Serializable {
      */
     private String flag;
 
-
+    private Integer orgId;
 }

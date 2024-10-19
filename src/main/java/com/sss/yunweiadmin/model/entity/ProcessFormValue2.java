@@ -46,5 +46,5 @@ public class ProcessFormValue2 implements Serializable {
 
     private Integer asId;
 
-
+    private Integer orgId;
 }

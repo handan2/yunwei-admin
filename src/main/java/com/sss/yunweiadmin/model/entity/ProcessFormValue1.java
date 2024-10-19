@@ -46,5 +46,5 @@ public class ProcessFormValue1 implements Serializable {
 
     private String selectGroupId;
 
-
+    private Integer orgId;
 }

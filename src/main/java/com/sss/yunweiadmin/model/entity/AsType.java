@@ -34,5 +34,5 @@ public class AsType implements Serializable {
      */
     private Integer level;
 
-
+    private Integer orgId;
 }

@@ -82,5 +82,7 @@ public class AsComputerSpecial implements Serializable {
 
     private String safeInstall;
 
+    private Integer orgId;
+
 
 }

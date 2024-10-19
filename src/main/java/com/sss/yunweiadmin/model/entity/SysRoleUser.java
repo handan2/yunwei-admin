@@ -34,5 +34,5 @@ public class SysRoleUser implements Serializable {
      */
     private Integer roleId;
 
-
+    private Integer orgId;
 }

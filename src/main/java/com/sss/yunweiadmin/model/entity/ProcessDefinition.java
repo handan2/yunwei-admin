@@ -97,4 +97,6 @@ public class ProcessDefinition implements Serializable {
     private String status;
     private String startLimitedByCheck;
     private String integrationMode;
+
+    private Integer orgId;
 }

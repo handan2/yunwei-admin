@@ -69,5 +69,5 @@ public class ProcessDefinitionEdge implements Serializable {
      */
     private Integer processDefinitionId;
 
-
+    private Integer orgId;
 }

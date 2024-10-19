@@ -31,5 +31,5 @@ public class RecordForReport implements Serializable {
 
     private String value;
 
-
+    private Integer orgId;
 }

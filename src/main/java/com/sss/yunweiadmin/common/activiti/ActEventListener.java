@@ -156,12 +156,13 @@ public class ActEventListener implements ActivitiEventListener {
             if (ObjectUtil.isNotEmpty(userList)) {
                 userList.forEach(user -> taskEntity.addCandidateUser(user.getLoginName()));
                 //20240830 todo断点 在这里维护一个Seesion：(processDateid:map(taskname:处理人信息))：这个session只用于流程节点处理完后node写入时使用：所以这个session就在node写入前(也可以在getCurrentStep里，这个被start|handle|startAndEnd调用)先删除，然后在这个liscenner里写入
-                Map<Integer, Map> prcIDAndHandlerMap = (Map<Integer, Map>)httpSession.getAttribute("currentStepHandler");//<1000884,<taskName,userList>>
-                Map<String, List> taskAndHandlerMap = prcIDAndHandlerMap.get(processInstanceData.getId());
-                taskAndHandlerMap.put(processDefinitionTask.getTaskName(),userList);
+                //20241017 这个机制目前没用 && procoessInstanceService里还有部分残留未清除；
+//                Map<Integer, Map> prcIDAndHandlerMap = (Map<Integer, Map>)httpSession.getAttribute("currentStepHandler");//<1000884,<taskName,userList>>
+//                Map<String, List> taskAndHandlerMap = prcIDAndHandlerMap.get(processInstanceData.getId());//"发起节点"也会执行到这里：这时processInstanceData.getId()有null指针问题 && 可能是这个listener比较特殊吧,竟然不报错还能往下运行
+//                taskAndHandlerMap.put(processDefinitionTask.getTaskName(),userList);
 
 
-            } else {//20211208 张强：这里抛出异常也不会被截获。但待后续思考如果真的没处理人，流程流转时会出现什么情况
+            } else {//20211208 张强：这里抛出异常也不会被截获。但待后续思考如果真的没处理人，流程流转时会出现什么情况；20241018确认这里捕捉不到处理人不存在的异常（导致在基他步骤&&提交时因下一步处理人不存在而在其他程序位置报错 && 前台提示java错误）
                 log.error(processDefinitionTask.getTaskDefKey() + "," + processDefinitionTask.getTaskName() + "没有处理人");
             }
         }

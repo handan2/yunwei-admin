@@ -33,5 +33,5 @@ public class AsNetworkDeviceSpecial implements Serializable {
 
     private String ios;
 
-
+    private Integer orgId;
 }

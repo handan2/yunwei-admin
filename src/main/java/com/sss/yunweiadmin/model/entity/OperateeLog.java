@@ -77,5 +77,5 @@ public class OperateeLog implements Serializable {
      */
     private String operateDescription;
 
-
+    private Integer orgId;
 }

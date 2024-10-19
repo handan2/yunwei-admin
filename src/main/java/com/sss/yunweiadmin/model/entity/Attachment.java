@@ -46,5 +46,5 @@ public class Attachment implements Serializable {
 
     private String remark;
 
-
+    private Integer orgId;
 }

@@ -33,5 +33,5 @@ public class SysRoleMenu implements Serializable {
      */
     private Integer menuId;
 
-
+    private Integer orgId;
 }

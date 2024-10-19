@@ -931,9 +931,9 @@ public class AsDeviceCommonController {
                 }
 
                 if (tmpList.contains("diskSn")) {
-                    List<AsDeviceCommon> ypList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("host_as_id", a.getId()).notIn("state", Arrays.asList(new String[]{"摘除","报废"})));
+                    List<AsDeviceCommon> ypList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("host_as_id", a.getId()).notIn("state", Arrays.asList("摘除","报废")));
                     if (CollUtil.isNotEmpty(ypList)) {
-                        asComputerDownload.setDiskSn(ypList.stream().map(item -> item.getSn()).collect(Collectors.joining(",")));
+                        asComputerDownload.setDiskSn(ypList.stream().map(AsDeviceCommon::getSn).collect(Collectors.joining(",")));
                     }
                 }
 

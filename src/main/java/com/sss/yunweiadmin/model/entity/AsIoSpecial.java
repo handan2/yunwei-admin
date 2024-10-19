@@ -29,4 +29,6 @@ public class AsIoSpecial implements Serializable {
     private String accessHostNo;
 
     private String accessPort;
+
+    private Integer orgId;
 }

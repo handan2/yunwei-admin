@@ -43,5 +43,5 @@ public class SysDic implements Serializable {
      */
     private Double sort;
 
-
+    private Integer orgId;
 }

@@ -54,4 +54,6 @@ public class AsConfig implements Serializable {
      */
     private Double sort;
 
+    private Integer orgId;
+
 }

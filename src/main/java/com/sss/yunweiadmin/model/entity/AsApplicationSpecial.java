@@ -49,5 +49,7 @@ public class AsApplicationSpecial implements Serializable {
 
     private String rolenameStr;
 
+    private Integer orgId;
+
 
 }

@@ -42,5 +42,5 @@ public class ProcessFormCustomType implements Serializable {
      */
     private String status;
 
-
+    private Integer orgId;
 }

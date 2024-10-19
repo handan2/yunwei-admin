@@ -36,5 +36,5 @@ public class SysRole implements Serializable {
      */
     private String remark;
 
-
+    private Integer orgId;
 }

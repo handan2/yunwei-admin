@@ -38,5 +38,5 @@ public class AsSecurityProductsSpecial implements Serializable {
 
     private String strategy;
 
-
+    private Integer orgId;
 }

@@ -56,4 +56,6 @@ public class SysMenu implements Serializable {
 
     @TableField(exist = false)
     private List<SysMenu> children;
+
+    private Integer orgId;
 }

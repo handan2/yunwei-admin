@@ -107,4 +107,6 @@ public class ProcessInstanceNode implements Serializable {
      * 本节点中对未来处理节点的处理人设置
      */
     private String assigin;
+
+    private Integer orgId;
 }

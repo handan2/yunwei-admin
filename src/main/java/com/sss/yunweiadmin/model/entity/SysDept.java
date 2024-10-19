@@ -69,4 +69,6 @@ public class SysDept implements Serializable {
 
     @TableField(exist = false)
     private List<SysDept> children;
+
+    private Integer orgId;
 }

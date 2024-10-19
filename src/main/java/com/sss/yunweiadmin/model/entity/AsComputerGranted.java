@@ -71,4 +71,6 @@ public class AsComputerGranted implements Serializable {
 //    private String yunweiCommentForReturn;
 //    private String violateDetailForReturn;
 
+    private Integer orgId;
+
 }

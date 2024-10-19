@@ -51,5 +51,5 @@ public class InfoNo implements Serializable {
 //    private LocalDate useDate;
     private String d;
 
-
+    private Integer orgId;
 }

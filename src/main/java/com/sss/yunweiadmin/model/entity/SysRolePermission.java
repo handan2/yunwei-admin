@@ -33,5 +33,5 @@ public class SysRolePermission implements Serializable {
      */
     private Integer permissionId;
 
-
+    private Integer orgId;
 }

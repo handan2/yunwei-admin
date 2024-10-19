@@ -42,5 +42,5 @@ public class Disk implements Serializable {
     private LocalDate createTime;
     private String  flag;
 
-
+    private Integer orgId;
 }
