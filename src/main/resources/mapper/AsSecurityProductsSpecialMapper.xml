@@ -10,11 +10,12 @@
         <result column="certificate_sn" property="certificateSn" />
         <result column="certificate_date" property="certificateDate" />
         <result column="strategy" property="strategy" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, certificate_name, certificate_sn, certificate_date, strategy
+        id, as_id, certificate_name, certificate_sn, certificate_date, strategy, org_id
     </sql>
 
 </mapper>

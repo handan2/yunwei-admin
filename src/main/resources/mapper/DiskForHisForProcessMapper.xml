@@ -17,11 +17,12 @@
         <result column="price" property="price" />
         <result column="made_date" property="madeDate" />
         <result column="flag" property="flag" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id,host_as_id,no,host_as_no,process_instance_data_id, sn, model, state, miji, price, madeDate, flag
+        id, as_id,host_as_id,no,host_as_no,process_instance_data_id, sn, model, state, miji, price, madeDate, flag, org_id
     </sql>
 
 </mapper>

@@ -12,11 +12,12 @@
         <result column="asset_type_id" property="assetTypeId" />
         <result column="as_id" property="asId" />
         <result column="process_instance_data_id" property="processInstanceDataId" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, table_name, column_name, column_type, column_value, asset_type_id,as_id,process_instance_data_id
+        id, table_name, column_name, column_type, column_value, asset_type_id,as_id,process_instance_data_id, org_id
     </sql>
 
 </mapper>

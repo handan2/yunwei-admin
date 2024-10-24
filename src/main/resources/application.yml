@@ -4,7 +4,8 @@ server:
     context-path: /yunwei
 
 todoRouteForSSO: http://10.84.10.78:8080/yunwei/sysUser/todoForSSO$processInstanceDataId=
-downloadRoot: D:/
+downloadRoot: E:/
+orgId: 0
 
 spring:
   datasource:

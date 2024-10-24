@@ -7,11 +7,12 @@
         <id column="id" property="id" />
         <result column="role_id" property="roleId" />
         <result column="menu_id" property="menuId" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, role_id, menu_id
+        id, role_id, menu_id, org_id
     </sql>
 
 </mapper>

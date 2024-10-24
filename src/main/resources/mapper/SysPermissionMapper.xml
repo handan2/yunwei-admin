@@ -14,11 +14,12 @@
         <result column="icon" property="icon"/>
         <result column="sort" property="sort"/>
         <result column="remark" property="remark"/>
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, pid, type, name, path,permission_type,position, icon, sort, remark
+        id, pid, type, name, path,permission_type,position, icon, sort, remark, org_id
     </sql>
 
 </mapper>

@@ -3,6 +3,8 @@ package com.sss.yunweiadmin.model.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import java.io.Serializable;
+
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -36,5 +38,5 @@ public class SysRole implements Serializable {
      */
     private String remark;
 
-    private Integer orgId;
+    private Integer orgId = GlobalParam.orgId;
 }

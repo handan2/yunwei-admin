@@ -26,11 +26,12 @@
         <result column="edit_item_labels" property="editItemLabels" />
         <result column="assigin_task" property="assiginTask" />
         <result column="assigin_user" property="assiginUser" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, task_type, task_def_key, task_name, operator_type, operator_type_ids, operator_type_str, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id,hide_group_ids,hide_group_label,have_select_asset,have_select_process,hide_item_labels,edit_item_labels,assigin_task,assigin_user
+        id, task_type, task_def_key, task_name, operator_type, operator_type_ids, operator_type_str, have_starter_dept, have_comment, have_next_user, have_edit_form, have_operate, process_definition_id,hide_group_ids,hide_group_label,have_select_asset,have_select_process,hide_item_labels,edit_item_labels,assigin_task,assigin_user, org_id
     </sql>
 
 </mapper>

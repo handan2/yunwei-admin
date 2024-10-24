@@ -15,11 +15,12 @@
         <result column="CREATE_DATETIME" property="createDatetime" />
         <result column="LASTUSE_DATETIME" property="lastuseDatetime" />
         <result column="REMARK" property="remark" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        ID, name, ROUTE, type, MIJI, size, SOURCE_ID, STATUS, CREATE_DATETIME, LASTUSE_DATETIME, REMARK
+        ID, name, ROUTE, type, MIJI, size, SOURCE_ID, STATUS, CREATE_DATETIME, LASTUSE_DATETIME, REMARK, org_id
     </sql>
 
 </mapper>

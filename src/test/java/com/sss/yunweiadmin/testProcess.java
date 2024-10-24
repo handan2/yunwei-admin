@@ -5,7 +5,11 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.utils.SpringUtil;
+import com.sss.yunweiadmin.model.entity.AsApplicationSpecial;
+import com.sss.yunweiadmin.service.AsApplicationSpecialService;
+import jdk.nashorn.internal.objects.Global;
 import lombok.extern.slf4j.Slf4j;
 
 import org.activiti.engine.HistoryService;
@@ -88,6 +92,8 @@ public class testProcess {
     TaskService taskService;
     @Autowired
     HistoryService historyService;
+    @Autowired
+    AsApplicationSpecialService asApplicationSpecialService;
 
     //    @Autowired
 //    SysRoleUserService sysRoleUserService;
@@ -176,6 +182,14 @@ public class testProcess {
         System.out.println(ObjectUtil.isNotEmpty(d));
         String [] abc ="".split(",");
         System.out.println(abc[0]);
+        AsApplicationSpecial asApplicationSpecial = new AsApplicationSpecial();
+        System.out.println("20241021");
+       // asApplicationSpecial.judge();
+        //System.out.println(asApplicationSpecial.getOrgId());
+        System.out.println(asApplicationSpecial.getOrgId());
+
+
+
 
     }
 

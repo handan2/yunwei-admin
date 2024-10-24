@@ -22,11 +22,12 @@
         <result column="dept_id" property="deptId" />
         <result column="temp" property="temp" />
         <result column="create_by_user" property="createByUser" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp,create_by_user
+        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp,create_by_user, org_id
     </sql>
 
 </mapper>

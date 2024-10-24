@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.annotation.TableField;
 import java.io.Serializable;
+
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -40,5 +42,5 @@ public class Statistics implements Serializable {
 
     private String miji;
 
-    private Integer orgId;
+    private Integer orgId = GlobalParam.orgId;
 }

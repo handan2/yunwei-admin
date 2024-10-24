@@ -12,11 +12,12 @@
         <result column="sort" property="sort" />
         <result column="create_datetime" property="createDateTime" />
         <result column="remark" property="remark" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, pid, name, code, status, sort, create_datetime, remark
+        id, pid, name, code, status, sort, create_datetime, remark, org_id
     </sql>
 
 </mapper>

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import java.io.Serializable;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -46,5 +47,5 @@ public class Attachment implements Serializable {
 
     private String remark;
 
-    private Integer orgId;
+    private Integer orgId = GlobalParam.orgId;
 }

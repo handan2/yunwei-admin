@@ -14,11 +14,12 @@
         <result column="var_name" property="varName" />
         <result column="conditionn" property="conditionn" />
         <result column="process_definition_id" property="processDefinitionId" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, edge_id, source_id, target_id, edge_name, button_name, edge_direction, var_name, conditionn, process_definition_id
+        id, edge_id, source_id, target_id, edge_name, button_name, edge_direction, var_name, conditionn, process_definition_id, org_id
     </sql>
 
 </mapper>

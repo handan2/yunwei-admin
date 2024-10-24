@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -46,5 +47,5 @@ public class ProcessFormValue2 implements Serializable {
 
     private Integer asId;
 
-    private Integer orgId;
+    private Integer orgId = GlobalParam.orgId;
 }

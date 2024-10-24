@@ -1,10 +1,18 @@
 package com.sss.yunweiadmin.model.entity;
 
+import ch.qos.logback.core.net.SyslogOutputStream;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import java.io.Serializable;
+
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+
 
 /**
  * <p>
@@ -19,6 +27,9 @@ import lombok.EqualsAndHashCode;
 public class AsApplicationSpecial implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    @Autowired
+    private Environment environment;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
@@ -49,7 +60,10 @@ public class AsApplicationSpecial implements Serializable {
 
     private String rolenameStr;
 
-    private Integer orgId;
+
+   // private Integer orgId = Integer.valueOf(environment.getProperty("orgId")) ;
+    private Integer orgId = GlobalParam.orgId;
+
 
 
 }

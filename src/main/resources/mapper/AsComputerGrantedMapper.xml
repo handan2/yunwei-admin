@@ -28,11 +28,12 @@
         <result column="net_interface" property="netInterface" />
         <result column="dvd_rom" property="dvdRom" />
         <result column="dvd_rw" property="dvdRw" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, usb, serial, parallel, hongwai, bluetooth, screen_shot, dev1394, connection, ip_bind, vm, doc_share, pcmcia, dev_image, dev_juanying, port_shemi, port_common,image_output,strategy,printer,have_printer,net_interface,dvd_rom,dvd_rw
+        id, as_id, usb, serial, parallel, hongwai, bluetooth, screen_shot, dev1394, connection, ip_bind, vm, doc_share, pcmcia, dev_image, dev_juanying, port_shemi, port_common,image_output,strategy,printer,have_printer,net_interface,dvd_rom,dvd_rw, org_id
     </sql>
 
 </mapper>

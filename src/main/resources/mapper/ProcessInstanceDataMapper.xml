@@ -25,11 +25,12 @@
         <result column="lock_datetime" property="lockDatetime"/>
         <result column="lock_username" property="lockUsername"/>
         <result column="last_commit_datetime" property="lastCommitDatetime"/>
+        <result column="org_id" property="orgId" />
 </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime,pre_process_instance_id,post_process_instance_id,order_num,attachment_ids,lock_datetime,lock_username,last_commit_datetime
+        id, process_definition_id, process_name, business_id, act_process_instance_id, process_status, display_current_step, login_current_step,dept_id, dept_name, display_name, login_name, start_datetime, end_datetime,pre_process_instance_id,post_process_instance_id,order_num,attachment_ids,lock_datetime,lock_username,last_commit_datetime, org_id
     </sql>
 
 </mapper>

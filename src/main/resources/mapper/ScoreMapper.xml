@@ -12,11 +12,12 @@
         <result column="score" property="score" />
         <result column="business_id" property="businessId" />
         <result column="comment" property="comment" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, node_type, node_name, display_name, login_name, score, business_id, comment
+        id, node_type, node_name, display_name, login_name, score, business_id, comment, org_id
     </sql>
 
 </mapper>

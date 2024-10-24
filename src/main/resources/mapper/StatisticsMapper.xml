@@ -12,11 +12,12 @@
         <result column="reInstall_amount" property="reinstallAmount" />
         <result column="create_time" property="createTime" />
         <result column="miji" property="miji" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, period, as_type_id, amount, rate, reInstall_amount, create_time,miji
+        id, period, as_type_id, amount, rate, reInstall_amount, create_time,miji, org_id
     </sql>
 
 </mapper>

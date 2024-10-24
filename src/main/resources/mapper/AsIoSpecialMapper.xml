@@ -8,11 +8,12 @@
         <result column="as_id" property="asId"/>
         <result column="access_host_no" property="accessHostNo"/>
         <result column="access_port" property="accessPort"/>
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, access_host_no,access_port
+        id, as_id, access_host_no,access_port, org_id
     </sql>
 
 </mapper>

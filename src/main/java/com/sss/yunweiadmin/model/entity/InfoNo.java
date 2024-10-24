@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -51,5 +52,5 @@ public class InfoNo implements Serializable {
 //    private LocalDate useDate;
     private String d;
 
-    private Integer orgId;
+    private Integer orgId = GlobalParam.orgId;
 }

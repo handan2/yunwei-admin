@@ -18,11 +18,12 @@
         <result column="start_datetime" property="startDatetime"/>
         <result column="end_datetime" property="endDatetime"/>
         <result column="assigin" property="assigin"/>
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, process_instance_data_id, task_def_key, task_name, login_name, display_name, dept_name, comment, operate,  button_name, selected_process,start_datetime, end_datetime,assigin
+        id, process_instance_data_id, task_def_key, task_name, login_name, display_name, dept_name, comment, operate,  button_name, selected_process,start_datetime, end_datetime,assigin, org_id
     </sql>
 
 </mapper>

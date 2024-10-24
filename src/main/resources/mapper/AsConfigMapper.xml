@@ -11,11 +11,12 @@
         <result column="zh_column_name" property="zhColumnName" />
         <result column="type" property="type" />
         <result column="sort" property="sort" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, en_table_name, zh_table_name, en_column_name, zh_column_name, type, sort
+        id, en_table_name, zh_table_name, en_column_name, zh_column_name, type, sort, org_id
     </sql>
 
 </mapper>

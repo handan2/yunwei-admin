@@ -12,11 +12,12 @@
         <result column="location" property="location" />
         <result column="remark" property="remark" />
         <result column="d" property="d" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, net_type, value, status, asset_no_str,location,remark,d
+        id, net_type, value, status, asset_no_str,location,remark,d, org_id
     </sql>
 
 </mapper>

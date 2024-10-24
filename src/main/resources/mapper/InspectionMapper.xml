@@ -22,11 +22,12 @@
         <result column="others" property="others" />
         <result column="creator" property="creator" />
         <result column="create_datetime" property="createDatetime" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, inspector, inspect_date, no, mode, type, net_type, miji, user_dept, user_name, label, system, safe_soft, illegal_access, files, others, creator, create_datetime
+        id, inspector, inspect_date, no, mode, type, net_type, miji, user_dept, user_name, label, system, safe_soft, illegal_access, files, others, creator, create_datetime, org_id
     </sql>
 
 </mapper>

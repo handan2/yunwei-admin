@@ -1484,15 +1484,14 @@ public class AsDeviceCommonController {
     public IPage<AsDeviceCommon> listForSoftware(int currentPage, int pageSize) {
         QueryWrapper<AsDeviceCommon> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("type_id",58);
-
-
         IPage<AsDeviceCommon> page = asDeviceCommonService.page(new Page<>(currentPage, pageSize), queryWrapper);
 
-
-
-
-
         return page;
+    }
+
+    @GetMapping("getAsDeviceCommonBySap")//20241023
+    public boolean getAsDeviceCommonBySap(){
+        return true;
     }
 
     //上传设备

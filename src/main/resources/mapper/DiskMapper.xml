@@ -13,11 +13,12 @@
         <result column="capacity" property="capacity" />
         <result column="flag" property="flag" />
         <result column="create_time" property="createTime" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, host_as_id, sn, mode, miji, status,capacity,flag, create_time
+        id, host_as_id, sn, mode, miji, status,capacity,flag, create_time, org_id
     </sql>
 
 </mapper>

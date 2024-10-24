@@ -10,11 +10,12 @@
         <result column="flash" property="flash" />
         <result column="port_total" property="portTotal" />
         <result column="ios" property="ios" />
+        <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, as_id, rom, flash, port_total, ios
+        id, as_id, rom, flash, port_total, ios, org_id
     </sql>
 
 </mapper>
