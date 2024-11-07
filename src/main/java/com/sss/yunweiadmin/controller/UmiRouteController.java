@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.model.entity.SysRoleUser;
 import com.sss.yunweiadmin.model.entity.SysUser;
 import com.sss.yunweiadmin.service.SysRoleUserService;
@@ -41,7 +42,7 @@ public class UmiRouteController {
         //单点登录代码
         //用户放入session
         SysUser user = sysUserService.getById(19);
-        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id",19));
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id", GlobalParam.orgId).eq("user_id",19));
         if (ObjectUtil.isEmpty(roleUserList)) {
             throw new RuntimeException("用户没有分配角色");
         }

@@ -3,6 +3,7 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.TreeUtil;
 import com.sss.yunweiadmin.model.entity.AsComputerSpecial;
@@ -53,9 +54,9 @@ public class AsTypeController {
         List<AsType> list = null;
         if (ObjectUtil.isNotEmpty(rootId)) {
             List<Integer> idList = asTypeService.getTypeIdList(rootId);
-            list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid", "sort").in("id", idList));
+            list = asTypeService.list(new  QueryWrapper<AsType>().eq("org_id", GlobalParam.orgId).orderByAsc("pid", "sort").in("id", idList));
         } else
-            list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid", "sort"));
+            list = asTypeService.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).orderByAsc("pid", "sort"));
         return TreeUtil.getTreeSelectVO(list);
     }
 
@@ -65,22 +66,22 @@ public class AsTypeController {
         List<AsType> list = null;
         if (ObjectUtil.isNotEmpty(rootId)) {
             List<Integer> idList = asTypeService.getTypeIdListNotIncludeSelf(rootId);
-            list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid", "sort").in("id", idList));
+            list = asTypeService.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).orderByAsc("pid", "sort").in("id", idList));
         } else
-            list = asTypeService.list(new QueryWrapper<AsType>().orderByAsc("pid", "sort"));
+            list = asTypeService.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).orderByAsc("pid", "sort"));
         return TreeUtil.getTreeSelectVO(list);
     }
 
     @GetMapping("getLevelTwoInFoAssetAsTypeLV")
     public List<ValueLabelVO> getLevelTwoInFoAssetAsTypeLV() {//信息设备的（下级）子分类
-        return asTypeService.list(new QueryWrapper<AsType>().eq("level", 2).eq("pid", 1)).stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());
+        return asTypeService.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("level", 2).eq("pid", GlobalParam.devRootID)).stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());
 
     }
 
     @GetMapping("getAsTypeIdByName")
     public int getAsTypeIdByName(String name) {
         System.out.println(name);
-        AsType astype = asTypeService.getOne(new QueryWrapper<AsType>().eq("name", name));
+        AsType astype = asTypeService.getOne(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("name", name));
         if (ObjectUtil.isNotEmpty(astype))
             return astype.getId();
         else

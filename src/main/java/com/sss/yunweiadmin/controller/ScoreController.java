@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.controller;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.ProcessDefinitionTask;
 import com.sss.yunweiadmin.model.entity.ProcessInstanceNode;
@@ -42,20 +43,20 @@ public class ScoreController {
     HttpSession httpSession;
     @GetMapping("test")
     public ProcessInstanceNode test(String id) {
-        ProcessInstanceNode node = processInstanceNodeService.getOne(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", id),false);
+        ProcessInstanceNode node = processInstanceNodeService.getOne(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", id),false);
         return node;
     }
 
     @GetMapping("getNode")
     public List<ProcessInstanceNode> getNode(String id) {
         System.out.println("aaa");
-        List<ProcessInstanceNode> node = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().select("display_name").eq("process_instance_data_id", id));
+        List<ProcessInstanceNode> node = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id", GlobalParam.orgId).select("display_name").eq("process_instance_data_id", id));
         node.forEach(System.out::println);
         return node;
     }
     @GetMapping("isScored")
     public int isScored(String id){
-        return scoreService.count(new QueryWrapper<Score>().eq("business_id",id));
+        return scoreService.count(new  QueryWrapper<Score>().eq("org_id",GlobalParam.orgId).eq("business_id",id));
 
     }
     @PostMapping("saveScore")
@@ -79,16 +80,16 @@ public class ScoreController {
     public ScoreNodeVO getScoreObject(String id) {
         //20221217 改造节点类型的判断依据：从task表中读“节点类型”&&而不是之前根据“节点名称”：待后续验证逻辑准确性
         //整个DB中的takeDefKey
-        List<Map<String, Object>> handleTaskKeysListMap = processDefinitionTaskService.listMaps(new QueryWrapper<ProcessDefinitionTask>().eq("task_type","bpmn:handleTask").select("task_def_key"));
-        List<Map<String, Object>> approvalTaskKeysListMap = processDefinitionTaskService.listMaps(new QueryWrapper<ProcessDefinitionTask>().eq("task_type","bpmn:approvalTask").select("task_def_key"));
+        List<Map<String, Object>> handleTaskKeysListMap = processDefinitionTaskService.listMaps(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("task_type","bpmn:handleTask").select("task_def_key"));
+        List<Map<String, Object>> approvalTaskKeysListMap = processDefinitionTaskService.listMaps(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("task_type","bpmn:approvalTask").select("task_def_key"));
         List<String> handleTaskKeysList = handleTaskKeysListMap.stream().map(item -> (String) item.get("task_def_key")).collect(Collectors.toList());
         List<String> approvalTaskKeysList = approvalTaskKeysListMap.stream().map(item -> (String) item.get("task_def_key")).collect(Collectors.toList());
 
-//        List<Map<String, Object>> operatorNameMapList = processInstanceNodeService.listMaps(new QueryWrapper<ProcessInstanceNode>().select("Distinct display_name,login_name").eq("process_instance_data_id", id).like("task_name", "处理"));
-//        List<Map<String, Object>> approvalNodeNameMapList = processInstanceNodeService.listMaps(new QueryWrapper<ProcessInstanceNode>().select("Distinct task_name").eq("process_instance_data_id", id).and(aa -> aa.notLike("task_name", "处理")).and(aa -> aa.notLike("task_name", "发起")));
+//        List<Map<String, Object>> operatorNameMapList = processInstanceNodeService.listMaps(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).select("Distinct display_name,login_name").eq("process_instance_data_id", id).like("task_name", "处理"));
+//        List<Map<String, Object>> approvalNodeNameMapList = processInstanceNodeService.listMaps(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).select("Distinct task_name").eq("process_instance_data_id", id).and(aa -> aa.notLike("task_name", "处理")).and(aa -> aa.notLike("task_name", "发起")));
         //本流程实例中的处理者（含审批人）与节点（含处理环节）；这里的operator包含审批人：
-        List<Map<String, Object>> operatorNameMapList = processInstanceNodeService.listMaps(new QueryWrapper<ProcessInstanceNode>().select("Distinct task_name,display_name,login_name,task_def_key").eq("process_instance_data_id", id));
-        List<Map<String, Object>> nodeNameMapList = processInstanceNodeService.listMaps(new QueryWrapper<ProcessInstanceNode>().select("Distinct task_name,task_def_key").eq("process_instance_data_id", id));
+        List<Map<String, Object>> operatorNameMapList = processInstanceNodeService.listMaps(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).select("Distinct task_name,display_name,login_name,task_def_key").eq("process_instance_data_id", id));
+        List<Map<String, Object>> nodeNameMapList = processInstanceNodeService.listMaps(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).select("Distinct task_name,task_def_key").eq("process_instance_data_id", id));
         //过滤出处理者（不含审批人）与节点（不含处理节点）
         List<Map<String, Object>> operatorNameMapList2 = operatorNameMapList.stream().filter(item->handleTaskKeysList.contains(item.get("task_def_key"))).collect(Collectors.toList());
         List<Map<String, Object>> nodeNameMapList2 = nodeNameMapList.stream().filter(item->approvalTaskKeysList.contains(item.get("task_def_key"))).collect(Collectors.toList());

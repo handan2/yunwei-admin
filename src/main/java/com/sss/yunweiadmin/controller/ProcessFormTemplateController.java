@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.ProcessFormCustomTypeUtil;
 import com.sss.yunweiadmin.common.utils.SpringUtil;
@@ -59,7 +60,7 @@ public class ProcessFormTemplateController {
     //20220521加， 应该已不用
     @GetMapping("getGroupKT")
     public List<KeyTitleVO> getGroupKT(Integer processDefinitionId) {
-        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
+        List<ProcessFormTemplate> list = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
         return list.stream().map(item -> new KeyTitleVO(item.getId(), item.getLabel())).collect(Collectors.toList());
     }
 
@@ -70,10 +71,18 @@ public class ProcessFormTemplateController {
 
     @GetMapping("getFormTemplateTree")
     public List<FormTemplateVO> getFormTemplateTree(Integer processDefinitionId,String actProcessInstanceId) {//20221103 添加Integer actProcessInstanceId
+        List<ProcessFormTemplate> list = null;
+        if(actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
+            String[] a = actProcessInstanceId.split("_");
+            list = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",a[1]).eq("process_definition_id", processDefinitionId));
+            return processFormTemplateService.getFormTemplateTree(list,processDefinitionId,actProcessInstanceId);
+        } else {
+            list =  processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+            return processFormTemplateService.getFormTemplateTree(list,processDefinitionId,actProcessInstanceId);
+        }
 
+     //   List<ProcessFormTemplate> list =
 
-        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
-        return processFormTemplateService.getFormTemplateTree(list,processDefinitionId,actProcessInstanceId);
         // return TreeUtil.getFormTemplateTree(list);
     }
 
@@ -86,14 +95,14 @@ public class ProcessFormTemplateController {
     //用于给tree组件赋值:获得需要在提交时可供界面上选择来显示的group
     @GetMapping("getFormTemplateGroupTreeForSelect")
     public List<TreeSelectVO> getFormTemplateGroupTreeForSelect(Integer processDefinitionId) {
-        List<ProcessFormTemplate> list1 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
+        List<ProcessFormTemplate> list1 = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
         //20220517todo要判断空；20221202先注释掉
 //        if (CollUtil.isEmpty(list1)) {
 //            throw new RuntimeException("自定义字段为空，该流程定义可能不存在");
 //        }
         Map<String, String> map1 = list1.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate::getHaveGroupSelect));
 
-        List<ProcessFormTemplate> list2 = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组").eq("have_group_select", "是"));
+        List<ProcessFormTemplate> list2 = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("type", "字段组").eq("have_group_select", "是"));
         Map<String, Integer> map2 = list2.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate::getId));
         //
         List<TreeDTO> list3 = Lists.newArrayList();
@@ -127,7 +136,7 @@ public class ProcessFormTemplateController {
     //根据已选择的字段组id,筛选出所有需要被显示的(这里指嵌套在选定字段组内的其他字段组)字段组id 。。。包含：用户界面可选字段组且已选择的（对应checkGroupIdArr）&&不可选字段组
     @GetMapping("getSelectGroupIdList")
     public Set<Integer> getSelectGroupIdList(Integer processDefinitionId, Integer[] checkGroupIdArr) {
-        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
+        List<ProcessFormTemplate> list = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("type", "字段组"));
         Map<String, ProcessFormTemplate> map = list.stream().collect(Collectors.toMap(ProcessFormTemplate::getLabel, ProcessFormTemplate -> ProcessFormTemplate));
         //20220704 实际这个checkGroupIdArr是应该判下空，不过Action机制：前端传null到actioon时：也会初始化一个“空对象”
         Set<Integer> selectGroupIdSet = Stream.of(checkGroupIdArr).collect(Collectors.toSet());
@@ -169,14 +178,14 @@ public class ProcessFormTemplateController {
         return processFormTemplateService.getTableTypeVO(processDefinitionId);
 //        Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
 //        //1.取出所有的表类型的名称
-//        List<ProcessFormTemplate> list = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+//        List<ProcessFormTemplate> list = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
 //        List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
 //            String tableId = item.getType().split("\\.")[0];
 //            return Integer.parseInt(tableId);
 //        }).collect(Collectors.toList());
 //        if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
 //            //2.根据表名称取出processFormCustomType
-//            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().in("id", tableIdList));
+//            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).in("id", tableIdList));
 //            //3.
 //            for (ProcessFormCustomType processFormCustomType : typeList) {
 //                List<TableTypeVO> tmpList = Lists.newArrayList();
@@ -212,7 +221,7 @@ public class ProcessFormTemplateController {
             String name = item.getName();//"name": "16.计算机信息表.as_device_common.no.75"
             String[] arr = name.split("\\.");
             if ("disk_for_render".equals(arr[3])) {//20220616加：自定义字段有“硬盘渲染标识时”给前端传disk数据，还是放前端吧
-                List<AsDeviceCommon> list = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("host_as_id", asDeviceCommonId).like("name", "硬盘").ne("state","报废").ne("state","摘除"));
+                List<AsDeviceCommon> list = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id", GlobalParam.orgId).eq("host_as_id", asDeviceCommonId).like("name", "硬盘").ne("state","报废").ne("state","摘除"));
                 if (list != null) {
                     String hostAsNo = asDeviceCommonService.getById(asDeviceCommonId).getNo();
                     diskList = list.stream().map(item1 -> {
@@ -233,7 +242,7 @@ public class ProcessFormTemplateController {
             if (arr[2].equals("as_device_common")) {
                 obj = service.getById(asDeviceCommonId);
             } else {
-                obj = service.getOne(new QueryWrapper<Object>().eq("as_id", asDeviceCommonId));
+                obj = service.getOne(new  QueryWrapper<Object>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommonId));
             }
             if (obj != null) {
                 //读实例中相应自定义表的具体字段值：这里的toString()是把所有字段不管啥类型都转成string

@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.mapper.SysUserMapper;
 import com.sss.yunweiadmin.model.entity.SysRoleUser;
 import com.sss.yunweiadmin.model.entity.SysUser;
@@ -34,16 +35,16 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     public int add(SysUser sysUser) {
-        List<SysUser> list = this.list(new QueryWrapper<SysUser>().eq("login_name", sysUser.getLoginName()));
+        List<SysUser> list = this.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("login_name", sysUser.getLoginName()));
         if (list.size() > 0) {
             throw new RuntimeException(sysUser.getLoginName() + "已存在");
         }
-        List<SysUser> list2 = this.list(new QueryWrapper<SysUser>().eq("id_number", sysUser.getIdNumber()));
+        List<SysUser> list2 = this.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id_number", sysUser.getIdNumber()));
         if (list2.size() > 0) {
             throw new RuntimeException(sysUser.getIdNumber() + "已存在");
         }
         //限制了本部门的重名情况，这种由管理员手工添加吧；20240228取消重名限制：因为会议机密钥这种“非真实人”的责任人Display名必须和实际人一样：便于后者统计他名下的“其他登陆用户”
-//        List<SysUser> list3 = this.list(new QueryWrapper<SysUser>().eq("display_name", sysUser.getDisplayName()).eq("dept_id",sysUser.getDeptId()));
+//        List<SysUser> list3 = this.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("display_name", sysUser.getDisplayName()).eq("dept_id",sysUser.getDeptId()));
 //        if (list3.size() > 0) {
 //            throw new RuntimeException(sysUser.getIdNumber() + "已存在");
 //        }
@@ -62,7 +63,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public boolean upateByIdentity(String identity ,String loginName) {
         if(StrUtil.isNotEmpty(identity) && StrUtil.isNotEmpty(loginName)){
-            List<SysUser> list = this.list(new QueryWrapper<SysUser>().eq("id_number",identity));
+            List<SysUser> list = this.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).eq("id_number",identity));
             if(CollUtil.isNotEmpty(list)){
                 SysUser user = list.get(0);
                 user.setLoginName(loginName);
@@ -80,7 +81,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         boolean flag1, flag2;
         List<Integer> userIdList = Stream.of(idArr).collect(Collectors.toList());
         flag1 = this.removeByIds(userIdList);
-        flag2 = sysRoleUserService.remove(new QueryWrapper<SysRoleUser>().in("user_id", userIdList));
+        flag2 = sysRoleUserService.remove(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("user_id", userIdList));
         return flag1 && flag2;
     }
 
@@ -88,7 +89,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public boolean updateRoleUser(Integer userId, List<Integer> roleIdList) {
         boolean flag;
         //先删除，后插入
-        sysRoleUserService.remove(new QueryWrapper<SysRoleUser>().eq("user_id", userId));
+        sysRoleUserService.remove(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", userId));
         List<SysRoleUser> list = roleIdList.stream().map(roleId -> {
             SysRoleUser roleUser = new SysRoleUser();
             roleUser.setUserId(userId);

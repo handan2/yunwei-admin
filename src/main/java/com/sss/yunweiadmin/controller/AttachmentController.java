@@ -4,6 +4,7 @@ package com.sss.yunweiadmin.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.Attachment;
 import com.sss.yunweiadmin.model.entity.ProcessFormValue1;
@@ -32,7 +33,7 @@ public class AttachmentController {
 
     @GetMapping("list")
     public IPage<Attachment> list(int currentPage , int pageSize, String route) {
-        QueryWrapper<Attachment> queryWrapper = new QueryWrapper<Attachment>().orderByDesc("id");
+        QueryWrapper<Attachment> queryWrapper = new  QueryWrapper<Attachment>().eq("org_id", GlobalParam.orgId).orderByDesc("id");
         queryWrapper.eq("route",route);
         return attachmentService.page(new Page<>(currentPage, 20), queryWrapper);//20240725 pageSize = 20,
     }

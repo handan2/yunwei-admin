@@ -13,6 +13,7 @@ import com.alibaba.excel.write.style.HorizontalCellStyleStrategy;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
@@ -57,7 +58,7 @@ public class OperateeLogController {
     HttpSession httpSession;
     @GetMapping("list")
     public IPage<OperateeLog> list(int currentPage, int pageSize, String displayName,String loginName,String dateRange){
-        QueryWrapper<OperateeLog> queryWrapper = new QueryWrapper<OperateeLog>().orderByDesc("id");
+        QueryWrapper<OperateeLog> queryWrapper = new  QueryWrapper<OperateeLog>().eq("org_id", GlobalParam.orgId).orderByDesc("id");
         if (ObjectUtil.isNotEmpty(displayName)) {
             queryWrapper.eq("display_name", displayName);
         }
@@ -119,7 +120,7 @@ public class OperateeLogController {
         ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).registerWriteHandler((new HorizontalCellStyleStrategy(headWriteCellStyle, contentWriteCellStyle))).useDefaultStyle(false).excelType(ExcelTypeEnum.XLSX).build();
         List<OperateLogDownload> data0List = new ArrayList<>();
 
-        QueryWrapper<OperateeLog> queryWrapper = new QueryWrapper<OperateeLog>().orderByDesc("id");
+        QueryWrapper<OperateeLog> queryWrapper = new  QueryWrapper<OperateeLog>().eq("org_id",GlobalParam.orgId).orderByDesc("id");
         if (ObjectUtil.isNotEmpty(displayName)) {
             queryWrapper.eq("display_name", displayName);
         }

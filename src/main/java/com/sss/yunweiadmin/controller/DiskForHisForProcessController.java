@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.controller;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.DiskForHisForProcess;
 import com.sss.yunweiadmin.service.DiskForHisForProcessService;
@@ -31,7 +32,7 @@ public class DiskForHisForProcessController {
     @GetMapping("getDiskForHisForProcess")
     public List<DiskForHisForProcess> getDiskForHisForProcess( Integer processInstanceDataId){
 
-        List<DiskForHisForProcess> list = diskForHisForProcessService.list(new QueryWrapper<DiskForHisForProcess>().eq("process_instance_data_id",processInstanceDataId));
+        List<DiskForHisForProcess> list = diskForHisForProcessService.list(new  QueryWrapper<DiskForHisForProcess>().eq("org_id", GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId));
         return list;
 
 

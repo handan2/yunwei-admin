@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import com.sss.yunweiadmin.bean.WorkFlowBean;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResult;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
@@ -79,7 +80,8 @@ public class ProcessInstanceDataController {
     RecordForReportService recordForReportService;
     @Autowired
     OperateeLogService operateeLogService;
-
+    @Autowired
+    SysDicService sysDicService;
 
     //20231205 专用于手工记日志：流程相关
 
@@ -160,12 +162,12 @@ public class ProcessInstanceDataController {
     @GetMapping("list")
     //接受参数是int时，不能没有值，会报null不能赋给int,但integer可以
     public IPage<ProcessInstanceData> list(int currentPage, int pageSize, String processName, String processStatus, String displayName, String deptName, String handleName,String name,  String no, String startDate, String endDate, Integer id, String processType, String orderNum, String miji) {
-        QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().orderByDesc("id");
+        QueryWrapper<ProcessInstanceData> queryWrapper = new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).orderByDesc("id");
         if (ObjectUtil.isNotEmpty(name)) {//20220920name表示设备名称
-            List<Map<String, Object>> listMap = asDeviceCommonService.listMaps(new QueryWrapper<AsDeviceCommon>().like("name",name).select("id"));
+            List<Map<String, Object>> listMap = asDeviceCommonService.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).like("name",name).select("id"));
             List<Integer> asIdList = listMap.stream().map(item->Integer.parseInt(item.get("id").toString())).collect(Collectors.toList());
             if(CollUtil.isNotEmpty(asIdList)){
-                List<Map<String, Object>> listMap2 = processFormValue2Service.listMaps(new QueryWrapper<ProcessFormValue2>().in("as_id",asIdList).select("act_process_instance_id"));
+                List<Map<String, Object>> listMap2 = processFormValue2Service.listMaps(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).in("as_id",asIdList).select("act_process_instance_id"));
                 List<Integer> actInstIdList = listMap2.stream().map(item->Integer.parseInt(item.get("act_process_instance_id").toString())).collect(Collectors.toList());
                 if(CollUtil.isNotEmpty(actInstIdList))
                       queryWrapper.in("act_process_instance_id",actInstIdList);
@@ -200,10 +202,10 @@ public class ProcessInstanceDataController {
             }
             List<ProcessDefinition> definitionList = null;
             if(CollUtil.isNotEmpty(processTypeList))
-                definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().in("process_type", processTypeList));
+                definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).in("process_type", processTypeList));
             else
-                definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().like("process_type", processType));
-            //definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().in("process_type", processTypeList));
+                definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).like("process_type", processType));
+            //definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).in("process_type", processTypeList));
             if (ObjectUtil.isNotEmpty(definitionList)) {
                 queryWrapper.in("process_definition_id", definitionList.stream().map(ProcessDefinition::getId).collect(Collectors.toList()));
             } else {
@@ -217,7 +219,7 @@ public class ProcessInstanceDataController {
             queryWrapper.eq("dept_name", deptName);
         }
         if (ObjectUtil.isNotEmpty(handleName)) {
-            List<ProcessInstanceNode> nodeList = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().like("display_name", handleName));
+            List<ProcessInstanceNode> nodeList = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).like("display_name", handleName));
             if (ObjectUtil.isNotEmpty(nodeList)) {
                 List<Integer> processInstanceIdList = nodeList.stream().map(ProcessInstanceNode::getProcessInstanceDataId).collect(Collectors.toList());
                 queryWrapper.in("id", processInstanceIdList);
@@ -226,7 +228,7 @@ public class ProcessInstanceDataController {
             }
         }
         if (ObjectUtil.isNotEmpty(no) || ObjectUtil.isNotEmpty(miji)) {
-            QueryWrapper<AsDeviceCommon> queryWrapper1 = new QueryWrapper<AsDeviceCommon>();
+            QueryWrapper<AsDeviceCommon> queryWrapper1 = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId);
             if (ObjectUtil.isNotEmpty(no))
                 queryWrapper1.eq("no", no);//20241005 ,like换eq
             if (ObjectUtil.isNotEmpty(miji))
@@ -235,7 +237,7 @@ public class ProcessInstanceDataController {
             //组建map1<设备no,asID>
             if (ObjectUtil.isNotEmpty(asDeviceCommonList)) {
                 List<Integer> asIdList = asDeviceCommonList.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
-                List<ProcessFormValue2> value2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().in("as_id", asIdList));
+                List<ProcessFormValue2> value2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 //组建map2<actid,asID>
                 if (ObjectUtil.isNotEmpty(value2List)) {
                     queryWrapper.in("act_process_instance_id", value2List.stream().map(ProcessFormValue2::getActProcessInstanceId).collect(Collectors.toList()));
@@ -272,7 +274,20 @@ public class ProcessInstanceDataController {
 
             throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
-        QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+
+        List<String> loginNameListForOperatorForCross = null;//跨系统待办人员
+        QueryWrapper<ProcessInstanceData> queryWrapper = new  QueryWrapper<>();//目前唯一一处不需要加eq("org_id",GlobalParam.orgId)
+        if(GlobalParam.orgId == 0) {//只让orgId为0时，即信息化中心来执行；约定了所与惯性公司的ID分别0、1
+            SysDic dic_operatorForCross = sysDicService.getOne(new  QueryWrapper<SysDic>().eq("org_id",1).eq("flag", "跨系统待办人员").orderByAsc("sort"));
+            if(ObjectUtil.isNotEmpty(dic_operatorForCross))
+                loginNameListForOperatorForCross = Arrays.asList(dic_operatorForCross.getName().split(","));//Arrays.asList(operatorTypeIds.split(","))
+            if(CollUtil.isNotEmpty(loginNameListForOperatorForCross) && loginNameListForOperatorForCross.contains(user.getLoginName()))//同时要获取org_id为 0、1的待办 //
+                queryWrapper.in("org_id",Arrays.asList(new Integer[]{0,1})).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+            else
+                queryWrapper.eq("org_id",GlobalParam.orgId).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+        } else
+            queryWrapper.eq("org_id",GlobalParam.orgId).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+
         if (ObjectUtil.isNotEmpty(processName)) {
             queryWrapper.like("process_name", processName);
         }
@@ -286,7 +301,7 @@ public class ProcessInstanceDataController {
             queryWrapper.eq("dept_name", deptName);
         }
         if (ObjectUtil.isNotEmpty(processType)) {
-            List<ProcessDefinition> definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("process_type", processType));
+            List<ProcessDefinition> definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("process_type", processType));
             if (ObjectUtil.isNotEmpty(definitionList)) {
                 queryWrapper.in("process_definition_id", definitionList.stream().map(ProcessDefinition::getId).collect(Collectors.toList()));
             } else {
@@ -294,7 +309,7 @@ public class ProcessInstanceDataController {
             }
         }
         if (ObjectUtil.isNotEmpty(no) || ObjectUtil.isNotEmpty(miji)) {
-            QueryWrapper<AsDeviceCommon> queryWrapper1 = new QueryWrapper<AsDeviceCommon>();
+            QueryWrapper<AsDeviceCommon> queryWrapper1 = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId);
             if (ObjectUtil.isNotEmpty(no))
                 queryWrapper1.like("no", no);
             if (ObjectUtil.isNotEmpty(miji))
@@ -302,7 +317,7 @@ public class ProcessInstanceDataController {
             List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list(queryWrapper1);
             if (ObjectUtil.isNotEmpty(asDeviceCommonList)) {
                 List<Integer> asIdList = asDeviceCommonList.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
-                List<ProcessFormValue2> value2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().in("as_id", asIdList));
+                List<ProcessFormValue2> value2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 if (ObjectUtil.isNotEmpty(value2List)) {
                     queryWrapper.in("act_process_instance_id", value2List.stream().map(ProcessFormValue2::getActProcessInstanceId).collect(Collectors.toList()));
                 } else
@@ -333,7 +348,7 @@ public class ProcessInstanceDataController {
     //用于给传到前端的实例数据LIST中加入score信息
     private void setProcessInstanceDataScore(ProcessInstanceData processInstanceData) {
         //20211124 getone()里要加第二个参数false,这样在查找到多条记录时不会报错
-        Score score = scoreService.getOne(new QueryWrapper<Score>().eq("business_id", processInstanceData.getId()).eq("node_type", 3), false);
+        Score score = scoreService.getOne(new  QueryWrapper<Score>().eq("org_id",GlobalParam.orgId).eq("business_id", processInstanceData.getId()).eq("node_type", 3), false);
         if (score != null) {
             processInstanceData.setScore(score.getScore());
         } else {
@@ -349,9 +364,9 @@ public class ProcessInstanceDataController {
         if (user == null) {
             throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
-        QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().orderByDesc("id");
+        QueryWrapper<ProcessInstanceData> queryWrapper = new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId).orderByDesc("id");
         //根据node表取出当前登陆者处理过的流程idList（包含提交的）
-        QueryWrapper<ProcessInstanceNode> queryWrapper1 = new QueryWrapper<>();
+        QueryWrapper<ProcessInstanceNode> queryWrapper1 = new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
         if (ObjectUtil.isNotEmpty(startDate)) {
             String[] dateArr = startDate.split(",");
             queryWrapper1.ge("start_datetime", dateArr[0] + " 00:00:00");
@@ -394,7 +409,7 @@ public class ProcessInstanceDataController {
             queryWrapper.like("order_num",orderNum);
         }
         if (ObjectUtil.isNotEmpty(processType)) {
-            List<ProcessDefinition> definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("process_type", processType));
+            List<ProcessDefinition> definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("process_type", processType));
             if (ObjectUtil.isNotEmpty(definitionList)) {
                 queryWrapper.in("process_definition_id", definitionList.stream().map(ProcessDefinition::getId).collect(Collectors.toList()));
             } else {
@@ -403,7 +418,7 @@ public class ProcessInstanceDataController {
         }
 
         if (ObjectUtil.isNotEmpty(no) || ObjectUtil.isNotEmpty(miji)) {
-            QueryWrapper<AsDeviceCommon> queryWrapper2 = new QueryWrapper<AsDeviceCommon>();
+            QueryWrapper<AsDeviceCommon> queryWrapper2 = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId);
             if (ObjectUtil.isNotEmpty(no))
                 queryWrapper2.like("no", no);
             if (ObjectUtil.isNotEmpty(miji))
@@ -411,7 +426,7 @@ public class ProcessInstanceDataController {
             List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list(queryWrapper2);
             if (ObjectUtil.isNotEmpty(asDeviceCommonList)) {
                 List<Integer> asIdList = asDeviceCommonList.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
-                List<ProcessFormValue2> value2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().in("as_id", asIdList));
+                List<ProcessFormValue2> value2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 if (ObjectUtil.isNotEmpty(value2List)) {
                     queryWrapper.in("act_process_instance_id", value2List.stream().map(ProcessFormValue2::getActProcessInstanceId).collect(Collectors.toList()));
                 } else
@@ -440,13 +455,13 @@ public class ProcessInstanceDataController {
         if (user == null) {
             throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
-        QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().eq("process_status", "完成").eq("login_name", user.getLoginName()).orderByDesc("id");
+        QueryWrapper<ProcessInstanceData> queryWrapper = new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("process_status", "完成").eq("login_name", user.getLoginName()).orderByDesc("id");
 
         if (ObjectUtil.isNotEmpty(processName)) {
             queryWrapper.like("process_name", processName);
         }
         if (ObjectUtil.isNotEmpty(processType)) {
-            List<ProcessDefinition> definitionList = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("process_type", processType));
+            List<ProcessDefinition> definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("process_type", processType));
             if (ObjectUtil.isNotEmpty(definitionList)) {
                 queryWrapper.in("process_definition_id", definitionList.stream().map(ProcessDefinition::getId).collect(Collectors.toList()));
             } else {
@@ -454,7 +469,7 @@ public class ProcessInstanceDataController {
             }
         }
         if (ObjectUtil.isNotEmpty(handleName)) {
-            List<ProcessInstanceNode> nodeList = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().like("display_name", handleName));
+            List<ProcessInstanceNode> nodeList = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).like("display_name", handleName));
             if (ObjectUtil.isNotEmpty(nodeList)) {
                 List<Integer> processInstanceIdList = nodeList.stream().map(ProcessInstanceNode::getProcessInstanceDataId).collect(Collectors.toList());
                 queryWrapper.in("id", processInstanceIdList);
@@ -463,10 +478,10 @@ public class ProcessInstanceDataController {
             }
         }
         if (ObjectUtil.isNotEmpty(no)) {
-            List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().like("no", no));
+            List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).like("no", no));
             if (ObjectUtil.isNotEmpty(asDeviceCommonList)) {
                 List<Integer> asIdList = asDeviceCommonList.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
-                List<ProcessFormValue2> value2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().in("as_id", asIdList));
+                List<ProcessFormValue2> value2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 if (ObjectUtil.isNotEmpty(value2List)) {
                     queryWrapper.in("act_process_instance_id", value2List.stream().map(ProcessFormValue2::getActProcessInstanceId).collect(Collectors.toList()));
                 }
@@ -499,10 +514,10 @@ public class ProcessInstanceDataController {
     @GetMapping("currentList")
     public IPage<ProcessInstanceData> currentList(int currentPage, int pageSize, int asId) {
         //
-        List<ProcessFormValue2> value2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("as_id", asId));
+        List<ProcessFormValue2> value2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("as_id", asId));
         if (ObjectUtil.isNotEmpty(value2List)) {
             List<String> list = value2List.stream().map(ProcessFormValue2::getActProcessInstanceId).collect(Collectors.toList());
-            return processInstanceDataService.page(new Page<>(currentPage, pageSize), new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").in("act_process_instance_id", list).orderByDesc("start_datetime"));
+            return processInstanceDataService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).ne("process_status", "完成").in("act_process_instance_id", list).orderByDesc("start_datetime"));
         }
         return null;
     }
@@ -511,10 +526,10 @@ public class ProcessInstanceDataController {
     @GetMapping("historyList")
     public IPage<ProcessInstanceData> historyList(int currentPage, int pageSize, int asId) {
         //
-        List<ProcessFormValue2> value2List = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("as_id", asId));
+        List<ProcessFormValue2> value2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("as_id", asId));
         if (ObjectUtil.isNotEmpty(value2List)) {
             List<String> list = value2List.stream().map(ProcessFormValue2::getActProcessInstanceId).collect(Collectors.toList());
-            return processInstanceDataService.page(new Page<>(currentPage, pageSize), new QueryWrapper<ProcessInstanceData>().eq("process_status", "完成").in("act_process_instance_id", list).orderByDesc("start_datetime"));
+            return processInstanceDataService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("process_status", "完成").in("act_process_instance_id", list).orderByDesc("start_datetime"));
         }
         return null;
     }
@@ -526,7 +541,7 @@ public class ProcessInstanceDataController {
             throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
         //遍历page并加入score信息
-        IPage<ProcessInstanceData> page =  processInstanceDataService.page(new Page<>(currentPage, pageSize), new QueryWrapper<ProcessInstanceData>().eq("login_name", user.getLoginName()).orderByDesc("id"));
+        IPage<ProcessInstanceData> page =  processInstanceDataService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("login_name", user.getLoginName()).orderByDesc("id"));
         List<ProcessInstanceData> list = page.getRecords();
         for (ProcessInstanceData processInstanceData : list) {
             this.setProcessInstanceDataScore(processInstanceData);
@@ -572,8 +587,8 @@ public class ProcessInstanceDataController {
         //加对资产TYPE的判断，只有信息设备需要做互斥判断
         int typeId = asDeviceCommonService.getById(assetId).getTypeId();
         //查询资产类型表中typeId对应的level=1/上级分类的名称是不是“信息与存储设备”(id==1)，不是的话，直接放行
-        int p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", typeId)).getPid();
-        int p_p_typeId = asTypeService.getOne(new QueryWrapper<AsType>().eq("id", p_typeId)).getPid();
+        int p_typeId = asTypeService.getOne(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("id", typeId)).getPid();
+        int p_p_typeId = asTypeService.getOne(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("id", p_typeId)).getPid();
         //20220919 添加p_p_typeId == 0：用于满足“应用系统”的情况:设备类别的level=2,即p_p_typeId == 0;
         if (p_p_typeId != 1)//20230719暂改为p_p_typeId != 1
             return null;
@@ -581,16 +596,16 @@ public class ProcessInstanceDataController {
         //获取资产ID对应的所有ACTINST IDList
         List<Map<String, Object>> actProcessInsIdListMap = null;
         if (ObjectUtil.isEmpty(processInstanceDataId))
-            actProcessInsIdListMap = processFormValue2Service.listMaps(new QueryWrapper<ProcessFormValue2>().eq("as_id", assetId).select("act_process_instance_id"));
+            actProcessInsIdListMap = processFormValue2Service.listMaps(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("as_id", assetId).select("act_process_instance_id"));
         else {
-            actProcessInsIdListMap = processFormValue2Service.listMaps(new QueryWrapper<ProcessFormValue2>().eq("as_id", assetId).ne("act_process_instance_id", processInstanceDataService.getById(processInstanceDataId).getActProcessInstanceId()).select("act_process_instance_id"));
+            actProcessInsIdListMap = processFormValue2Service.listMaps(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("as_id", assetId).ne("act_process_instance_id", processInstanceDataService.getById(processInstanceDataId).getActProcessInstanceId()).select("act_process_instance_id"));
         }
         //判断  actProcessInsIdListMap是不是空。如果是空的，那么不用再校验了--放行
         if (ObjectUtil.isEmpty(actProcessInsIdListMap)) return null;
         List<String> actProcessInsIdList = actProcessInsIdListMap.stream().map(item -> item.get("act_process_instance_id").toString()).collect(Collectors.toList());
         //查出互斥定义的定义IDlist
         List<Map<String, Object>> mutexDefIdListMap;//不可能为空，肯定有值
-        QueryWrapper<ProcessDefinition> queryWrapper = new QueryWrapper<ProcessDefinition>().eq("as_type_id", mainTypeIdForDef);
+        QueryWrapper<ProcessDefinition> queryWrapper = new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("as_type_id", mainTypeIdForDef);
         ;
         if (processType.contains("申领") || processType.contains("归库")) {//20221225增加“报废”：“报废”是授权发起，没必要做判断：仅判断“别的流程发起时，能不能有他”
             mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", "申领").or().like("process_type", "归库").or().like("process_type", "报废").select("id"));
@@ -608,7 +623,7 @@ public class ProcessInstanceDataController {
         }
         List<Integer> mutexDefIdList = mutexDefIdListMap.stream().map(item -> Integer.valueOf(item.get("id").toString())).collect(Collectors.toList());
         //取出互斥的业务实例表
-        List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().in("process_definition_id", mutexDefIdList).ne("process_status", "完成").in("act_process_instance_id", actProcessInsIdList));
+        List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).in("process_definition_id", mutexDefIdList).ne("process_status", "完成").in("act_process_instance_id", actProcessInsIdList));
         return processInstanceDataList;
     }
 
@@ -616,7 +631,7 @@ public class ProcessInstanceDataController {
 //20220702加,注意逻辑是根据流程类型中的“资产类型”ID，来查找对应的设备：约定同一个资产类型只有只能选择一个资产：这条需要单独记录在一个地方
     public AsDeviceCommon getOneDeviceByProcessInstId(Integer processInstanceDataId) {
         ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
-        List<Integer> assetIdList = processFormValue2Service.list(new QueryWrapper<ProcessFormValue2>().eq("act_process_instance_id", processInstanceData.getActProcessInstanceId())).stream().map(item -> item.getAsId()).collect(Collectors.toList());
+        List<Integer> assetIdList = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId())).stream().map(item -> item.getAsId()).collect(Collectors.toList());
         if (CollUtil.isNotEmpty(assetIdList))
             return asDeviceCommonService.getById(assetIdList.get(0));//审批型流程的前置流程：约定：只能选择一个资产
         return null;
@@ -630,16 +645,16 @@ public class ProcessInstanceDataController {
         List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstanceId);
         Task myTask = myTaskList.get(0);
         Object nextProcessNameObj = workFlowBean.getProcessVariable(myTask);
-        // ProcessDefinition nextProcess  = processDefinitionService.getOne(new QueryWrapper<ProcessDefinition>().eq("status","启用").eq("have_display","是").eq("process_name",(String)nextProcessNameObj));
-        return processDefinitionService.getOne(new QueryWrapper<ProcessDefinition>().eq("status", "启用").eq("have_display", "是").eq("process_name", (String) nextProcessNameObj));
+        // ProcessDefinition nextProcess  = processDefinitionService.getOne(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("status","启用").eq("have_display","是").eq("process_name",(String)nextProcessNameObj));
+        return processDefinitionService.getOne(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("status", "启用").eq("have_display", "是").eq("process_name", (String) nextProcessNameObj));
         //return new StartOrHandleProcessResultVO();
 
     }
  //这个应该不用了
     @GetMapping("getOperateRecordForRepair")//20220829加:专门用于故障报修流程：该 流程只有一个处理节点
     public  ResponseResult getOperateRecordForRepair(Integer processInstanceDataId) {
-        RecordForReport recordForReport = recordForReportService.list(new QueryWrapper<RecordForReport>().eq("process_instance_data_id",processInstanceDataId).eq("name","故障描述")).get(0);
-       // ProcessInstanceNode node = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
+        RecordForReport recordForReport = recordForReportService.list(new  QueryWrapper<RecordForReport>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId).eq("name","故障描述")).get(0);
+       // ProcessInstanceNode node = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
        // String dateStr = node.getEndDatetime().format(fmt);
        // return ResponseResult.success(node.getComment()+"   " +recordForReport.getValue()+" "+ dateStr);
@@ -648,12 +663,12 @@ public class ProcessInstanceDataController {
     @GetMapping("getOldProValueForRepair")//20230223加:专门用于故障报修流程：该 流程只有一个处理节点
     public  Map getOldProValueForRepair(Integer processInstanceDataId) {
         System.out.println(processInstanceDataId);
-        ProcessInstanceNode node = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
+        ProcessInstanceNode node = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String dateStr = node.getEndDatetime().format(fmt);
         String problemDec = "";
         Map<String, String> map = new HashMap<>();
-        List<RecordForReport> list = recordForReportService.list(new QueryWrapper<RecordForReport>().eq("process_instance_data_id",processInstanceDataId));
+        List<RecordForReport> list = recordForReportService.list(new  QueryWrapper<RecordForReport>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId));
         if(CollUtil.isNotEmpty(list)){
             RecordForReport recordForReport = list.get(0);
             problemDec = recordForReport.getValue();
@@ -760,12 +775,12 @@ public class ProcessInstanceDataController {
         StartProcessConditionVO startProcessConditionVO = new StartProcessConditionVO();
         //取出流程定义中的第一个发起任务节点
         //注意startEvent是比"startTask"之前那个节点，后者才是实际的发起人节点
-        ProcessDefinitionTask startEvent = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_type", "bpmn:startEvent"));
+        ProcessDefinitionTask startEvent = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_type", "bpmn:startEvent"));
         List<ProcessDefinitionEdge> edgeList;
         //20220517 加判空
         if (ObjectUtil.isNotEmpty(startEvent)) {
             //20220608感觉可以用getOne:毕竟startEvent到StartTask只有一条线）
-            edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", startEvent.getTaskDefKey()));
+            edgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id", GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("source_id", startEvent.getTaskDefKey()));
         } else {
             throw new RuntimeException("该流程可能不存在，找不到起始结点信息");
         }
@@ -781,7 +796,7 @@ public class ProcessInstanceDataController {
             if (ObjectUtil.isNotEmpty(buttonNameList)) {
                 startProcessConditionVO.setButtonNameList(buttonNameList);
             }
-            ProcessDefinitionTask startTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", startTaskDefKey));
+            ProcessDefinitionTask startTask = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_def_key", startTaskDefKey));
             BeanUtils.copyProperties(startTask, startProcessConditionVO);//20220828
 //            startProcessConditionVO.setHaveNextUser(startTask.getHaveNextUser());
 //            startProcessConditionVO.setHideGroupIds(startTask.getHideGroupIds());

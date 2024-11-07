@@ -4,6 +4,7 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.ReUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.collect.Lists;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.model.entity.ProcessDefinition;
 import com.sss.yunweiadmin.model.entity.ProcessDefinitionEdge;
 import com.sss.yunweiadmin.service.ProcessDefinitionEdgeService;
@@ -28,7 +29,7 @@ public class BpmnToActivitiBean {
     // definition表xmlbpmn除在此用于转化成activity格式bpmnxml外，还直接用于LogicFlow的可视化流程编辑（除节点属性编辑外的）逻辑
     private Map<String, String> getEgeMap(ProcessDefinition processDefinition) {
         Map<String, String> map = new HashMap<>();
-        List<ProcessDefinitionEdge> list = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinition.getId()).ne("edge_name", ""));
+        List<ProcessDefinitionEdge> list = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id", GlobalParam.orgId).eq("process_definition_id", processDefinition.getId()).ne("edge_name", ""));
         if (ObjectUtil.isNotEmpty(list)) {
             for (ProcessDefinitionEdge edge : list) {
                 List<String> tmp = new ArrayList<>();

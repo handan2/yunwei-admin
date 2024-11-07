@@ -123,7 +123,7 @@ public class testProcess {
         //dbObject = service.getOne(new QueryWrapper<Object>().eq("id", "13"));
         //List<Map<String,Object>> aaa  = service.listMaps(new QueryWrapper<Object>().select(columnName).eq("id", "102002"));
         //20220622以下语句只返回的map只有一个元素：<baomi_no -> SN111122>这样的：可能select只读一行无级：暂不研，
-        Map<String,Object> aaa  = service.getMap(new QueryWrapper<Object>().select(columnName));//.eq("id", "102002"));//
+        Map<String,Object> aaa  = service.getMap(new  QueryWrapper<Object>().eq("org_id",GlobalParam.orgId).select(columnName));//.eq("id", "102002"));//
         //String bb = String.valueOf(null);
         System.out.println( aaa.get(columnName));
     }

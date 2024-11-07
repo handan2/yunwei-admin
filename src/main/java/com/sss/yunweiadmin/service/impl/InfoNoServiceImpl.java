@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.service.impl;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.mapper.InfoNoMapper;
@@ -40,7 +41,7 @@ public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> impleme
             importMode=否，插入不在db中的信息点号
          */
         //20211116读出DB与EXCEL资产号重复的记录; 20220825 有时间根据下面调整的结果把张强的资产导入代码改了
-        List<InfoNo> dupList = this.list(new QueryWrapper<InfoNo>().in("value", excelList.stream().map(InfoNoExcel::getValue).collect(Collectors.toList())));
+        List<InfoNo> dupList = this.list(new  QueryWrapper<InfoNo>().eq("org_id", GlobalParam.orgId).in("value", excelList.stream().map(InfoNoExcel::getValue).collect(Collectors.toList())));
         if (importMode.equals("是")) {//可 重复&覆盖，把重复的从DB删除
             if (ObjectUtil.isNotEmpty(dupList)) {
                 dbList = dupList;

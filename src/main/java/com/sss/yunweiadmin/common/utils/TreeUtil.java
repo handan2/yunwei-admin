@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.model.entity.ProcessFormTemplate;
 import com.sss.yunweiadmin.model.entity.SysDept;
 import com.sss.yunweiadmin.model.entity.SysUser;
@@ -91,7 +92,7 @@ public class TreeUtil {
 
         //获取所有用户
         SysUserService sysUserService = SpringUtil.getBean(SysUserService.class);
-        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().orderByAsc("sort"));
+        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).orderByAsc("sort"));
         //20220520 collect（Collectors.groupingBy（））用法：返回一个map
         Map<Integer, List<SysUser>> depUserlistMap = userList.stream().collect(Collectors.groupingBy(SysUser::getDeptId));
         for (SysDept dept : initList) {

@@ -3,6 +3,7 @@ package com.sss.yunweiadmin.bean;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.vo.AssiginTaskAndUserVO;
 import com.sss.yunweiadmin.service.*;
@@ -36,8 +37,8 @@ public class UserTaskBean {
     //workFlowBean里调用他，实参也得加--
     //202408230：在proceessData表里记录下一步记录人时会调用这个
     public List<SysUser> getUserList(Integer processDefinitionId, String preTaskDefKey, String currentTaskDefKey,Integer processInstanceDataId) {
-        ProcessDefinitionTask preTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", preTaskDefKey));
-        ProcessDefinitionTask currentTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", currentTaskDefKey));
+        ProcessDefinitionTask preTask = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_def_key", preTaskDefKey));
+        ProcessDefinitionTask currentTask = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_def_key", currentTaskDefKey));
 //        if (preTask.getHaveNextUser().equals("是")) {
 //            AssiginTaskAndUserVO assiginTaskAndUserVO = (AssiginTaskAndUserVO) httpSession.getAttribute("assiginTaskAndUserVO");
 //            return getUserList(assiginTaskAndUserVO.getOperatorType(), assiginTaskAndUserVO.getOperatorTypeIds(), assiginTaskAndUserVO.getHaveStarterDept(),processInstanceDataId);
@@ -53,13 +54,13 @@ public class UserTaskBean {
         List<ProcessInstanceNode> list = null;
         String assiginUserId = null;
         List<SysUser> userList = null;
-        ProcessDefinitionTask processDefinitionTask = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId).eq("task_def_key", currentTaskDefKey));
+        ProcessDefinitionTask processDefinitionTask = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_def_key", currentTaskDefKey));
 
         if (processInstanceData != null) {
-            list = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceData.getId()).eq("task_def_key", currentTaskDefKey));
+            list = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()).eq("task_def_key", currentTaskDefKey));
             if (CollUtil.isNotEmpty(list))
                 processInstanceNode = list.get(0);
-            List<ProcessInstanceNode> listForFindAssignTask = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceData.getId()));
+            List<ProcessInstanceNode> listForFindAssignTask = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()));
             if (CollUtil.isNotEmpty(listForFindAssignTask)) {
                 //20240811todo断点 前提：不是首节点；查寻当前(要指定责任人的)task的“中文名”,在node记录里找到有没有被assign有的话记录下来，并且在下面的       if (assiginTaskAndUserVO != null) 后加个分支，，
                 //由于node表有写入“延迟”，它只能影响“下一节点的下一节点”；如果是“下一节点”，还是得用（本段逻辑下面的代码机制中）session里那个vo来读取处理人
@@ -102,11 +103,11 @@ public class UserTaskBean {
             }
         } else {//20211208 todo在getUserList（）添加一种情况，task表的type字段是“发起人”的情况；
             if(ObjectUtil.isNotEmpty(assiginUserId)){
-                //SysUser sysUser = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id",assiginUserId));
+                //SysUser sysUser = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id",assiginUserId));
                 userList = this.getUserList("用户", assiginUserId, "",processInstanceData.getId());
             } else if (processInstanceNode != null) {//20240811 todo排除“刚执行完的节点”里设置“下一步节点”审批人的情况<两种类型：一种是精典的“下一步处理人”，另一种就是现在做的“指定某步处理人”>：这时需要使用“最新的设置结果”
                 //存在历史节点，使用历史处理人
-                SysUser sysUser = sysUserService.getOne(new QueryWrapper<SysUser>().eq("login_name",processInstanceNode.getLoginName()));
+                SysUser sysUser = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("login_name",processInstanceNode.getLoginName()));
                 //taskEntity.addCandidateUser(processInstanceNode.getLoginName());
                 userList = this.getUserList("用户", sysUser.getId().toString(), "",processInstanceData.getId());
             } else
@@ -139,13 +140,13 @@ public class UserTaskBean {
                 }
                 else{
                     ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
-                    dept = sysDeptService.getOne(new QueryWrapper<SysDept>().eq("name",processInstanceData.getDeptName()));
+                    dept = sysDeptService.getOne(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("name",processInstanceData.getDeptName()));
                 }
-                List<SysUser> userTmp = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", dept.getId()).eq("status","正常"));//20240228加了status限制
-                roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", Arrays.asList(operatorTypeIds.split(","))).in("user_id", userTmp.stream().map(SysUser::getId).collect(Collectors.toList())));
+                List<SysUser> userTmp = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).eq("dept_id", dept.getId()).eq("status","正常"));//20240228加了status限制
+                roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("role_id", Arrays.asList(operatorTypeIds.split(","))).in("user_id", userTmp.stream().map(SysUser::getId).collect(Collectors.toList())));
                // userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
             } else {
-                roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", Arrays.asList(operatorTypeIds.split(","))));
+                roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("role_id", Arrays.asList(operatorTypeIds.split(","))));
                 //userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
             }
             List<Integer> idList = roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList());
@@ -154,18 +155,18 @@ public class UserTaskBean {
             else
                 throw new RuntimeException("该节点处理人员不存在！");
         } else if (operatorType.equals("用户")) {
-           // List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("user_id", Arrays.asList(operatorTypeIds.split(","))));
+           // List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("user_id", Arrays.asList(operatorTypeIds.split(","))));
           //20220528改造，直接利用ID
             userList = sysUserService.listByIds( Arrays.asList(operatorTypeIds.split(",")));
             // userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
         } else {// 20211208最后一种情况：task表的type字段是“发起人”的情况；实际上在调用本方法的主方法里都已经查过一遍nodeList,从性能角度看，后续可考虑这分支上移到父方法中
             //todo20211210 这里报错了  20211213todo判断：如果nodelist为空（指的是发起结点的下一个节点就是处理人是发起人，这样发起结点还没在
             // node里记录，自然也查不到），就取处理人为当前Session的
-            List<ProcessInstanceNode> nodeList  =  processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id",processInstanceDataId).orderByAsc("id"));
+            List<ProcessInstanceNode> nodeList  =  processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId).orderByAsc("id"));
             if((ObjectUtil.isNotEmpty(nodeList))){
                 String startNodeLoginName  = nodeList.get(0).getLoginName();
                 //组装成sysUserList：虽然只有一个值
-                userList = sysUserService.list(new QueryWrapper<SysUser>().eq("login_name",startNodeLoginName));}
+                userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("login_name",startNodeLoginName));}
             else{//发起结点的下一个节点就是处理人是发起人 todo 测试
                 SysUser currentUser = (SysUser) httpSession.getAttribute("user");
                 userList = new ArrayList<>();

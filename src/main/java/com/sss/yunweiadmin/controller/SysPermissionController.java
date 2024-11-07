@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.collect.Lists;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.TreeUtil;
 import com.sss.yunweiadmin.model.entity.SysPermission;
@@ -37,10 +38,10 @@ public class SysPermissionController {
     @GetMapping("list")
     public IPage<SysPermission> list(int currentPage, int pageSize) {
         //取出pid=0的数据
-        IPage<SysPermission> page = sysPermissionService.page(new Page<>(currentPage, pageSize), new QueryWrapper<SysPermission>().eq("pid", 0));
+        IPage<SysPermission> page = sysPermissionService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).eq("pid", 0));
         List<SysPermission> list = page.getRecords();
         //取出pid！=0的数据
-        List<SysPermission> otherList = sysPermissionService.list(new QueryWrapper<SysPermission>().ne("pid", 0));
+        List<SysPermission> otherList = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id", GlobalParam.orgId).ne("pid", 0));
 
         TreeUtil.setTableTree(list, otherList);
         return page;
@@ -67,7 +68,7 @@ public class SysPermissionController {
         //根据idList，取出所有的子节点
         List<Integer> list = Lists.newArrayList(idList);
         while (true) {
-            List<SysPermission> tmp = sysPermissionService.list(new QueryWrapper<SysPermission>().in("pid", idList));
+            List<SysPermission> tmp = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("pid", idList));
             if (ObjectUtil.isEmpty(tmp)) {
                 break;
             } else {
@@ -75,12 +76,12 @@ public class SysPermissionController {
                 list.addAll(idList);
             }
         }
-        return sysPermissionService.remove(new QueryWrapper<SysPermission>().in("id", list));
+        return sysPermissionService.remove(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", list));
     }
 
     @GetMapping("getPermissionTree")
     public List<TreeSelectVO> getPermissionTree() {
-        List<SysPermission> list = sysPermissionService.list(new QueryWrapper<SysPermission>().ne("type","权限").orderByAsc("sort"));
+        List<SysPermission> list = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).ne("type","权限").orderByAsc("sort"));
         return TreeUtil.getTreeSelectVO(list);
     }
 
@@ -88,7 +89,7 @@ public class SysPermissionController {
     public boolean crud(Integer pid) {
         List<SysPermission> list = new ArrayList<>();
 
-        List<SysPermission> list2 = sysPermissionService.list(new QueryWrapper<SysPermission>().eq("pid", 83));
+        List<SysPermission> list2 = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).eq("pid", 83));
         for (SysPermission sysPermission : list2) {
             sysPermission.setId(null);
             sysPermission.setPid(pid);

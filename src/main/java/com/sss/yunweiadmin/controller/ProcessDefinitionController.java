@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.ProcessFormCustomTypeUtil;
 import com.sss.yunweiadmin.model.entity.*;
@@ -52,7 +53,7 @@ public class ProcessDefinitionController {
     @GetMapping("getOneCustomTableIdByProcDefId")//20220702加,用于ProcessFormForEndAndStart.jsx
     public int getOneCustomTableIdByProcDefId(Integer processDefId) {
         //只取一个：约定审批发起的流程只能有一个自定义表
-        ProcessFormTemplate templateForCustomType = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("flag", "表类型").eq("process_definition_id", processDefId)).get(0);
+        ProcessFormTemplate templateForCustomType = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("flag", "表类型").eq("process_definition_id", processDefId)).get(0);
         if (ObjectUtil.isEmpty(templateForCustomType))
             throw new RuntimeException("该流程没有配置自定义表，请联系管理员！");
         String[] a = templateForCustomType.getType().split("\\.");
@@ -63,8 +64,8 @@ public class ProcessDefinitionController {
     //获取所有下拉类型
     @GetMapping("getTypeVL")
     public List<ValueLabelVO> getType() {
-        List<SysDic> list1 = sysDicService.list(new QueryWrapper<SysDic>().eq("flag", "下拉类型").orderByAsc("sort"));
-        List<ProcessFormCustomType> list2 = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().eq("status", "正常").orderByAsc("sort"));
+        List<SysDic> list1 = sysDicService.list(new  QueryWrapper<SysDic>().eq("org_id",GlobalParam.orgId).eq("flag", "下拉类型").orderByAsc("sort"));
+        List<ProcessFormCustomType> list2 = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).eq("status", "正常").orderByAsc("sort"));
         List<ValueLabelVO> result1 = list1.stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());
         List<ValueLabelVO> result2 = list2.stream().map(item -> new ValueLabelVO(item.getId() + "." + item.getName(), item.getName())).collect(Collectors.toList());
         result1.addAll(result2);
@@ -74,7 +75,7 @@ public class ProcessDefinitionController {
     //获取基本类型
     @GetMapping("getBaseTypeVL")
     public List<ValueLabelVO> getBaseType() {
-        List<SysDic> list = sysDicService.list(new QueryWrapper<SysDic>().eq("flag", "下拉类型").orderByAsc("sort"));
+        List<SysDic> list = sysDicService.list(new  QueryWrapper<SysDic>().eq("org_id",GlobalParam.orgId).eq("flag", "下拉类型").orderByAsc("sort"));
         List<ValueLabelVO> result = list.stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());
         return result;
     }
@@ -92,7 +93,7 @@ public class ProcessDefinitionController {
     public List<TreeSelectVO> getTreeByTableNames(String[] tableNameArr) {
         List<TreeSelectVO> treeList = Lists.newArrayList();
         List<Integer> tableIdList = Arrays.stream(tableNameArr).map(item -> Integer.parseInt(item.split("\\.")[0])).collect(Collectors.toList());
-        List<ProcessFormCustomType> list = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().in("id", tableIdList).eq("status", "正常").orderByAsc("sort"));
+        List<ProcessFormCustomType> list = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).in("id", tableIdList).eq("status", "正常").orderByAsc("sort"));
         for (ProcessFormCustomType processFormCustomType : list) {
             TreeSelectVO parent = new TreeSelectVO();
             parent.setTitle(processFormCustomType.getName());
@@ -146,7 +147,7 @@ public class ProcessDefinitionController {
   * */
     @GetMapping("getProcessDefLV")
     public List<ValueLabelVO> labelIdMapForItemByAjaxgetProcessDefLV(String processName) {
-        QueryWrapper queryWrapper = new QueryWrapper<ProcessDefinition>();
+        QueryWrapper queryWrapper = new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId);
         queryWrapper.eq("status", "启用");
         queryWrapper.eq("have_display", "是");
         //约定了几个授权流程的流程名
@@ -174,7 +175,7 @@ public class ProcessDefinitionController {
 
     @GetMapping("list")
     public IPage<ProcessDefinition> list(int currentPage, int pageSize, String processName, String processType, String status) {
-        QueryWrapper<ProcessDefinition> queryWrapper = new QueryWrapper<ProcessDefinition>().eq("have_display", "是").orderByAsc("sort");
+        QueryWrapper<ProcessDefinition> queryWrapper = new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("have_display", "是").orderByAsc("sort");
         if (ObjectUtil.isNotEmpty(processName)) {
             queryWrapper.like("process_name", processName);
         }
@@ -197,7 +198,7 @@ public class ProcessDefinitionController {
         }
         // 20211114查了两遍DB;20220715 这个ProcessDefiniton/role_id应改成 role_idlist
         //这里（通过读取Session中用户信息）用户角色过滤出“授权可见”流程
-        List<ProcessDefinition> processDefinitionListLegal = processDefinitionService.list().stream().filter(item -> this.processVisable(item.getRoleId())).collect(Collectors.toList());
+        List<ProcessDefinition> processDefinitionListLegal = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId)).stream().filter(item -> this.processVisable(item.getRoleId())).collect(Collectors.toList());
         //第一遍，取出合法授权defIdList，第二遍读Page
         List<Integer> processDefinitionIdListLegal = processDefinitionListLegal.stream().map(item -> item.getId()).collect(Collectors.toList());
         if (ObjectUtil.isNotEmpty(processDefinitionIdListLegal)) {
@@ -220,7 +221,7 @@ public class ProcessDefinitionController {
 
     @GetMapping("getByName")
     public ProcessDefinition getByName(String processDefinitionName) {
-        List<ProcessDefinition> list = processDefinitionService.list(new QueryWrapper<ProcessDefinition>().eq("process_name", processDefinitionName).orderByDesc("id"));
+        List<ProcessDefinition> list = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("process_name", processDefinitionName).orderByDesc("id"));
         if (CollUtil.isNotEmpty(list))
             return list.get(0);
         else
@@ -239,7 +240,7 @@ public class ProcessDefinitionController {
 
         ProcessDefinition processDefinition = processDefinitionService.getById(processDefinitionId);
 
-        List<ProcessFormTemplate> formList = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        List<ProcessFormTemplate> formList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
         LinkedHashMap<String, ArrayList<ProcessFormTemplate>> formTemplateMap = new LinkedHashMap<>();
         formTemplateMap.put("firstData", new ArrayList<>());
         for (ProcessFormTemplate processFormTemplate : formList) {
@@ -258,8 +259,8 @@ public class ProcessDefinitionController {
                 }
             }
         }
-        List<ProcessDefinitionTask> taskList = processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId));
-        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId));
+        List<ProcessDefinitionTask> taskList = processDefinitionTaskService.list(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id", GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
 
         processDefinitionVO.setProcessDefinition(processDefinition);
         processDefinitionVO.setFormTemplateMap(formTemplateMap);

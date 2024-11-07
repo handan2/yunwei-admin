@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.common.base.Strings;
 import com.sss.yunweiadmin.bean.WorkFlowBean;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.mapper.ProcessDefinitionMapper;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.vo.ProcessDefinitionVO;
@@ -110,13 +111,13 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
     @Override
     public boolean edit(ProcessDefinitionVO processDefinitionVO) {//流程定义编辑后都会导致新增一条流程定义记录：故最后都会调用this.adds()
         Integer processDefinitionId = processDefinitionVO.getProcessDefinition().getId();
-        List<ProcessInstanceData> list = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().eq("process_definition_id", processDefinitionId));
+        List<ProcessInstanceData> list = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
         if (CollUtil.isEmpty(list)) {
             //先删除，process_definition_info、process_definition_task、process_definition_edge、process_form_template
             this.removeById(processDefinitionId);
-            processDefinitionTaskService.remove(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId));
-            processDefinitionEdgeService.remove(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId));
-            processFormTemplateService.remove(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+            processDefinitionTaskService.remove(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+            processDefinitionEdgeService.remove(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+            processFormTemplateService.remove(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
             //后插入
             return this.add(processDefinitionVO);
         } else {
@@ -152,8 +153,8 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
             processDefinition.setDeployId("");
             this.updateById(processDefinition);
             //对未完成的流程实例直接删除
-            processInstanceDataService.remove(new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").eq("process_definition_id", processDefinitionId));
-            List<ProcessInstanceData> dataList = processInstanceDataService.list(new QueryWrapper<ProcessInstanceData>().eq("process_status", "完成").eq("process_definition_id", processDefinitionId));
+            processInstanceDataService.remove(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).ne("process_status", "完成").eq("process_definition_id", processDefinitionId));
+            List<ProcessInstanceData> dataList = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("process_status", "完成").eq("process_definition_id", processDefinitionId));
             if (CollUtil.isNotEmpty(dataList)) {//含有已完成实例
                 for (ProcessInstanceData processInstanceData : dataList) {
                     processInstanceData.setActProcessInstanceId("");
@@ -166,9 +167,9 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         }
         //删除ProcessDefinition、ProcessDefinitionTask、ProcessDefinitionEdge、ProcessFormTemplate
         this.removeById(processDefinitionId);
-        processDefinitionTaskService.remove(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", processDefinitionId));
-        processDefinitionEdgeService.remove(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId));
-        processFormTemplateService.remove(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        processDefinitionTaskService.remove(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+        processDefinitionEdgeService.remove(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+        processFormTemplateService.remove(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
         //恢复老版本：20220817我觉得没必要：先注释这段逻辑
 //        if (ObjectUtil.isNotEmpty(processDefinition.getBaseId())) {
 //            //回退到上一个版本
@@ -189,7 +190,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         this.save(newProcessDefinition);
         Integer newProcessDefinitionId = newProcessDefinition.getId();
         //
-        List<ProcessDefinitionTask> oldTaskList = processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", oldProcessDefinition.getId()));
+        List<ProcessDefinitionTask> oldTaskList = processDefinitionTaskService.list(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", oldProcessDefinition.getId()));
         List<ProcessDefinitionTask> newTaskList = new ArrayList<>();
         for (ProcessDefinitionTask oldProcessDefinitionTask : oldTaskList) {
             ProcessDefinitionTask newProcessDefinitionTask = new ProcessDefinitionTask();
@@ -199,7 +200,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         }
         processDefinitionTaskService.saveBatch(newTaskList);
         //
-        List<ProcessDefinitionEdge> oldEdgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", oldProcessDefinition.getId()));
+        List<ProcessDefinitionEdge> oldEdgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id", GlobalParam.orgId).eq("process_definition_id", oldProcessDefinition.getId()));
         if (ObjectUtil.isNotEmpty(oldEdgeList)) {
             List<ProcessDefinitionEdge> newEdgeList = new ArrayList<>();
             for (ProcessDefinitionEdge oldProcessDefinitionEdge : oldEdgeList) {
@@ -211,7 +212,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
             processDefinitionEdgeService.saveBatch(newEdgeList);
         }
         //
-        List<ProcessFormTemplate> oldTemplateList = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", oldProcessDefinition.getId()));
+        List<ProcessFormTemplate> oldTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", oldProcessDefinition.getId()));
         List<ProcessFormTemplate> newTemplateList = new ArrayList<>();
         for (ProcessFormTemplate oldProcessFormTemplate : oldTemplateList) {
             ProcessFormTemplate newProcessFormTemplate = new ProcessFormTemplate();
@@ -237,7 +238,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         this.save(newProcessDefinition);
         Integer newProcessDefinitionId = newProcessDefinition.getId();
         //
-        List<ProcessDefinitionTask> oldTaskList = processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id", oldProcessDefinition.getId()));
+        List<ProcessDefinitionTask> oldTaskList = processDefinitionTaskService.list(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", oldProcessDefinition.getId()));
         List<ProcessDefinitionTask> newTaskList = new ArrayList<>();
         for (ProcessDefinitionTask oldProcessDefinitionTask : oldTaskList) {
             ProcessDefinitionTask newProcessDefinitionTask = new ProcessDefinitionTask();
@@ -247,7 +248,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
         }
         processDefinitionTaskService.saveBatch(newTaskList);
         //
-        List<ProcessDefinitionEdge> oldEdgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", oldProcessDefinition.getId()));
+        List<ProcessDefinitionEdge> oldEdgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", oldProcessDefinition.getId()));
         if (ObjectUtil.isNotEmpty(oldEdgeList)) {
             List<ProcessDefinitionEdge> newEdgeList = new ArrayList<>();
             for (ProcessDefinitionEdge oldProcessDefinitionEdge : oldEdgeList) {
@@ -259,7 +260,7 @@ public class ProcessDefinitionServiceImpl extends ServiceImpl<ProcessDefinitionM
             processDefinitionEdgeService.saveBatch(newEdgeList);
         }
         //
-        List<ProcessFormTemplate> oldTemplateList = processFormTemplateService.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", oldProcessDefinition.getId()));
+        List<ProcessFormTemplate> oldTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", oldProcessDefinition.getId()));
         List<ProcessFormTemplate> newTemplateList = new ArrayList<>();
         for (ProcessFormTemplate oldProcessFormTemplate : oldTemplateList) {
             ProcessFormTemplate newProcessFormTemplate = new ProcessFormTemplate();

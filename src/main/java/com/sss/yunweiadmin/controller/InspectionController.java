@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.base.Strings;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
@@ -73,7 +74,7 @@ public class InspectionController {
 
     @GetMapping("list")
     public IPage<Inspection> list(int currentPage, int pageSize, String netType, String inspector, String inspectDate, String mode, String userDept, String userName, String no) {
-        QueryWrapper<Inspection> queryWrapper = new QueryWrapper<Inspection>().orderByDesc("id");
+        QueryWrapper<Inspection> queryWrapper = new  QueryWrapper<Inspection>().eq("org_id",GlobalParam.orgId).orderByDesc("id");
         if (!Strings.isNullOrEmpty(netType)) {
             queryWrapper.eq("net_type", netType);
         }
@@ -141,7 +142,7 @@ public class InspectionController {
     //20211203完善：限定了查询本部门的人（查询条件可从前台传也可直接读session）;value里把人员密级也带了进去
     public List<ValueLabelVO> getInfoNoVL(String netType, String miji) {
         List<ValueLabelVO> list = new ArrayList<>();
-        QueryWrapper<InfoNo> queryWrapper = new QueryWrapper<>();
+        QueryWrapper<InfoNo> queryWrapper = new  QueryWrapper<InfoNo>().eq("org_id",GlobalParam.orgId).eq("org_id", GlobalParam.orgId);
         if(StrUtil.isNotEmpty(netType))//20221007目前前端申领流程中没有传这个参数
             queryWrapper.eq("net_type", netType);
         if(StrUtil.isNotEmpty(miji)) {
@@ -246,7 +247,7 @@ public class InspectionController {
         // List<AsComputerExcel> asComputerExcelList = new ArrayList<>();
         String t1;
         String t2;
-        QueryWrapper queryWrapper = new QueryWrapper<Inspection>();
+        QueryWrapper queryWrapper = new  QueryWrapper<Inspection>().eq("org_id",GlobalParam.orgId);
         String selectedColumnsStr = "";
         if (ObjectUtil.isNotEmpty(queryParam)) {
             t1 = queryParam.replace("*", "{");
@@ -303,7 +304,7 @@ public class InspectionController {
                 //处理日期类型
                 ExcelDateUtil.dateConverToString(a, InspectionDownload, InspectionDownload.class);
                // InspectionDownload.setTypeName(asTypeService.getById(a.getTypeId()).getName());
-//                List<AsIoSpecial> ioSpecialList = asIoSpecialService.list(new QueryWrapper<AsIoSpecial>().eq("as_id", (a.getId())));
+//                List<AsIoSpecial> ioSpecialList = asIoSpecialService.list(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", (a.getId())));
 //                if (CollUtil.isNotEmpty(ioSpecialList)) {
 //                    AsIoSpecial asIoSpecial = ioSpecialList.get(0);
 //                    InspectionDownload.setAccessHostNo(asIoSpecial.getAccessHostNo());

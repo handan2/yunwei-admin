@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.collect.Lists;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.TreeUtil;
 import com.sss.yunweiadmin.model.entity.SysMenu;
@@ -36,10 +37,10 @@ public class SysMenuController {
     @GetMapping("list")
     public IPage<SysMenu> list(int currentPage, int pageSize) {
         //取出pid=0的数据
-        IPage<SysMenu> page = sysMenuService.page(new Page<>(currentPage, pageSize), new QueryWrapper<SysMenu>().eq("pid", 0));
+        IPage<SysMenu> page = sysMenuService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<SysMenu>().eq("org_id",GlobalParam.orgId).eq("pid", 0));
         List<SysMenu> list = page.getRecords();
         //取出pid！=0的数据
-        List<SysMenu> otherList = sysMenuService.list(new QueryWrapper<SysMenu>().ne("pid", 0));
+        List<SysMenu> otherList = sysMenuService.list(new  QueryWrapper<SysMenu>().eq("org_id", GlobalParam.orgId).ne("pid", 0));
 
         TreeUtil.setTableTree(list, otherList);
         return page;
@@ -66,7 +67,7 @@ public class SysMenuController {
         //根据idList，取出所有的子节点
         List<Integer> list = Lists.newArrayList(idList);
         while (true) {
-            List<SysMenu> tmp = sysMenuService.list(new QueryWrapper<SysMenu>().in("pid", idList));
+            List<SysMenu> tmp = sysMenuService.list(new  QueryWrapper<SysMenu>().eq("org_id",GlobalParam.orgId).in("pid", idList));
             if (ObjectUtil.isEmpty(tmp)) {
                 break;
             } else {
@@ -74,12 +75,12 @@ public class SysMenuController {
                 list.addAll(idList);
             }
         }
-        return sysMenuService.remove(new QueryWrapper<SysMenu>().in("id", list));
+        return sysMenuService.remove(new  QueryWrapper<SysMenu>().eq("org_id",GlobalParam.orgId).in("id", list));
     }
 
     @GetMapping("getMenuTree")
     public List<TreeSelectVO> getMenuTree() {
-        List<SysMenu> list = sysMenuService.list(new QueryWrapper<SysMenu>().orderByAsc("sort"));
+        List<SysMenu> list = sysMenuService.list(new  QueryWrapper<SysMenu>().eq("org_id",GlobalParam.orgId).orderByAsc("sort"));
         return TreeUtil.getTreeSelectVO(list);
     }
 

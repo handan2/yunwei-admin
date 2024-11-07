@@ -3,6 +3,7 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.mapper.AnySqlMapper;
 import com.sss.yunweiadmin.model.entity.AsConfig;
@@ -39,7 +40,7 @@ public class AsConfigController {
     @GetMapping("getAsConfigTableList")
     public List<ValueLabelVO> getTablelist() {
         //select distinct en_table_name,zh_table_name from as_config where en_table_name not in('as_device_common')
-        List<AsConfig> list = asConfigService.list(new QueryWrapper<AsConfig>().select("distinct en_table_name,zh_table_name").notIn("en_table_name", "as_device_common").orderByAsc("sort"));
+        List<AsConfig> list = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id", GlobalParam.orgId).select("distinct en_table_name,zh_table_name").notIn("en_table_name", "as_device_common").orderByAsc("sort"));
 
         List<ValueLabelVO> list2 = list.stream().map(tmp -> new ValueLabelVO(tmp.getEnTableName(), tmp.getZhTableName())).collect(Collectors.toList());
         return list2;
@@ -47,7 +48,7 @@ public class AsConfigController {
 
     @GetMapping("getAsConfigColumnList")
     public List<ValueLabelVO> list(String enTableName) {
-        List<AsConfig> list = asConfigService.list(new QueryWrapper<AsConfig>().eq("en_table_name", enTableName).orderByAsc("sort"));
+        List<AsConfig> list = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", enTableName).orderByAsc("sort"));
         List<ValueLabelVO> list2 = list.stream().map(tmp -> new ValueLabelVO(tmp.getId(), tmp.getZhColumnName())).collect(Collectors.toList());
         return list2;
     }
@@ -55,7 +56,7 @@ public class AsConfigController {
     @GetMapping("getAsConfigTableTypeVO")
     public Map<String, List<ValueLabelVO>> getAsConfigTableTypeVO() {
         Map<String, List<ValueLabelVO>> map = new LinkedHashMap<>();
-        List<AsConfig> AsConfigList = asConfigService.list(new QueryWrapper<AsConfig>().orderByAsc("sort"));
+        List<AsConfig> AsConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).orderByAsc("sort"));
         String key = null;
         for (AsConfig asConfig : AsConfigList) {
             key = asConfig.getEnTableName() + "," + asConfig.getZhTableName();
@@ -73,7 +74,7 @@ public class AsConfigController {
     @GetMapping("getExcelEntity")
     public boolean getExcelEntity(String enTableName) {
         List<String> resultList = new ArrayList<>();
-        List<AsConfig> list = asConfigService.list(new QueryWrapper<AsConfig>().eq("en_table_name", enTableName).orderByAsc("sort"));
+        List<AsConfig> list = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", enTableName).orderByAsc("sort"));
         for (AsConfig asConfig : list) {
             resultList.add("@ExcelProperty(\"" + asConfig.getZhColumnName() + "\")");
             if (asConfig.getType().equals("字符串")) {

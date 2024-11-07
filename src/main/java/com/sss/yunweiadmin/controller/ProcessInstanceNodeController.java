@@ -5,6 +5,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.ProcessInstanceNode;
 import com.sss.yunweiadmin.service.ProcessInstanceNodeService;
@@ -33,7 +34,7 @@ public class ProcessInstanceNodeController {
 
     @GetMapping("list")
     public IPage<ProcessInstanceNode> list(Integer processInstanceDataId) {
-        IPage<ProcessInstanceNode>  page = processInstanceNodeService.page(new Page<>(1, 100), new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceDataId).orderByAsc("id"));
+        IPage<ProcessInstanceNode>  page = processInstanceNodeService.page(new Page<>(1, 100), new  QueryWrapper<ProcessInstanceNode>().eq("org_id", GlobalParam.orgId).eq("process_instance_data_id", processInstanceDataId).orderByAsc("id"));
         List<ProcessInstanceNode> list = page.getRecords();
         List<ProcessInstanceNode> list2 = list.stream().map(item->{
             String comment = item.getComment();

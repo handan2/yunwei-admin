@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.collect.Lists;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.TreeUtil;
 import com.sss.yunweiadmin.model.entity.SysDept;
@@ -47,10 +48,10 @@ public class SysDeptController extends BaseController<SysDept> {
     @GetMapping("list")
     public IPage<SysDept> list(int currentPage, int pageSize) {
         //取出pid=0的数据
-        IPage<SysDept> page = sysDeptService.page(new Page<>(currentPage, pageSize), new QueryWrapper<SysDept>().eq("pid", 0).orderByAsc("sort"));
+        IPage<SysDept> page = sysDeptService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("pid", 0).orderByAsc("sort"));
         List<SysDept> list = page.getRecords();
         //取出pid！=0的数据
-        List<SysDept> otherList = sysDeptService.list(new QueryWrapper<SysDept>().ne("pid", 0).orderByAsc("sort"));
+        List<SysDept> otherList = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id", GlobalParam.orgId).ne("pid", 0).orderByAsc("sort"));
 
         TreeUtil.setTableTree(list, otherList);
         return page;
@@ -77,7 +78,7 @@ public class SysDeptController extends BaseController<SysDept> {
         //根据idList，取出所有的子节点
         List<Integer> list = Lists.newArrayList(idList);
         while (true) {
-            List<SysDept> tmp = sysDeptService.list(new QueryWrapper<SysDept>().in("pid", idList));
+            List<SysDept> tmp = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).in("pid", idList));
             if (CollUtil.isEmpty(tmp)) {
                 break;
             } else {
@@ -85,19 +86,19 @@ public class SysDeptController extends BaseController<SysDept> {
                 list.addAll(idList);
             }
         }
-        return sysDeptService.remove(new QueryWrapper<SysDept>().in("id", list));
+        return sysDeptService.remove(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).in("id", list));
     }
 
     @GetMapping("getDeptTree")
     public List<TreeSelectVO> getDeptTree() {
-        List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().orderByAsc("sort").eq("remark", "基层部门"));
+        List<SysDept> list = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).orderByAsc("sort").eq("remark", "基层部门"));
         return TreeUtil.getTreeSelectVO(list);
     }
 
     //穿梭框里的部门人员树，，仅查询第第三层部门成员 todo改名
     @GetMapping("getDeptUserTree")
     public List<TreeTransferVO> getDeptUserTree() {
-        List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().notIn("id", 1, 2).orderByAsc("sort"));
+        List<SysDept> list = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).notIn("id", GlobalParam.depRootID, GlobalParam.depSubRootID).orderByAsc("sort"));
         return TreeUtil.getSelectDeptUserTree(list);
     }
 
@@ -105,7 +106,7 @@ public class SysDeptController extends BaseController<SysDept> {
     @GetMapping("getDeptUserTreeSelect2")
     public List<TreeSelectVO> getDeptUserTreeSelect2() {
         SysUser currentUser = (SysUser) httpSession.getAttribute("user");
-        SysDept obj = sysDeptService.getOne(new QueryWrapper<SysDept>().eq("id", currentUser.getDeptId()));
+        SysDept obj = sysDeptService.getOne(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("id", currentUser.getDeptId()));
 //        List<TreeSelectVO> treeList = new ArrayList<>();
 //        TreeSelectVO treeSelectVO = new TreeSelectVO();
 //        treeSelectVO.setTitle(obj.getName());
@@ -113,7 +114,7 @@ public class SysDeptController extends BaseController<SysDept> {
 //        treeSelectVO.setValue(obj.getId() + 100000);//为了不和子结点的value重复
 //        treeSelectVO.setSelectable(false);//部门这级不可选
 //        treeList.add(treeSelectVO);
-        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", obj.getId()));
+        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("dept_id", obj.getId()));
         List<TreeSelectVO> treeList2 = new ArrayList<>();
         for (SysUser user : userList) {
             TreeSelectVO treeSelectVO1 = new TreeSelectVO();
@@ -131,7 +132,7 @@ public class SysDeptController extends BaseController<SysDept> {
     //20211121获得treeSelect部门人员那种tree，仅查询第第三层部门成员
     @GetMapping("getDeptUserTreeSelect")
     public List<TreeSelectVO> getDeptUserTreeSelect() {
-        List<SysDept> list = sysDeptService.list(new QueryWrapper<SysDept>().eq("pid", 2).orderByAsc("sort"));
+        List<SysDept> list = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("pid", GlobalParam.depSubRootID).orderByAsc("sort"));
         if (CollUtil.isEmpty(list)) throw new RuntimeException("集合为空！");
         List<TreeSelectVO> treeList = new ArrayList<>();
         for (SysDept obj : list) {
@@ -141,7 +142,7 @@ public class SysDeptController extends BaseController<SysDept> {
             treeSelectVO.setValue(obj.getId() + 100000);//为了不和子结点的value重复
             treeSelectVO.setSelectable(false);//部门这级不可选
             treeList.add(treeSelectVO);
-            List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", obj.getId()));
+            List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("dept_id", obj.getId()));
             List<TreeSelectVO> treeList2 = new ArrayList<>();
             for (SysUser user : userList) {
                 TreeSelectVO treeSelectVO1 = new TreeSelectVO();

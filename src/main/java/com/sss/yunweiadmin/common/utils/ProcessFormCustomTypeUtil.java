@@ -7,6 +7,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.model.entity.AsConfig;
 import com.sss.yunweiadmin.service.AsConfigService;
 
@@ -30,14 +31,14 @@ public class ProcessFormCustomTypeUtil {
         }
         AsConfigService asConfigService = (AsConfigService) SpringUtil.getBean("asConfigServiceImpl");
         //给tableNameList排个序
-        tableNameList = asConfigService.list(new QueryWrapper<AsConfig>().in("en_table_name", tableNameList).select("distinct en_table_name").orderByAsc("sort"))
+        tableNameList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id", GlobalParam.orgId).in("en_table_name", tableNameList).select("distinct en_table_name").orderByAsc("sort"))
                 .stream().map(AsConfig::getEnTableName).collect(Collectors.toList());
 
         for (String tableName : tableNameList) {
             //根据tableName，获取id
             List<Integer> idList = jsonObject.getJSONArray(tableName).stream().map(item -> (Integer) item).collect(Collectors.toList());
             if (CollUtil.isNotEmpty(idList)) {//20220718 idList size不能为0，否则会报错
-                QueryWrapper queryWrapper = new QueryWrapper<AsConfig>()
+                QueryWrapper queryWrapper = new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId)
                         .eq("en_table_name", tableName)
                         .in("id", idList)
                         .orderByAsc("sort");
@@ -69,10 +70,10 @@ public class ProcessFormCustomTypeUtil {
 //        ss
         AsConfigService asConfigService = (AsConfigService) SpringUtil.getBean("asConfigServiceImpl");
         //给tableNameList排个序
-        tableNameList = asConfigService.list(new QueryWrapper<AsConfig>().in("en_table_name", tableNameList).select("distinct en_table_name").orderByAsc("sort"))
+        tableNameList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).in("en_table_name", tableNameList).select("distinct en_table_name").orderByAsc("sort"))
                 .stream().map(AsConfig::getEnTableName).collect(Collectors.toList());
         for (String tableName : tableNameList) {
-            QueryWrapper queryWrapper = new QueryWrapper<AsConfig>()
+            QueryWrapper queryWrapper = new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId)
                     .eq("en_table_name", tableName)
                     .orderByAsc("sort");
             List<AsConfig> AsConfigList = asConfigService.list(queryWrapper);

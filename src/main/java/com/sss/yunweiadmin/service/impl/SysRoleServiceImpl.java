@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.mapper.SysRoleMapper;
 import com.sss.yunweiadmin.model.entity.SysRole;
 import com.sss.yunweiadmin.model.entity.SysRolePermission;
@@ -33,7 +34,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public boolean updateRolePermission(Integer roleId, List<Integer> permissionIdList) {
         boolean flag;
         //先删除，后插入
-        sysRolePermissionService.remove(new QueryWrapper<SysRolePermission>().eq("role_id", roleId));
+        sysRolePermissionService.remove(new  QueryWrapper<SysRolePermission>().eq("org_id", GlobalParam.orgId).eq("role_id", roleId));
         //
         List<SysRolePermission> list = permissionIdList.stream().map(permissionId -> {
             SysRolePermission rolePermission = new SysRolePermission();

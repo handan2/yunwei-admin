@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.base.Strings;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResult;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
@@ -151,7 +152,7 @@ public class SysUserController {
     @ResponseResultWrapper
     @GetMapping("list")
     public IPage<SysUser> list(int currentPage, int pageSize, String loginName, String displayName, Integer deptId, String status) {
-        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        QueryWrapper<SysUser> queryWrapper = new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
         if (ObjectUtil.isNotEmpty(loginName)) {
             queryWrapper.like("login_name", loginName);
         }
@@ -182,7 +183,7 @@ public class SysUserController {
     @GetMapping("userRoleGiveList")
     //因为noForm/List对参数进行了类型转化：数组变成了（非json格式的）字符串，所以这里暂用 roleIdList接收Str类型 && 在函数体内再转化下
     public IPage<SysUser> userRoleGiveList(int currentPage, int pageSize, String loginName, String displayName, Integer deptId, String roleIdList) {
-        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        QueryWrapper<SysUser> queryWrapper = new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
         queryWrapper.notIn("login_name", Arrays.asList(new String[]{"admin_yw", "system_yw", "audit_yw"}));//20231129为测评
         queryWrapper.in("secret_degree", Arrays.asList(new String[]{"一般", "重要"}));
         String[] roleStrArr = null;
@@ -194,11 +195,11 @@ public class SysUserController {
             List<String> roleIdStrList = Stream.of(roleStrArr).collect(Collectors.toList());
             roleIdList0 = roleIdStrList.stream().map(item -> Integer.valueOf(item)).collect(Collectors.toList());
             //初筛后的用户
-            List<Map<String, Object>> userIdMapList = sysRoleUserService.listMaps(new QueryWrapper<SysRoleUser>().in("role_id", roleIdList0).select("user_id"));
+            List<Map<String, Object>> userIdMapList = sysRoleUserService.listMaps(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("role_id", roleIdList0).select("user_id"));
             List<Integer> userIdList = userIdMapList.stream().map(item -> Integer.parseInt(item.get("user_id").toString())).collect(Collectors.toList());
             List<Integer> selectedRoleIdList = roleIdList0;//下面那个“ finalRoleIdList.forEach()”提示"lambda表达式中的变量应为最终变量或为有效的最终变量"而使用自动修改模式自动加的变量：暂不研
             List<Integer> userIdListFiltered = userIdList.stream().filter(item -> {
-                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", item));
+                List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id", GlobalParam.orgId).eq("user_id", item));
                 if (CollUtil.isEmpty(roleUserList)) {
                     throw new RuntimeException("用户ID为" + item + "的用户没有分配角色");
                 }
@@ -238,12 +239,12 @@ public class SysUserController {
         page.getRecords().forEach(item -> {
                 item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : 2).getName());
                 //根据用户获取角色
-                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", item.getId()));
+                List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", item.getId()));
                 if (CollUtil.isEmpty(roleUserList)) {
                     throw new RuntimeException(item.getLoginName() + "用户没有分配角色");
                 }
                 List<Integer> roleIdList2 = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
-                List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id", roleIdList2));
+                List<SysRole> roleList = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", roleIdList2));
                 String roleNameStr = roleList.stream().map(SysRole::getName).collect(Collectors.joining(","));
                 item.setRoleNameStr(roleNameStr);
             }
@@ -299,7 +300,7 @@ public class SysUserController {
     @ResponseResultWrapper
     public boolean delete(Integer[] idArr) {
 
-        List<Map<String, Object>> listMaps1 =  sysUserService.listMaps(new QueryWrapper<SysUser>().in("id", Arrays.asList(idArr)).select("display_name"));
+        List<Map<String, Object>> listMaps1 =  sysUserService.listMaps(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).in("id", Arrays.asList(idArr)).select("display_name"));
         List<String> displayNameList = listMaps1.stream().map(item -> item.get("display_name").toString()).collect(Collectors.toList());
         saveLog("delete", String.join(",", displayNameList),null);
         return sysUserService.delete(idArr);
@@ -311,19 +312,19 @@ public class SysUserController {
     private UserVO getUserVO(SysUser user) {
         UserVO userVO = new UserVO();
         //根据用户获取角色
-        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", user.getId()));
         if (CollUtil.isEmpty(roleUserList)) {
             throw new RuntimeException("用户没有分配角色");
         }
         List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
         //根据角色获取权限
-        List<SysRolePermission> rolePermissionList = sysRolePermissionService.list(new QueryWrapper<SysRolePermission>().in("role_id", roleIdList));
+        List<SysRolePermission> rolePermissionList = sysRolePermissionService.list(new  QueryWrapper<SysRolePermission>().eq("org_id",GlobalParam.orgId).in("role_id", roleIdList));
         if (CollUtil.isEmpty(rolePermissionList)) {
             throw new RuntimeException("用户没有分配菜单");
         }
         //根据权限获取完整的权限
         List<Integer> permissionIdList = rolePermissionList.stream().map(SysRolePermission::getPermissionId).collect(Collectors.toList());
-        List<SysPermission> permissionList = sysPermissionService.list(new QueryWrapper<SysPermission>().in("id", permissionIdList));
+        List<SysPermission> permissionList = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", permissionIdList));
         List<SysPermission> allPermissionList = new ArrayList<SysPermission>();
         while (true) {
             if (ObjectUtil.isEmpty(permissionList)) {
@@ -332,14 +333,14 @@ public class SysUserController {
             allPermissionList.addAll(permissionList);
             //
             List<Integer> parentPermissionIdList = permissionList.stream().map(SysPermission::getPid).collect(Collectors.toList());
-            permissionList = sysPermissionService.list(new QueryWrapper<SysPermission>().in("id", parentPermissionIdList));
+            permissionList = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", parentPermissionIdList));
         }
         //
         List<Integer> allPermissionIdList = allPermissionList.stream().map(SysPermission::getId).collect(Collectors.toList());
-        List<SysPermission> permissionList1 = sysPermissionService.list(new QueryWrapper<SysPermission>().in("id", allPermissionIdList).orderByAsc("sort"));
-        List<SysPermission> permissionList2 = sysPermissionService.list(new QueryWrapper<SysPermission>().in("id", allPermissionIdList).orderByAsc("sort"));
-        List<SysPermission> permissionList3 = sysPermissionService.list(new QueryWrapper<SysPermission>().in("id", allPermissionIdList).orderByAsc("sort"));
-        List<SysPermission> permissionList4 = sysPermissionService.list(new QueryWrapper<SysPermission>().in("id", allPermissionIdList).orderByAsc("sort"));
+        List<SysPermission> permissionList1 = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", allPermissionIdList).orderByAsc("sort"));
+        List<SysPermission> permissionList2 = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", allPermissionIdList).orderByAsc("sort"));
+        List<SysPermission> permissionList3 = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", allPermissionIdList).orderByAsc("sort"));
+        List<SysPermission> permissionList4 = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", allPermissionIdList).orderByAsc("sort"));
         //导航菜单
         List<SysPermission> menuList = TreeUtil.getTreeSelect(permissionList1.stream().filter(item -> item.getType().equals("菜单") || item.getType().equals("叶子菜单")).collect(Collectors.toList()));
         //操作按钮-按钮组
@@ -361,14 +362,14 @@ public class SysUserController {
 
         //数据列表-发起流程按钮
         Map<Integer, SysPermission> startProcessButtonMap = new HashMap<>();
-        SysPermission permission = sysPermissionService.getOne(new QueryWrapper<SysPermission>().eq("permission_type", "startProcess"));
+        SysPermission permission = sysPermissionService.getOne(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).eq("permission_type", "startProcess"));
         /*
             1.根据用户取出角色
             2.根据角色获取流程定义
          */
         //List<SysRole> roleList = sysRoleService.listByIds(roleIdList);
         //List<String> ProcessRoleIdList = roleList.stream().map((SysRole::getId).collect(Collectors.toList());
-        List<ProcessDefinition> definitionList = processDefinitionService.list();
+        List<ProcessDefinition> definitionList = processDefinitionService.list(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId));
         for (ProcessDefinition processDefinition : definitionList) {
             List<String> definitionRoleIdList = Stream.of(processDefinition.getRoleId().split(",")).collect(Collectors.toList());
             List<Integer> definitionRoleIdListToInt = definitionRoleIdList.stream().map(value -> Integer.valueOf(value)).collect(Collectors.toList());
@@ -405,9 +406,9 @@ public class SysUserController {
     public UserVO login(String loginName, String password) {
         httpSession.removeAttribute("IP");
         //根据 登录账号 查询出用户
-        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("login_name", loginName));
+        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("login_name", loginName));
         //给user/temp字段放部门name
-        userList.forEach(item -> item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : 2).getName()));
+        userList.forEach(item -> item.setTemp(sysDeptService.getById(ObjectUtil.isNotEmpty(item.getDeptId()) ? item.getDeptId() : GlobalParam.depSubRootID).getName()));
         if (userList.size() != 1) {
             throw new RuntimeException("用户名错误");
         }
@@ -421,13 +422,13 @@ public class SysUserController {
 
 
         //20220907
-        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", dbUser.getId()));
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", dbUser.getId()));
         if (CollUtil.isEmpty(roleUserList)) {
             throw new RuntimeException("用户没有分配角色");
         }
         List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
         dbUser.setRoleIdList(roleIdList);
-        List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id", roleIdList));
+        List<SysRole> roleList = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", roleIdList));
         List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
         dbUser.setRoleNameList(roleNameList);
 
@@ -490,19 +491,19 @@ public class SysUserController {
 
                 //用户放入session
                 // SysUser user = sysUserService.getById(19);
-//                SysUser user = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id_number", PID));
+//                SysUser user = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id_number", PID));
 //                if (ObjectUtil.isEmpty(user)) {
 //                    System.out.println("身份证号不存在！");
 //                    return "redirect:/login1";
 //                }
-//                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
+//                List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", user.getId()));
 //                if (ObjectUtil.isEmpty(roleUserList)) {
 //                    throw new RuntimeException("用户没有分配角色");
 //                }
 //                //20211128添加角色ID
 //                List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
 //                user.setRoleIdList(roleIdList);
-//                List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id", roleIdList));
+//                List<SysRole> roleList = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", roleIdList));
 //                List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
 //                user.setRoleNameList(roleNameList);
 //                httpSession.removeAttribute("user");
@@ -614,18 +615,18 @@ public class SysUserController {
     }
 
     private SysUser setSessionForPID(String PID){
-        SysUser user = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id_number", PID));
+        SysUser user = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id_number", PID));
         if (ObjectUtil.isEmpty(user)) {
             throw new RuntimeException("用户信息不存在！");
     }
-        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", user.getId()));
         if (ObjectUtil.isEmpty(roleUserList)) {
             throw new RuntimeException("用户没有分配角色");
         }
         //20211128添加角色ID
         List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
         user.setRoleIdList(roleIdList);
-        List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id", roleIdList));
+        List<SysRole> roleList = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", roleIdList));
         List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
         user.setRoleNameList(roleNameList);
         SysDept sysDept = sysDeptService.getById(user.getDeptId());
@@ -635,18 +636,18 @@ public class SysUserController {
         return user;
     }
     private SysUser setSessionForPIDForNetgateLogin(String PID){
-        SysUser user = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id_number", PID));
+        SysUser user = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id_number", PID));
         if (ObjectUtil.isEmpty(user)) {
             throw new RuntimeException("用户信息不存在！");
         }
-        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", user.getId()));
         if (ObjectUtil.isEmpty(roleUserList)) {
             throw new RuntimeException("用户没有分配角色");
         }
         //20211128添加角色ID
         List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
         user.setRoleIdList(roleIdList);
-        List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id", roleIdList));
+        List<SysRole> roleList = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", roleIdList));
         List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
         user.setRoleNameList(roleNameList);
         SysDept sysDept = sysDeptService.getById(user.getDeptId());
@@ -705,18 +706,18 @@ public class SysUserController {
             if ("1".equals(msg)) {
                 //用户放入session
                 // SysUser user = sysUserService.getById(19);
-//                SysUser user = sysUserService.getOne(new QueryWrapper<SysUser>().eq("id_number", PID));
-//                List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", user.getId()));
+//                SysUser user = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id_number", PID));
+//                List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", user.getId()));
 //                //20211128添加角色ID
 //                List<Integer> roleIdList = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
 //                user.setRoleIdList(roleIdList);
-//                List<SysRole> roleList = sysRoleService.list(new QueryWrapper<SysRole>().in("id", roleIdList));
+//                List<SysRole> roleList = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", roleIdList));
 //                List<String> roleNameList = roleList.stream().map(SysRole::getName).collect(Collectors.toList());
 //                user.setRoleNameList(roleNameList);
 //                httpSession.removeAttribute("user");
 //                httpSession.setAttribute("user", user);
                 SysUser user = this.setSessionForPID(PID);
-                QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>().ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("id");
+                QueryWrapper<ProcessInstanceData> queryWrapper = new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("id");
                 List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(queryWrapper);
                 //20240801 过滤“同用户名”待办
                 processInstanceDataList = processInstanceDataList.stream().filter(item->{
@@ -804,7 +805,7 @@ public class SysUserController {
     public ResponseResult getNameStr(Integer[] idArr) {
         List<Integer> idList = Stream.of(idArr).collect(Collectors.toList());
         //查询部门
-        List<SysDept> deptList = sysDeptService.list();
+        List<SysDept> deptList = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId));
         Map<Integer, String> deptMap = deptList.stream().collect(Collectors.toMap(SysDept::getId, SysDept::getName));
 
         List<SysUser> userList = sysUserService.listByIds(idList);
@@ -814,7 +815,7 @@ public class SysUserController {
 //    @GetMapping("getUserTree")
 //    public List<TreeSelectVO> getUserTree() {
 //        //20211121
-//        List<SysUser> list =sysUserService.list(new QueryWrapper<SysUser>());
+//        List<SysUser> list =sysUserService.list(new  QueryWrapper<SysUser>());
 //        return TreeUtil.getTreeSelectVO(list);
 //    }
 
@@ -830,8 +831,8 @@ public class SysUserController {
         }
         List<ValueLabelVO> list = new ArrayList<>();
         //过滤掉有基本要素有空缺的人员
-        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("dept_id", ((SysUser) httpSession.getAttribute("user")).getDeptId()).ne("login_name", "").ne("id_number", "").ne("secret_degree", "").notIn("status",  Arrays.asList(new String[]{"离退","停用"})));
-        List<SysDept> deptList = sysDeptService.list();
+        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("dept_id", ((SysUser) httpSession.getAttribute("user")).getDeptId()).ne("login_name", "").ne("id_number", "").ne("secret_degree", "").notIn("status",  Arrays.asList(new String[]{"离退","停用"})));
+        List<SysDept> deptList = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId));
         Map<Integer, String> deptMap = deptList.stream().collect(Collectors.toMap(SysDept::getId, SysDept::getName));
 
         //20221109Label字段由user.getDisplayName() + "." + deptMap.get(user.getDeptId()改为user.getDisplayName()
@@ -860,10 +861,10 @@ public class SysUserController {
     @GetMapping("getRoleGiveVO")
     @ResponseResultWrapper
     public RoleGiveVO getRoleGiveVO(Integer userId) {
-        QueryWrapper<SysRole> queryWrapper = new QueryWrapper<>();
+        QueryWrapper<SysRole> queryWrapper = new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
         queryWrapper.notIn("name", Arrays.asList(new String[]{"系统管理员", "安全管理员", "系统审计员"}));//20231129测评
         List<ValueLabelVO> roleList = sysRoleService.list(queryWrapper).stream().map(item -> new ValueLabelVO(item.getId(), item.getName())).collect(Collectors.toList());
-        List<Integer> checkRoleIdList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().eq("user_id", userId)).stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
+        List<Integer> checkRoleIdList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("user_id", userId)).stream().map(SysRoleUser::getRoleId).collect(Collectors.toList());
 
         RoleGiveVO roleGiveVO = new RoleGiveVO();
         roleGiveVO.setRoleList(roleList);
@@ -882,7 +883,7 @@ public class SysUserController {
         //20231205 手工写日志
         SysUser user_alter = sysUserService.getById(userId);
         List<SysRole> sysRoleList;
-        List<Map<String, Object>> listMaps1 =  sysRoleService.listMaps(new QueryWrapper<SysRole>().in("id",roleIdList).select("name"));
+        List<Map<String, Object>> listMaps1 =  sysRoleService.listMaps(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id",roleIdList).select("name"));
         List<String> roleNameList = listMaps1.stream().map(item -> item.get("name").toString()).collect(Collectors.toList());
         SysUser user = (SysUser) httpSession.getAttribute("user");
         OperateeLog operateeLog = new OperateeLog();
@@ -968,7 +969,7 @@ public class SysUserController {
         if (ObjectUtil.isNotEmpty(list0)) {
             List<SysUser> userList = new ArrayList<>();
             //20211116
-            List<SysUser> redundantUserDbList = sysUserService.list(new QueryWrapper<SysUser>().in("login_name", list0.stream().map(item -> item.getLoginName()).collect(Collectors.toList())));
+            List<SysUser> redundantUserDbList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).in("login_name", list0.stream().map(item -> item.getLoginName()).collect(Collectors.toList())));
             if (ObjectUtil.isEmpty(redundantUserDbList)) {
                 resultExcelList = list0;
 
@@ -982,7 +983,7 @@ public class SysUserController {
                     if (ObjectUtil.isEmpty(sysUserExcel.getLoginName()) || ObjectUtil.isEmpty(sysUserExcel.getDeptName()) || ObjectUtil.isEmpty(sysUserExcel.getIdNumber()) || ObjectUtil.isEmpty(sysUserExcel.getSecretDegree())) {
                         throw new RuntimeException("请检查用户信息的完整性");
                     }
-                    SysDept sysDept = sysDeptService.getOne(new QueryWrapper<SysDept>().eq("name", sysUserExcel.getDeptName()));
+                    SysDept sysDept = sysDeptService.getOne(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("name", sysUserExcel.getDeptName()));
                     if (ObjectUtil.isEmpty(sysDept)) throw new RuntimeException("请检查部门信息的准确性");
                     Integer deptId = sysDept.getId();
                     SysUser user = new SysUser();
@@ -995,7 +996,7 @@ public class SysUserController {
                 sysUserService.saveBatch(userList);
                 //20221202
                 List<Integer> idList = userList.stream().map(item -> item.getId()).collect(Collectors.toList());
-                //  List<SysRoleUser> sysRoleUserList =sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("id",idList));
+                //  List<SysRoleUser> sysRoleUserList =sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("id",idList));
                 List<SysRoleUser> sysRoleUserList = new ArrayList<>();
                 for (Integer i : idList) {
                     SysRoleUser sysRoleUser = new SysRoleUser();

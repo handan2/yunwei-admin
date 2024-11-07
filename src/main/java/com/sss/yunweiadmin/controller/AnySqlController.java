@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.mapper.AnySqlMapper;
 import com.sss.yunweiadmin.model.entity.AsConfig;
 import com.sss.yunweiadmin.service.AsConfigService;
@@ -58,7 +59,7 @@ public class AnySqlController {
     @GetMapping("generateFormItem")
     public boolean generateFormItem(String enTableName) {
         List<String> resultList = new ArrayList<>();
-        List<AsConfig> list = asConfigService.list(new QueryWrapper<AsConfig>().eq("en_table_name", enTableName));
+        List<AsConfig> list = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id", GlobalParam.orgId).eq("en_table_name", enTableName));
         for (AsConfig asConfig : list) {
             String name = StrUtil.toCamelCase(asConfig.getEnTableName() + "." + asConfig.getEnColumnName());
             String label = asConfig.getZhColumnName();

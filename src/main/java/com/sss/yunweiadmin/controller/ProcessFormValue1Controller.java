@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.controller;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.ProcessFormValue1;
 import com.sss.yunweiadmin.service.ProcessFormValue1Service;
@@ -27,7 +28,11 @@ public class ProcessFormValue1Controller {
 
     @GetMapping("get")
     public ProcessFormValue1 get(Integer processDefinitionId, String actProcessInstanceId) {
-        return processFormValue1Service.getOne(new QueryWrapper<ProcessFormValue1>().eq("process_definition_id", processDefinitionId).eq("act_process_instance_id", actProcessInstanceId));
+        if(actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
+            String[] a = actProcessInstanceId.split("_");
+            return processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id", a[1]).eq("process_definition_id", processDefinitionId).eq("act_process_instance_id",  a[0]));
+        } else
+            return processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id", GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("act_process_instance_id", actProcessInstanceId));
     }
 
 }

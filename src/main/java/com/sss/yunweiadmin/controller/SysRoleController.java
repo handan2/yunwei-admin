@@ -5,6 +5,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResult;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
@@ -92,7 +93,7 @@ public class SysRoleController {
 
     @GetMapping("list")
     public IPage<SysRole> list(int currentPage, int pageSize) {
-        return sysRoleService.page(new Page<>(currentPage, pageSize), new QueryWrapper<SysRole>().ne("name", "提交人领导").notIn("name",  Arrays.asList(new String[]{"系统管理员", "安全管理员", "系统审计员"})));
+        return sysRoleService.page(new Page<>(currentPage, pageSize), new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).ne("name", "提交人领导").notIn("name",  Arrays.asList(new String[]{"系统管理员", "安全管理员", "系统审计员"})));
     }
 
     @PostMapping("add")
@@ -115,7 +116,7 @@ public class SysRoleController {
 //    @OperateLog(module = "角色模块", type = "删除角色")
     @GetMapping("delete")
     public boolean delete(Integer[] idArr) {
-        List<Map<String, Object>> listMaps1 =  sysRoleService.listMaps(new QueryWrapper<SysRole>().in("id", Arrays.asList(idArr)).select("name"));
+        List<Map<String, Object>> listMaps1 =  sysRoleService.listMaps(new  QueryWrapper<SysRole>().eq("org_id", GlobalParam.orgId).in("id", Arrays.asList(idArr)).select("name"));
         List<String> roleNameList = listMaps1.stream().map(item -> item.get("name").toString()).collect(Collectors.toList());
         saveLog("delete", String.join(",", roleNameList));
         return sysRoleService.removeByIds(Arrays.asList(idArr));
@@ -123,35 +124,35 @@ public class SysRoleController {
 
     @GetMapping("getRoleVL")
     public List<ValueLabelVO> getRoleVL() {
-        List<SysRole> list = sysRoleService.list();
+        List<SysRole> list = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId));
         return list.stream().map(item -> new ValueLabelVO(item.getId(), item.getName())).collect(Collectors.toList());
     }
 
     @GetMapping("getRoleNameVL")
     public List<ValueLabelVO> getRoleNameVL() {
-        List<SysRole> list = sysRoleService.list();
+        List<SysRole> list = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId));
         return list.stream().map(item -> new ValueLabelVO(item.getName(), item.getName())).collect(Collectors.toList());
     }
 
     //20211114新增
     @GetMapping("getRoleIdVL")
     public List<ValueLabelVO> getRoleIdVL() {
-        List<SysRole> list = sysRoleService.list();
+        List<SysRole> list = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId));
         return list.stream().map(item -> new ValueLabelVO(item.getId().toString(), item.getName())).collect(Collectors.toList());
 
     }
 
     @GetMapping("getRoleKT")
     public List<KeyTitleVO> getRoleKT() {
-        List<SysRole> list = sysRoleService.list();
+        List<SysRole> list = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId));
         return list.stream().map(item -> new KeyTitleVO(item.getId(), item.getName())).collect(Collectors.toList());
     }
 
     @GetMapping("getRoleNameStr")
     public ResponseResult getRoleNameStr(Integer[] idArr) {
         List<Integer> idList = Stream.of(idArr).collect(Collectors.toList());
-        List<SysRole> list = sysRoleService.list(new QueryWrapper<SysRole>().in("id", idList));
-        List<SysRoleUser> roleUserList = sysRoleUserService.list(new QueryWrapper<SysRoleUser>().in("role_id", list.stream().map(SysRole::getId).collect(Collectors.toList())));
+        List<SysRole> list = sysRoleService.list(new  QueryWrapper<SysRole>().eq("org_id",GlobalParam.orgId).in("id", idList));
+        List<SysRoleUser> roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("role_id", list.stream().map(SysRole::getId).collect(Collectors.toList())));
         Set<Integer> roleIdSet = roleUserList.stream().map(SysRoleUser::getRoleId).collect(Collectors.toSet());
         if (list.size() != roleIdSet.size()) {
             throw new RuntimeException("所选角色没有绑定用户");
@@ -190,9 +191,9 @@ public class SysRoleController {
     @GetMapping("getPermissionGiveVO")
     public PermissionGiveVO getPermissionGiveVO(Integer roleId) {
         //20231130测评加.ne("remark","不可见")
-        List<SysPermission> list = sysPermissionService.list(new QueryWrapper<SysPermission>().ne("remark","不可见").orderByAsc("sort"));
+        List<SysPermission> list = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).ne("remark","不可见").orderByAsc("sort"));
         List<TreeSelectVO> permissionList = TreeUtil.getTreeSelectVO(list);
-        List<Integer> checkPermissionIdList = sysRolePermissionService.list(new QueryWrapper<SysRolePermission>().eq("role_id", roleId)).stream().map(SysRolePermission::getPermissionId).collect(Collectors.toList());
+        List<Integer> checkPermissionIdList = sysRolePermissionService.list(new  QueryWrapper<SysRolePermission>().eq("org_id",GlobalParam.orgId).eq("role_id", roleId)).stream().map(SysRolePermission::getPermissionId).collect(Collectors.toList());
         System.out.println(checkPermissionIdList);
         List<Integer> checkPermissionIdList2 = this.parentFilter(checkPermissionIdList);
         // System.out.println(111);
@@ -211,7 +212,7 @@ public class SysRoleController {
     public boolean permissionGive(Integer roleId, Integer[] permissionIdArr) {
         List<Integer> permissionIdList = Stream.of(permissionIdArr).collect(Collectors.toList());
 
-        List<Map<String, Object>> listMaps1 =  sysPermissionService.listMaps(new QueryWrapper<SysPermission>().in("id", permissionIdList).select("name"));
+        List<Map<String, Object>> listMaps1 =  sysPermissionService.listMaps(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).in("id", permissionIdList).select("name"));
         List<String> permissionNameList = listMaps1.stream().map(item -> item.get("name").toString()).collect(Collectors.toList());
         SysRole sysRole = sysRoleService.getById(roleId);
         saveLog("grant", sysRole.getName() + "," + String.join(",", permissionNameList));

@@ -5,6 +5,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.ProcessFormCustomType;
 import com.sss.yunweiadmin.service.ProcessFormCustomTypeService;
@@ -33,7 +34,7 @@ public class ProcessFormCustomTypeController extends BaseController<ProcessFormC
     @PostMapping("add")
     public boolean add(@RequestBody ProcessFormCustomType processFormCustomType) {
         //判断名称是否重复
-        List<ProcessFormCustomType> list = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().eq("name", processFormCustomType.getName()));
+        List<ProcessFormCustomType> list = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id", GlobalParam.orgId).eq("name", processFormCustomType.getName()));
         if (ObjectUtil.isNotEmpty(list)) {
             throw new RuntimeException("表名称已重复");
         }
@@ -42,12 +43,12 @@ public class ProcessFormCustomTypeController extends BaseController<ProcessFormC
     @Override
     @GetMapping("list")
     public IPage<ProcessFormCustomType> list(int currentPage, int pageSize) {
-        return service.page(new Page<>(currentPage, pageSize), new QueryWrapper<ProcessFormCustomType>().orderByAsc("sort"));
+        return service.page(new Page<>(currentPage, pageSize), new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).orderByAsc("sort"));
     }
     @Override
     @PostMapping("edit")
     public boolean edit(@RequestBody ProcessFormCustomType processFormCustomType) {
-        List<ProcessFormCustomType> list = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().ne("id", processFormCustomType.getId()).eq("name", processFormCustomType.getName()));
+        List<ProcessFormCustomType> list = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).ne("id", processFormCustomType.getId()).eq("name", processFormCustomType.getName()));
         if (ObjectUtil.isNotEmpty(list)) {
             throw new RuntimeException("表名称已重复");
         }

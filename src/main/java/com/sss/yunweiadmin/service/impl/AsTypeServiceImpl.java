@@ -3,8 +3,10 @@ package com.sss.yunweiadmin.service.impl;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.mapper.AsTypeMapper;
 import com.sss.yunweiadmin.model.entity.AsType;
+import com.sss.yunweiadmin.model.entity.SysDept;
 import com.sss.yunweiadmin.service.AsTypeService;
 import org.springframework.stereotype.Service;
 
@@ -32,14 +34,14 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
 
 
         if( processName.contains("特殊事项") ||  processName.contains("三合一")){//进一步限制
-            list.addAll(getTypeIdList(4));//计算机//限定计算机与服务器
-            list.addAll(getTypeIdList(29));
+            list.addAll(getTypeIdList(GlobalParam.typeIDForCMP));//计算机//限定计算机与服务器
+            list.addAll(getTypeIdList(GlobalParam.typeIDForFWQ));
             //queryWrapper.in("type_id", typeIdList);
         } else if( processName.contains("外出")){
-            list.addAll(getTypeIdList(4));//计算机
-            list.addAll(getTypeIdList(31));//存储介质
+            list.addAll(getTypeIdList(GlobalParam.typeIDForCMP));//计算机
+            list.addAll(getTypeIdList(GlobalParam.typeIDForStor));//存储介质
         } else {
-            list.addAll(getTypeIdList(31));//存储介质
+            list.addAll(getTypeIdList(GlobalParam.typeIDForStor));//存储介质
         }
 
         return list;
@@ -47,15 +49,15 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
 
     //20230721 用于闭环|特殊事项|外出等流程的map<允许设备类型ID：自定义表ID>
     public Map<Integer,Integer> getTypeIdCustomIdMapForSpecial() {
-        List<Integer> cmpList = getTypeIdList(4);//计算机
-        List<Integer> storList = getTypeIdList(31);//存储介质
+        List<Integer> cmpList = getTypeIdList(GlobalParam.typeIDForCMP);//计算机
+        List<Integer> storList = getTypeIdList(GlobalParam.typeIDForStor);//存储介质
         Map<Integer,Integer> map = new HashMap<>();
         cmpList.forEach(i->{
-            map.put(i,16);//16代表自定义“计算机信息表”ID
+            map.put(i,GlobalParam.cusTblIDForCMP);//16代表自定义“计算机信息表”ID
         });
         storList.forEach(i->{
-            if(i != 30)//排除硬盘
-                map.put(i,30);//30代表自定义“存储介质信息表”ID
+            if(i != GlobalParam.typeIDForDisk)//排除硬盘
+                map.put(i,GlobalParam.cusTblIDForStor);//30代表自定义“存储介质信息表”ID
         });
         return map;
     }
@@ -67,7 +69,7 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
 //        if (Typelevel == 3) {//3是叶子结点
 //            return typeIdList;
 //        } else{
-            List<AsType> asTypeList = this.list(new QueryWrapper<AsType>().eq("pid",typeId));
+            List<AsType> asTypeList = this.list(new  QueryWrapper<AsType>().eq("org_id", GlobalParam.orgId).eq("pid",typeId));
             if(ObjectUtil.isNotEmpty(asTypeList)){
                 List<Integer> asTypeIdList = asTypeList.stream().map(item->item.getId()).collect(Collectors.toList());
                 asTypeIdList.forEach(item->typeIdList.addAll(this.getTypeIdList(item)));
@@ -85,7 +87,7 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
 //        if (Typelevel == 3) {//3是叶子结点
 //            return typeIdList;
 //        } else{
-        List<AsType> asTypeList = this.list(new QueryWrapper<AsType>().eq("pid",typeId));
+        List<AsType> asTypeList = this.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("pid",typeId));
         if(ObjectUtil.isNotEmpty(asTypeList)){
             List<Integer> asTypeIdList = asTypeList.stream().map(item->item.getId()).collect(Collectors.toList());
             asTypeIdList.forEach(item->typeIdList.addAll(this.getTypeIdList(item)));
@@ -97,7 +99,7 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
     //20211115获取第二层分类的asType ; 这里未处理level=1的情况
     public AsType  getLevel2AsTypeById(Integer typeId) {
         AsType asType;
-        List<AsType> list = this.list();
+        List<AsType> list = this.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId));
         Map<Integer, AsType> map = list.stream().collect(Collectors.toMap(AsType::getId, AsType -> AsType));
         while (true) {
             AsType asTypeTmp = map.get(typeId);
@@ -113,6 +115,6 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
 
     @Override
     public AsType getAsType(String typeName) {
-        return this.getOne(new QueryWrapper<AsType>().eq("name", typeName));
+        return this.getOne(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("name", typeName));
     }
 }

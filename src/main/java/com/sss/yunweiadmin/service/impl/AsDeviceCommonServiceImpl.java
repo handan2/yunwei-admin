@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
 import com.sss.yunweiadmin.mapper.AsDeviceCommonMapper;
 import com.sss.yunweiadmin.model.entity.*;
@@ -94,20 +95,20 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
         AsType asTypeLevel2 = asTypeService.getLevel2AsTypeById(asType.getId());
 
-        if (asType.getId() == 7) {//打印机
+        if (asType.getId() == GlobalParam.typeIDForPrint) {//打印机
             baomiNo = baomiNo + "D";
-        } else if (asType.getId() == 26)//复印机
+        } else if (asType.getId() == GlobalParam.typeIDForPrint)//复印机
             baomiNo = baomiNo + "F";
-        else if (asTypeLevel2.getId() == 31)//存储介质：通过二级类型ID判断
+        else if (asTypeLevel2.getId() == GlobalParam.typeIDForStor)//存储介质：通过二级类型ID判断
             baomiNo = baomiNo + "M";
-        else if (asTypeLevel2.getId() == 7)//安全产品：通过二级类型ID判断
+        else if (asTypeLevel2.getId() ==  GlobalParam.typeIDForSafe)//安全产品：通过二级类型ID判断
             baomiNo = baomiNo + "A";
             //20230213“网络外设”与“办公自动化”根据联网类别分开：20230214暂不分，统称B
-        else if (asTypeLevel2.getId() == 6) //外设办公自动化：通过二级类型ID判断
+        else if (asTypeLevel2.getId() ==  GlobalParam.typeIDForAff) //外设办公自动化：通过二级类型ID判断
             baomiNo = baomiNo + "B";
-        else if (asTypeLevel2.getId() == 4) //20230429 计算机：通过二级类型ID判断
+        else if (asTypeLevel2.getId() ==  GlobalParam.typeIDForCMP) //20230429 计算机：通过二级类型ID判断
             baomiNo = baomiNo + "J";
-        else if (asTypeLevel2.getId() == 29) //20230429 服务器与存储设备：通过二级类型ID判断
+        else if (asTypeLevel2.getId() ==  GlobalParam.typeIDForFWQ) //20230429 服务器与存储设备：通过二级类型ID判断
             baomiNo = baomiNo + "S";
         else
             baomiNo = baomiNo + "Q";
@@ -220,14 +221,14 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
     @Override
     public boolean delete(Integer[] idArr1) {
         List<Integer> idArr = Stream.of(idArr1).collect(Collectors.toList());
-        asComputerSpecialService.remove(new QueryWrapper<AsComputerSpecial>().in("as_id", idArr));
-        asNetworkDeviceSpecialService.remove(new QueryWrapper<AsNetworkDeviceSpecial>().in("as_id", idArr));
-        asComputerGrantedService.remove(new QueryWrapper<AsComputerGranted>().in("as_id", idArr));
-        asIoSpecialService.remove(new QueryWrapper<AsIoSpecial>().in("as_id", idArr));
-        asSecurityProductsSpecialService.remove(new QueryWrapper<AsSecurityProductsSpecial>().in("as_id", idArr));
-        asApplicationSpecialService.remove(new QueryWrapper<AsApplicationSpecial>().in("as_id", idArr));
+        asComputerSpecialService.remove(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", idArr));
+        asNetworkDeviceSpecialService.remove(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", idArr));
+        asComputerGrantedService.remove(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).in("as_id", idArr));
+        asIoSpecialService.remove(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", idArr));
+        asSecurityProductsSpecialService.remove(new  QueryWrapper<AsSecurityProductsSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", idArr));
+        asApplicationSpecialService.remove(new  QueryWrapper<AsApplicationSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", idArr));
         //删除硬盘信息
-        List<AsDeviceCommon> diskList = this.list(new QueryWrapper<AsDeviceCommon>().in("host_as_id", idArr));
+        List<AsDeviceCommon> diskList = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("host_as_id", idArr));
         this.removeByIds(diskList.stream().map(item -> item.getId()).collect(Collectors.toList()));
         //删除asDeviceCommon“主设备”
         this.removeByIds(idArr);
@@ -245,7 +246,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         statistics.setCreateTime(LocalDateTime.now());
         statistics.setAmount(listAsId.size());
         if (CollUtil.isNotEmpty(listAsId)) {//queryRapper/in语句中参数中：list为0会报错
-            List<AsComputerSpecial> listAsComputerSpecialOSdateFiltered = asComputerSpecialService.list(new QueryWrapper<AsComputerSpecial>().between("os_date", date_end, date_now).in("as_id", listAsId));
+            List<AsComputerSpecial> listAsComputerSpecialOSdateFiltered = asComputerSpecialService.list(new  QueryWrapper<AsComputerSpecial>().eq("org_id", GlobalParam.orgId).between("os_date", date_end, date_now).in("as_id", listAsId));
             statistics.setReinstallAmount(listAsComputerSpecialOSdateFiltered.size());
         } else {
             statistics.setReinstallAmount(0);
@@ -256,7 +257,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
     @Override
     public boolean addStatistics() {//目前只考虑涉密：密级后续由参数传进来，不全部都统计
-        statisticsService.remove(new QueryWrapper<>());//清空所有记录
+        statisticsService.remove(new  QueryWrapper<Statistics>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId));//清空所有记录
         List<Statistics> statisticsList = new ArrayList<>();
         //先增加“桌面计算机” 的本年度重装查询
         LocalDate date_now = LocalDate.now();
@@ -266,7 +267,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             date_end = date_now.minusDays(entryPeriod.getValue());
             Integer[] allowedTypeIdArray = {23, 22, 21, 8, 9};//需要记录的typeId
             List<Integer> list = Arrays.asList(allowedTypeIdArray);
-            List<AsDeviceCommon> asDeviceCommonList = this.list(new QueryWrapper<AsDeviceCommon>().in("type_id", list).ne("state", "停用").ne("state", "报废").ne("state", "库存").and(qw -> qw.eq("miji", "秘密").or().eq("miji", "机密")));
+            List<AsDeviceCommon> asDeviceCommonList = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", list).ne("state", "停用").ne("state", "报废").ne("state", "库存").and(qw -> qw.eq("miji", "秘密").or().eq("miji", "机密")));
             Map<Integer, List<Integer>> mapList = new HashMap<>();//<类型ID，资产IdList>
             for (Integer typeId : allowedTypeIdArray) {
                 mapList.put(typeId, new ArrayList<Integer>());
@@ -295,7 +296,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         //资产类型
         AsType asType = asTypeService.getLevel2AsTypeById(asDeviceCommon.getTypeId());
         Integer asTypeId = asType.getId();
-        if (asTypeId == 4 || asTypeId == 29) {//20230107 添加服务器与存储设备id
+        if (asTypeId ==  GlobalParam.typeIDForCMP|| asTypeId ==  GlobalParam.typeIDForFWQ) {//20230107 添加服务器与存储设备id
             //计算机
             AsComputerSpecial asComputerSpecial = assetVO.getAsComputerSpecial();
             if (ObjectUtil.isNotEmpty(asComputerSpecial)) {
@@ -319,28 +320,28 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     return item;
                 }).collect(Collectors.toList()));//20220614这个flag设置有点小问题：暂不改
             }
-        } else if (asTypeId == 5) {
+        } else if (asTypeId ==  GlobalParam.typeIDForNET) {
             //网络设备
             AsNetworkDeviceSpecial asNetworkDeviceSpecial = assetVO.getAsNetworkDeviceSpecial();
             if (ObjectUtil.isNotEmpty(asNetworkDeviceSpecial)) {
                 asNetworkDeviceSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asNetworkDeviceSpecialService.save(asNetworkDeviceSpecial);
             }
-        } else if (asTypeId == 6) {
+        } else if (asTypeId ==  GlobalParam.typeIDForAff) {
             //外设
             AsIoSpecial asIoSpecial = assetVO.getAsIoSpecial();
             if (ObjectUtil.isNotEmpty(asIoSpecial)) {
                 asIoSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asIoSpecialService.save(asIoSpecial);
             }
-        } else if (asTypeId == 7) {
+        } else if (asTypeId ==  GlobalParam.typeIDForSafe) {
             //安全产品（硬件）
             AsSecurityProductsSpecial asSecurityProductsSpecial = assetVO.getAsSecurityProductsSpecial();
             if (ObjectUtil.isNotEmpty(asSecurityProductsSpecial)) {
                 asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asSecurityProductsSpecialService.save(asSecurityProductsSpecial);
             }
-        } else if (asTypeId == 19) {
+        } else if (asTypeId ==  GlobalParam.typeIDForYingyong) {
             //应用系统
             AsApplicationSpecial asApplicationSpecial = assetVO.getAsApplicationSpecial();
             if (ObjectUtil.isNotEmpty(asApplicationSpecial)) {
@@ -360,9 +361,9 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             AsType asType = asTypeService.getById(asDeviceCommon.getTypeId());
             asDeviceCommon.setBaomiNo(this.makeBaomiNo(asType, asDeviceCommon.getMiji(), asDeviceCommon.getUseDate()));
         }
-        if (asDeviceCommon.getTypeId() == 30 && ObjectUtil.isNotEmpty(asDeviceCommon.getPortNo())) {
+        if (asDeviceCommon.getTypeId() == GlobalParam.typeIDForDisk && ObjectUtil.isNotEmpty(asDeviceCommon.getPortNo())) {
             //20230527 硬盘的宿主机字段（前端借用“信息点号”字段传来）；
-            List<AsDeviceCommon> asDeviceCommonListForHost = this.list(new QueryWrapper<AsDeviceCommon>().eq("no", asDeviceCommon.getPortNo()));
+            List<AsDeviceCommon> asDeviceCommonListForHost = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("no", asDeviceCommon.getPortNo()));
             asDeviceCommon.setPortNo("");//置空：本来就是借用字段，无须留值
             if (CollUtil.isNotEmpty(asDeviceCommonListForHost)) {
                 asDeviceCommon.setHostAsId(asDeviceCommonListForHost.get(0).getId());
@@ -382,7 +383,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
         SysUser user = (SysUser) httpSession.getAttribute("user");
         List<ProcessInstanceChange> changeList = Lists.newArrayList();
-        List<AsConfig> asConfigList = asConfigService.list(new QueryWrapper<AsConfig>().eq("en_table_name", "as_device_common"));
+        List<AsConfig> asConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_device_common"));
         asConfigList.forEach(i -> {
 
             ProcessInstanceChange change = new ProcessInstanceChange();
@@ -421,13 +422,13 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         flag = this.updateById(asDeviceCommon);
 
         //专用表
-        if (asTypeId == 4 || asTypeId == 29) {//20230107 添加服务器存储设备id
+        if (asTypeId ==  GlobalParam.typeIDForCMP|| asTypeId ==  GlobalParam.typeIDForFWQ) {//20230107 添加服务器存储设备id
 
 
 
             //20240407todo断点
 
-            List<AsConfig> asConfigList2 =  asConfigService.list(new QueryWrapper<AsConfig>().eq("en_table_name", "as_computer_special"));
+            List<AsConfig> asConfigList2 =  asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_computer_special"));
 
 
             AsComputerSpecial asComputerSpecial = assetVO.getAsComputerSpecial();
@@ -463,28 +464,28 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 }
                 flag = flag && this.saveOrUpdateBatch(diskListForHisForSaveOrUpdate);//20220614这个flag设置有点小问题：暂不改
             }
-        } else if (asTypeId == 5) {
+        } else if (asTypeId ==  GlobalParam.typeIDForNET) {
             //网络设备
             AsNetworkDeviceSpecial asNetworkDeviceSpecial = assetVO.getAsNetworkDeviceSpecial();
             if (ObjectUtil.isNotEmpty(asNetworkDeviceSpecial)) {
                 asNetworkDeviceSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asNetworkDeviceSpecialService.saveOrUpdate(asNetworkDeviceSpecial);
             }
-        } else if (asTypeId == 6) {
+        } else if (asTypeId ==  GlobalParam.typeIDForAff) {
             //外设
             AsIoSpecial asIoSpecial = assetVO.getAsIoSpecial();
             if (ObjectUtil.isNotEmpty(asIoSpecial)) {
                 asIoSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asIoSpecialService.saveOrUpdate(asIoSpecial);
             }
-        } else if (asTypeId == 7) {
+        } else if (asTypeId ==  GlobalParam.typeIDForSafe) {
             //安全产品（硬件）
             AsSecurityProductsSpecial asSecurityProductsSpecial = assetVO.getAsSecurityProductsSpecial();
             if (ObjectUtil.isNotEmpty(asSecurityProductsSpecial)) {
                 asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asSecurityProductsSpecialService.saveOrUpdate(asSecurityProductsSpecial);
             }
-        } else if (asTypeId == 19) {
+        } else if (asTypeId ==  GlobalParam.typeIDForYingyong) {
             //应用系统
             AsApplicationSpecial asApplicationSpecial = assetVO.getAsApplicationSpecial();
             if (ObjectUtil.isNotEmpty(asApplicationSpecial)) {
@@ -498,8 +499,8 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
     private String addAsComputerExcel(List<AsComputerExcel> excelList, String importMode) {
         //20221115从用户表读“部门+用户名”匹配上的人员信息，将其密级赋给计算机本身和硬盘
-        List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().eq("status", "正常"));
-        List<SysDept> deptList = sysDeptService.list(new QueryWrapper<SysDept>().eq("pid", 2));
+        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("status", "正常"));
+        List<SysDept> deptList = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("pid", 2));
         //格式：<信息化中心,13>
         Map<Integer, String> mapDept = new HashMap<>();
         for (SysDept dept : deptList) {
@@ -528,7 +529,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             List<Integer> asTypeIdList = asTypeService.getTypeIdList(4);//约定了计算机的id:4
             List<Integer> asTypeIdList2 = asTypeService.getTypeIdList(29);//约定了服务器存储设备的id:29
             asTypeIdList.addAll(asTypeIdList2);
-            List<Map<String, Object>> listMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("type_id", asTypeIdList).select("no", "id"));
+            List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
             for (Map<String, Object> map : listMaps) {//可以直接用java8直接转map:见下面更新硬盘代码
@@ -574,14 +575,14 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                         if (ObjectUtil.isEmpty(asDeviceCommon.getState()))
                             asDeviceCommon.setState(this.getById(noIdMap.get(asDeviceCommon.getNo())).getState());
                         asComputerSpecial.setAsId(asDeviceCommon.getId());
-                        asComputerSpecial.setId(asComputerSpecialService.getOne(new QueryWrapper<AsComputerSpecial>().eq("as_id", asDeviceCommon.getId())).getId());
+                        asComputerSpecial.setId(asComputerSpecialService.getOne(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
                         asComputerGranted.setAsId(asDeviceCommon.getId());
-                        asComputerGranted.setId(asComputerGrantedService.getOne(new QueryWrapper<AsComputerGranted>().eq("as_id", asDeviceCommon.getId())).getId());
+                        asComputerGranted.setId(asComputerGrantedService.getOne(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
                         asComputerSpecialService.updateById(asComputerSpecial);
                         asComputerGrantedService.updateById(asComputerGranted);
                         List<AsDeviceCommon> asDeviceCommonListForDiskAdd = new ArrayList<>();
                         List<AsDeviceCommon> asDeviceCommonListForDiskUpdate = new ArrayList<>();
-                        List<AsDeviceCommon> asDeviceCommonListForDiskInDB = this.list(new QueryWrapper<AsDeviceCommon>().eq("type_id", 30).eq("host_as_id", noIdMap.get(asDeviceCommon.getNo())));
+                        List<AsDeviceCommon> asDeviceCommonListForDiskInDB = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("type_id", GlobalParam.typeIDForDisk).eq("host_as_id", noIdMap.get(asDeviceCommon.getNo())));
                         if (CollUtil.isNotEmpty(asDeviceCommonListForDiskInDB)) {
                             for (AsDeviceCommon item : asDeviceCommonListForDiskInDB) {
                                 /// 同步硬盘与计算机同值的相关字段
@@ -597,7 +598,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                         }
 
                         //查找出目前DB中该计算机对应的硬盘：这里包括“非在用”
-                        List<Map<String, Object>> ypListMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().eq("type_id", 30).eq("host_as_id", noIdMap.get(asDeviceCommon.getNo())).select("sn", "id"));
+                        List<Map<String, Object>> ypListMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("type_id", GlobalParam.typeIDForDisk).eq("host_as_id", noIdMap.get(asDeviceCommon.getNo())).select("sn", "id"));
                         Map<String, Integer> ypNoIdMap = ypListMaps.stream().collect(Collectors.toMap(v -> v.get("sn").toString(), v -> Integer.valueOf(v.get("id").toString()), (key1, key2) -> key2));
                         if (ObjectUtil.isNotEmpty(asComputerExcel.getDiskSn1())) {
                             callByAddComputer(asComputerExcel.getDiskSn1(), asComputerExcel.getDiskMode1(), asComputerExcel.getDiskSize1(), asDeviceCommon, asDeviceCommonListForDiskAdd, asDeviceCommonListForDiskUpdate, ypNoIdMap);
@@ -622,9 +623,9 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                             List<String> excludeState = Arrays.asList(new String[]{"报废", "待报废", "销毁", "归库"});
                             List<AsDeviceCommon> dbHarkDiskListForDeleteForCurrentComputer;
                             if (CollUtil.isNotEmpty(handledSnList))
-                                dbHarkDiskListForDeleteForCurrentComputer = this.list(new QueryWrapper<AsDeviceCommon>().notIn("state", excludeState).notIn("sn", handledSnList).eq("host_as_id", asDeviceCommon.getId()));
+                                dbHarkDiskListForDeleteForCurrentComputer = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).notIn("state", excludeState).notIn("sn", handledSnList).eq("host_as_id", asDeviceCommon.getId()));
                             else
-                                dbHarkDiskListForDeleteForCurrentComputer = this.list(new QueryWrapper<AsDeviceCommon>().notIn("state", excludeState).eq("host_as_id", asDeviceCommon.getId()));
+                                dbHarkDiskListForDeleteForCurrentComputer = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).notIn("state", excludeState).eq("host_as_id", asDeviceCommon.getId()));
                             this.removeByIds(dbHarkDiskListForDeleteForCurrentComputer.stream().map(item -> Integer.valueOf(item.getId().toString())).collect(Collectors.toList()));
                         }
                     } else {  //20221227资产号在DB不存在的设备：做一个记录
@@ -640,22 +641,22 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 return "更新了" + updateSucessCount + "条设备信息";
         } else { //这个分支是之前的导入模式：都是需要删除老记录&&设备ID会变
             if (importMode.equals("覆盖")) {//可重复&需覆盖，把重复的从DB删除
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsComputerExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsComputerExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isNotEmpty(list)) {
                     dbList = list;
                     List<Integer> asIdList = list.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
                     this.removeByIds(asIdList);
                     //20221226加 删除计算机硬盘:效果待观察
-                    List<Map<String, Object>> listMaps1 = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("host_as_id", asIdList).select("id"));
+                    List<Map<String, Object>> listMaps1 = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("host_as_id", asIdList).select("id"));
                     List<Integer> ypIdList = listMaps1.stream().map(item -> Integer.valueOf(item.get("id").toString())).collect(Collectors.toList());
                     this.removeByIds(ypIdList);
-                    asComputerSpecialService.remove(new QueryWrapper<AsComputerSpecial>().in("as_id", asIdList));
-                    asComputerGrantedService.remove(new QueryWrapper<AsComputerGranted>().in("as_id", asIdList));
+                    asComputerSpecialService.remove(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
+                    asComputerGrantedService.remove(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 }
                 pageList = excelList;
             } else {//不可重复&不覆盖; 属于“纯粹新增模式”
                 //20211116读出DB与EXCEL资产号重复的记录
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsComputerExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsComputerExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isEmpty(list)) {//此时导入的NO均不存在DB中
                     pageList = excelList;
                 } else {//有与DB重复的情况，注意：如果数据均是重复的，这里处理完后pageList里没数据了
@@ -757,7 +758,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         ExcelDateUtil.converToDate(excelList, AsNetworkDeviceExcel.class);
         if (importMode.equals("更新")) {//20221227
             List<Integer> asTypeIdList = asTypeService.getTypeIdList(5);//约定了网络设备的typeid:5
-            List<Map<String, Object>> listMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("type_id", asTypeIdList).select("no", "id"));
+            List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
             for (Map<String, Object> map : listMaps) {
@@ -778,7 +779,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     if (ObjectUtil.isNotEmpty(noIdMap.get(asDeviceCommon.getNo()))) {
                         asDeviceCommon.setId(noIdMap.get(asDeviceCommon.getNo()));
                         this.updateById(asDeviceCommon);
-                        asNetworkDeviceSpecial.setId(asNetworkDeviceSpecialService.getOne(new QueryWrapper<AsNetworkDeviceSpecial>().eq("as_id", asDeviceCommon.getId())).getId());
+                        asNetworkDeviceSpecial.setId(asNetworkDeviceSpecialService.getOne(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
                         asNetworkDeviceSpecial.setAsId(asDeviceCommon.getId());
                         asNetworkDeviceSpecialService.updateById(asNetworkDeviceSpecial);
                     } else //20221227资产号在DB不存在的设备：做一个记录
@@ -792,16 +793,16 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 return "更新了" + updateSucessCount + "条设备信息";
         } else {
             if (importMode.equals("覆盖")) {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsNetworkDeviceExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsNetworkDeviceExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isNotEmpty(list)) {
                     dbList = list;
                     List<Integer> asIdList = list.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
                     this.removeByIds(asIdList);
-                    asNetworkDeviceSpecialService.remove(new QueryWrapper<AsNetworkDeviceSpecial>().in("as_id", asIdList));
+                    asNetworkDeviceSpecialService.remove(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 }
                 pageList = excelList;
             } else {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsNetworkDeviceExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsNetworkDeviceExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isEmpty(list)) {
                     pageList = excelList;
                 } else {
@@ -873,7 +874,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         ExcelDateUtil.converToDate(excelList, AsSecurityProductExcel.class);
         if (importMode.equals("更新")) {//20221227
             List<Integer> asTypeIdList = asTypeService.getTypeIdList(7);//约定了安全产品的typeid:7
-            List<Map<String, Object>> listMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("type_id", asTypeIdList).select("no", "id"));
+            List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
             for (Map<String, Object> map : listMaps) {
@@ -894,7 +895,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     if (ObjectUtil.isNotEmpty(noIdMap.get(asDeviceCommon.getNo()))) {
                         asDeviceCommon.setId(noIdMap.get(asDeviceCommon.getNo()));
                         this.updateById(asDeviceCommon);
-                        asSecurityProductsSpecial.setId(asSecurityProductsSpecialService.getOne(new QueryWrapper<AsSecurityProductsSpecial>().eq("as_id", asDeviceCommon.getId())).getId());
+                        asSecurityProductsSpecial.setId(asSecurityProductsSpecialService.getOne(new  QueryWrapper<AsSecurityProductsSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
                         asSecurityProductsSpecial.setAsId(asDeviceCommon.getId());
                         asSecurityProductsSpecialService.updateById(asSecurityProductsSpecial);
                     } else //20221227资产号在DB不存在的设备：做一个记录
@@ -908,16 +909,16 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 return "更新了" + updateSucessCount + "条设备信息";
         } else {
             if (importMode.equals("覆盖")) {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsSecurityProductExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsSecurityProductExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isNotEmpty(list)) {
                     dbList = list;
                     List<Integer> asIdList = list.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
                     this.removeByIds(asIdList);
-                    asNetworkDeviceSpecialService.remove(new QueryWrapper<AsNetworkDeviceSpecial>().in("as_id", asIdList));
+                    asNetworkDeviceSpecialService.remove(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 }
                 pageList = excelList;
             } else {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsSecurityProductExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsSecurityProductExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isEmpty(list)) {
                     pageList = excelList;
                 } else {
@@ -989,7 +990,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         ExcelDateUtil.converToDate(excelList, AsIoExcel.class);
         if (importMode.equals("更新")) {//20221227
             List<Integer> asTypeIdList = asTypeService.getTypeIdList(6);//约定了外设的typeid:6
-            List<Map<String, Object>> listMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("type_id", asTypeIdList).select("no", "id"));
+            List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
             for (Map<String, Object> map : listMaps) {
@@ -1010,7 +1011,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     if (ObjectUtil.isNotEmpty(noIdMap.get(asDeviceCommon.getNo()))) {
                         asDeviceCommon.setId(noIdMap.get(asDeviceCommon.getNo()));
                         this.updateById(asDeviceCommon);
-                        asIoSpecial.setId(asIoSpecialService.getOne(new QueryWrapper<AsIoSpecial>().eq("as_id", asDeviceCommon.getId())).getId());
+                        asIoSpecial.setId(asIoSpecialService.getOne(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
                         asIoSpecial.setAsId(asDeviceCommon.getId());
                         asIoSpecialService.updateById(asIoSpecial);
                     } else //20221227资产号在DB不存在的设备：做一个记录
@@ -1024,16 +1025,16 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 return "更新了" + updateSucessCount + "条设备信息";
         } else {
             if (importMode.equals("覆盖")) {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsIoExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsIoExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isNotEmpty(list)) {
                     dbList = list;
                     List<Integer> asIdList = list.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
                     this.removeByIds(asIdList);
-                    asIoSpecialService.remove(new QueryWrapper<AsIoSpecial>().in("as_id", asIdList));
+                    asIoSpecialService.remove(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 }
                 pageList = excelList;
             } else {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AsIoExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AsIoExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isEmpty(list)) {
                     pageList = excelList;
                 } else {
@@ -1103,7 +1104,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         ExcelDateUtil.converToDate(excelList, AppExcel.class);
         if (importMode.equals("更新")) {//20221227
             List<Integer> asTypeIdList = asTypeService.getTypeIdList(58);//约定了APP的typeid:58
-            List<Map<String, Object>> listMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("type_id", asTypeIdList).select("no", "id"));
+            List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
             for (Map<String, Object> map : listMaps) {
@@ -1136,16 +1137,16 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 return "更新了" + updateSucessCount + "条设备信息";
         } else {
             if (importMode.equals("覆盖")) {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AppExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AppExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isNotEmpty(list)) {
                     dbList = list;
                     List<Integer> asIdList = list.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
                     this.removeByIds(asIdList);
-                    asIoSpecialService.remove(new QueryWrapper<AsIoSpecial>().in("as_id", asIdList));
+                    asIoSpecialService.remove(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).in("as_id", asIdList));
                 }
                 pageList = excelList;
             } else {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(AppExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(AppExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isEmpty(list)) {
                     pageList = excelList;
                 } else {
@@ -1211,9 +1212,9 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         //处理日期类型
         ExcelDateUtil.converToDate(excelList, StorageExcel.class);
         if (importMode.equals("更新")) {//20221227
-            List<Integer> asTypeIdList = asTypeService.getTypeIdList(31);//约定了存储介质的typeid:31
-            asTypeIdList.addAll(asTypeService.getTypeIdList(24));//20230424 把“其他”类型也加入这里
-            List<Map<String, Object>> listMaps = this.listMaps(new QueryWrapper<AsDeviceCommon>().in("type_id", asTypeIdList).select("no", "id"));
+            List<Integer> asTypeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForStor);//约定了存储介质的typeid:31
+            asTypeIdList.addAll(asTypeService.getTypeIdList(GlobalParam.typeIDForOthers));//20230424 把“其他”类型也加入这里
+            List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
             for (Map<String, Object> map : listMaps) {
@@ -1242,7 +1243,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 return "更新了" + updateSucessCount + "条设备信息";
         } else {
             if (importMode.equals("覆盖")) {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(StorageExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(StorageExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isNotEmpty(list)) {
                     dbList = list;
                     List<Integer> asIdList = list.stream().map(AsDeviceCommon::getId).collect(Collectors.toList());
@@ -1250,7 +1251,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 }
                 pageList = excelList;
             } else {
-                List<AsDeviceCommon> list = this.list(new QueryWrapper<AsDeviceCommon>().in("no", excelList.stream().map(StorageExcel::getNo).collect(Collectors.toList())));
+                List<AsDeviceCommon> list = this.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("no", excelList.stream().map(StorageExcel::getNo).collect(Collectors.toList())));
                 if (ObjectUtil.isEmpty(list)) {
                     pageList = excelList;
                 } else {

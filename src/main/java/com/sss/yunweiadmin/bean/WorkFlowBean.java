@@ -3,6 +3,7 @@ package com.sss.yunweiadmin.bean;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.model.entity.ProcessDefinitionEdge;
 import com.sss.yunweiadmin.model.entity.ProcessDefinitionTask;
 import com.sss.yunweiadmin.model.entity.ProcessInstanceNode;
@@ -75,7 +76,7 @@ public class WorkFlowBean {
 
     public List<String> getProVarListForExGateway(Integer processDefinitionId){
         List<String> a = null;
-        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id",processDefinitionId).like("source_id","ExclusiveGateway").ne("var_name",""));
+        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id", GlobalParam.orgId).eq("process_definition_id",processDefinitionId).like("source_id","ExclusiveGateway").ne("var_name",""));
         if(CollUtil.isNotEmpty(edgeList)){
             return edgeList.stream().map(item->item.getVarName()).distinct().collect(Collectors.toList());
         }
@@ -161,10 +162,10 @@ public List<HistoricTaskInstance> getHistoricTaskInstance1(String actProcessInst
             List<String> loginList = new ArrayList<>();
             //任务节点类型
             String taskType = null;
-            List<ProcessDefinitionTask> taskDefList = processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id",processDefinitionId).ne("task_name",""));
+            List<ProcessDefinitionTask> taskDefList = processDefinitionTaskService.list(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id",processDefinitionId).ne("task_name",""));
             Map<String, String> taskMap = taskDefList.stream().collect(Collectors.toMap(ProcessDefinitionTask::getTaskDefKey, v -> v.getTaskType(), (key1, key2) -> key2));
             //历史处理节点
-            List<ProcessInstanceNode> list = processInstanceNodeService.list(new QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceDataId));
+            List<ProcessInstanceNode> list = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceDataId));
             Map<String, ProcessInstanceNode> map = list.stream().collect(Collectors.toMap(ProcessInstanceNode::getTaskDefKey, v -> v, (key1, key2) -> key2));
             //获取当前活动任务
             List<Task> taskList = this.getActiveTask(actProcessInstanceId);
@@ -190,7 +191,7 @@ public List<HistoricTaskInstance> getHistoricTaskInstance1(String actProcessInst
                     List<IdentityLink> list1 = taskService.getIdentityLinksForTask(task.getId());//每个候选人是一个元素：IdentityLinkEntity[id=407519, type=candidate, userId=yangyan, taskId=407517]，
 //                    IdentityLink identityLink = list1.get(0);
 //                    String candidateUserId = identityLink.getUserId();
-                    List<SysUser> userList = sysUserService.list(new QueryWrapper<SysUser>().in("login_name",list1.stream().map( IdentityLink::getUserId).collect(Collectors.toList())));
+                    List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).in("login_name",list1.stream().map( IdentityLink::getUserId).collect(Collectors.toList())));
 
 
 
@@ -282,7 +283,7 @@ public List<HistoricTaskInstance> getHistoricTaskInstance1(String actProcessInst
     public List<String> getButtonNameList(Integer processDefinitionId, String taskDefKey) {
         List<String> buttonNameList = null;
         //判断是否有多条连线
-        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", taskDefKey));
+        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("source_id", taskDefKey));
         if (ObjectUtil.isNotEmpty(edgeList)) {
             List<String> list = edgeList.stream().filter(item -> ObjectUtil.isNotEmpty(item.getButtonName())).map(ProcessDefinitionEdge::getButtonName).collect(Collectors.toList());
             if (ObjectUtil.isNotEmpty(list)) {
@@ -293,9 +294,9 @@ public List<HistoricTaskInstance> getHistoricTaskInstance1(String actProcessInst
     }
     //20220629加 获取“可能的”流程代办人员：从结束节点往前找(随便取一个)直连的处理者是“提交人”的userTask:这个算法基于一定约定&&
     public ProcessDefinitionTask getFeedBackUserTask(Integer processDefId) {
-        ProcessDefinitionTask endEvent = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("task_type","bpmn:endEvent").eq("process_definition_id",processDefId).last("limit 1"));
-        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("target_id",endEvent.getTaskDefKey()).eq("process_definition_id",processDefId));
-        List< ProcessDefinitionTask> lastUserTaskList =processDefinitionTaskService.list(new QueryWrapper<ProcessDefinitionTask>().eq("process_definition_id",processDefId).in("task_def_key",edgeList.stream().map(item->item.getSourceId()).collect(Collectors.toList())).like("task_type","Task"));
+        ProcessDefinitionTask endEvent = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("task_type","bpmn:endEvent").eq("process_definition_id",processDefId).last("limit 1"));
+        List<ProcessDefinitionEdge> edgeList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("target_id",endEvent.getTaskDefKey()).eq("process_definition_id",processDefId));
+        List< ProcessDefinitionTask> lastUserTaskList =processDefinitionTaskService.list(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id",processDefId).in("task_def_key",edgeList.stream().map(item->item.getSourceId()).collect(Collectors.toList())).like("task_type","Task"));
         if(lastUserTaskList.size() == 1){//限制直连结束节点只有一个userTask且处理人必须是发起人
             if(lastUserTaskList.get(0).getOperatorType().equals("发起人"))
                 return lastUserTaskList.get(0);
@@ -310,11 +311,11 @@ public List<HistoricTaskInstance> getHistoricTaskInstance1(String actProcessInst
     public List<ProcessDefinitionEdge> getExclusiveGatewayCondition(Integer processDefinitionId, String taskDefKey) {
         List<ProcessDefinitionEdge> list = null;
         //排他网关的连线的id
-        List<ProcessDefinitionEdge> exclusiveGatewayTmp = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", taskDefKey).likeLeft("target_id", "ExclusiveGateway"));
+        List<ProcessDefinitionEdge> exclusiveGatewayTmp = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("source_id", taskDefKey).likeLeft("target_id", "ExclusiveGateway"));
         if (ObjectUtil.isNotEmpty(exclusiveGatewayTmp)) {
             if (exclusiveGatewayTmp.size() == 1) {
                 //排他网关的连线的edge
-                List<ProcessDefinitionEdge> exclusiveGatewayList = processDefinitionEdgeService.list(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", exclusiveGatewayTmp.get(0).getSourceId()));
+                List<ProcessDefinitionEdge> exclusiveGatewayList = processDefinitionEdgeService.list(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("source_id", exclusiveGatewayTmp.get(0).getSourceId()));
                 if (ObjectUtil.isNotEmpty(exclusiveGatewayList)) {
                     list = exclusiveGatewayList;
                 }
@@ -327,6 +328,6 @@ public List<HistoricTaskInstance> getHistoricTaskInstance1(String actProcessInst
 
     //获取上一个节点和当前运行节点的连线关系:20220624只有这一个地方用到了连线的“direction”属性：只是为了“识别’退回’的流程状态”
     public ProcessDefinitionEdge getReturnedTaskEdge(Integer processDefinitionId, String preTaskDefKey, String currentTaskDefKey) {
-        return processDefinitionEdgeService.getOne(new QueryWrapper<ProcessDefinitionEdge>().eq("process_definition_id", processDefinitionId).eq("source_id", preTaskDefKey).eq("target_id", currentTaskDefKey).eq("edge_direction", "退回"));
+        return processDefinitionEdgeService.getOne(new  QueryWrapper<ProcessDefinitionEdge>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("source_id", preTaskDefKey).eq("target_id", currentTaskDefKey).eq("edge_direction", "退回"));
     }
 }

@@ -2,6 +2,7 @@ package com.sss.yunweiadmin.service.impl;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
 import com.sss.yunweiadmin.model.entity.AsDeviceCommon;
 import com.sss.yunweiadmin.model.entity.Inspection;
@@ -73,7 +74,7 @@ public class InspectionServiceImpl extends ServiceImpl<InspectionMapper, Inspect
                 if (ObjectUtil.isEmpty(inspectionExcel.getInspectDateTmp())) {
                     throw new RuntimeException("请检查，检查日期不能为空");
                 }
-                AsDeviceCommon asDeviceCommon = asDeviceCommonService.getOne(new QueryWrapper<AsDeviceCommon>().eq("no",inspectionExcel.getNo()));
+                AsDeviceCommon asDeviceCommon = asDeviceCommonService.getOne(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("no",inspectionExcel.getNo()));
 
                 //要写入DB的对象
                 Inspection inspection = new Inspection();
@@ -97,7 +98,7 @@ public class InspectionServiceImpl extends ServiceImpl<InspectionMapper, Inspect
 
 
                 //检查人、检查日期、责任人三者都一样的记录；实际应该就一条
-                List<Inspection> dupList = this.list(new QueryWrapper<Inspection>().eq("no", inspectionExcel.getNo()).eq("inspect_date",inspectionExcel.getInspectDateTmp()).eq("inspector",inspectionExcel.getInspector()));
+                List<Inspection> dupList = this.list(new  QueryWrapper<Inspection>().eq("org_id", GlobalParam.orgId).eq("no", inspectionExcel.getNo()).eq("inspect_date",inspectionExcel.getInspectDateTmp()).eq("inspector",inspectionExcel.getInspector()));
                 //覆盖模式：删除重复值
                 if (ObjectUtil.isNotEmpty(dupList)) {
                     List<Integer> idList = dupList.stream().map(Inspection::getId).collect(Collectors.toList());

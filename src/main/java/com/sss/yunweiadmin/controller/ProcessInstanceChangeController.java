@@ -5,6 +5,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.model.entity.ProcessInstanceChange;
 import com.sss.yunweiadmin.service.ProcessInstanceChangeService;
@@ -31,7 +32,7 @@ public class ProcessInstanceChangeController {
     @GetMapping("list")
     public IPage<ProcessInstanceChange> list(Integer asId) {
         if (ObjectUtil.isNotEmpty(asId)) {
-            return processInstanceChangeService.page(new Page<>(1, 100), new QueryWrapper<ProcessInstanceChange>().eq("as_id", asId).eq("is_report_title", "否").eq("is_finish", "是").orderByDesc("modify_datetime"));
+            return processInstanceChangeService.page(new Page<>(1, 100), new  QueryWrapper<ProcessInstanceChange>().eq("org_id", GlobalParam.orgId).eq("as_id", asId).eq("is_report_title", "否").eq("is_finish", "是").orderByDesc("modify_datetime"));
         }
         return null;
     }

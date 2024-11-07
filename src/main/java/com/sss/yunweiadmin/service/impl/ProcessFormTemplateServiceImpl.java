@@ -8,6 +8,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.utils.ProcessFormCustomTypeUtil;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.mapper.ProcessFormTemplateMapper;
@@ -55,7 +56,7 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
         if(ObjectUtil.isEmpty(processDefinitionId))
             return null;
         ProcessDefinition processDefinition = processDefinitionService.getById(processDefinitionId);
-        List<ProcessFormTemplate> list = this.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        List<ProcessFormTemplate> list = this.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
         Map<String, String> map = Maps.newHashMap();
         List<String> hideGroupMemberLabelList = new ArrayList<>();
         //20230225 暂时把屏敝隐藏字段组（里的字段）这段代码注释了：因为有的“用于排他网关的隐藏字段”放在隐藏字段组后（因此处处理）无法在前端自动填充赋值
@@ -124,14 +125,14 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
     public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) {
         Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
         //1.取出所有的表类型的名称
-        List<ProcessFormTemplate> list = this.list(new QueryWrapper<ProcessFormTemplate>().eq("process_definition_id", processDefinitionId));
+        List<ProcessFormTemplate> list = this.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
         List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
             String tableId = item.getType().split("\\.")[0];
             return Integer.parseInt(tableId);
         }).collect(Collectors.toList());
         if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
             //2.根据表名称取出processFormCustomType
-            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new QueryWrapper<ProcessFormCustomType>().in("id", tableIdList));
+            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).in("id", tableIdList));
             //3.
             for (ProcessFormCustomType processFormCustomType : typeList) {
                 List<TableTypeVO> tmpList = Lists.newArrayList();
@@ -162,6 +163,11 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
     @Override
     public  List<FormTemplateVO> getFormTemplateTree(List<ProcessFormTemplate> initList,Integer processDefinitionId,String actProcessInstanceId) {
         if (CollUtil.isEmpty(initList)) throw new RuntimeException("集合为空！");
+        Integer orgId = GlobalParam.orgId;
+        if(actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
+            String[] a = actProcessInstanceId.split("_");
+            orgId = Integer.valueOf(a[1]);
+        }
         //20221103
         String[] hideFormItemArr ;
         List<String> hideFormItemArrList = new ArrayList<>();
@@ -177,7 +183,7 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
                     hideFormItemArrList = Arrays.asList(hideFormItemArr);//.contains()
                 }
             } else {  //20221104如果actProcessInstanceId为null：发起流程节点
-                String hideFormItemStr = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("task_type","bpmn:startTask").eq("process_definition_id",processDefinitionId)).getHideItemLabels();
+                String hideFormItemStr = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",orgId).eq("task_type","bpmn:startTask").eq("process_definition_id",processDefinitionId)).getHideItemLabels();
                 if(ObjectUtil.isNotEmpty(hideFormItemStr)){
                     hideFormItemArr = hideFormItemStr.split(",");
                     hideFormItemArrList = Arrays.asList(hideFormItemArr);
@@ -187,7 +193,7 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
         }
         //再把 发起节点的流程处理下（这里也不含被授权流程：因为被授权流程发起节点也是有actProcessInstance的）; 约定了”发起“这个发起节点名称格式
 //        if(ObjectUtil.isEmpty(actProcessInstanceId)){
-//            ProcessDefinitionTask task = processDefinitionTaskService.getOne(new QueryWrapper<ProcessDefinitionTask>().eq("task_type","bpmn:startTask").notLike("task_name","发起人处理").eq("process_definition_id",processDefinitionId));
+//            ProcessDefinitionTask task = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",orgId).eq("task_type","bpmn:startTask").notLike("task_name","发起人处理").eq("process_definition_id",processDefinitionId));
 //            if(ObjectUtil.isNotEmpty(task.getHideItemLabels())) {
 //                hideFormItemArr = task.getHideItemLabels().split(",");
 //                hideFormItemArrList.addAll(Arrays.asList(hideFormItemArr));
@@ -214,7 +220,7 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
                 //注意formTemplateVO.getLabel().contains("选择角色")：可能有“选择角色1/2/3”(新用户入网流程就是这样)
                 String datasourceStr = "";
                 if((proDef.getProcessName().contains("应用系统用户新增")  || proDef.getProcessName().contains("新用户") || proDef.getProcessName().contains("应用系统用户角色变更")) && formTemplateVO.getLabel().contains("初始角色") && formTemplateVO.getType().contains("选")){
-                    List<SysDic> list = sysDicService.list(new QueryWrapper<SysDic>().eq("status","角色"));
+                    List<SysDic> list = sysDicService.list(new  QueryWrapper<SysDic>().eq("org_id",orgId).eq("status","角色"));
                     if(CollUtil.isNotEmpty(list)){
                         Map<String,String> map1 = new HashMap<>();
                         for(SysDic s : list){
@@ -223,7 +229,7 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
                         datasourceStr = JSONObject.toJSONString(map1);//20221103回看：把map转成了jsonString传给前端，可能map类型不能传到前端（或被转成对象数组？）：有时间再研
                     }
                 } else if(proDef.getProcessName().contains("服务器操作") && formTemplateVO.getLabel().contains("服务器名称") && formTemplateVO.getType().contains("选")){
-                    List<AsDeviceCommon> serverList = asDeviceCommonService.list(new QueryWrapper<AsDeviceCommon>().eq("type_id",8).eq("net_type","国密网").eq("state","在用"));
+                    List<AsDeviceCommon> serverList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id", orgId).eq("type_id",8).eq("net_type","国密网").eq("state","在用"));
                     if(CollUtil.isNotEmpty(serverList)){
                         datasourceStr = serverList.stream().map(s -> s.getName() + "(" + s.getIp() + ")").collect(Collectors.joining(","));
                     }
@@ -240,8 +246,8 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
         //20221117针对“重装操作系统/硬件维修”这种“被授权”流程：读“前置流程实例”的value1,并赋给现流程实例的相关template的value值（作为其默认值）
         //限制授权发起流程的发起节占;好像没限制住是发起节点：后续再加强判断条件todo
         if(processDefinition.getStartLimitedByCheck().equals("是") && ObjectUtil.isNotEmpty(actProcessInstanceId) &&  !actProcessInstanceId.equals("-1") ){
-            ProcessInstanceData preProInstData = processInstanceDataService.getOne(new QueryWrapper<ProcessInstanceData>().eq("act_process_instance_id",actProcessInstanceId));
-            ProcessFormValue1 preValue1 = processFormValue1Service.getOne(new QueryWrapper<ProcessFormValue1>().eq("act_process_instance_id",actProcessInstanceId));
+            ProcessInstanceData preProInstData = processInstanceDataService.getOne(new  QueryWrapper<ProcessInstanceData>().eq("org_id",orgId).eq("act_process_instance_id",actProcessInstanceId));
+            ProcessFormValue1 preValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",orgId).eq("act_process_instance_id",actProcessInstanceId));
             String value1_str = preValue1.getValue();
             JSONObject jsonObject = JSONObject.parseObject(value1_str);
             System.out.println(jsonObject);
