@@ -1,6 +1,7 @@
 package com.sss.yunweiadmin.controller;
 
 
+import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
@@ -30,9 +31,13 @@ public class DiskForHisForProcessController {
     DiskForHisForProcessService diskForHisForProcessService;
 
     @GetMapping("getDiskForHisForProcess")
-    public List<DiskForHisForProcess> getDiskForHisForProcess( Integer processInstanceDataId){
+    public List<DiskForHisForProcess> getDiskForHisForProcess( Integer processInstanceDataId, String orgIdS){
+        int orgId = GlobalParam.orgId;
+        if(ObjectUtil.isNotEmpty(orgIdS)) {//20241106 穿透流程的前端参数标记
+            orgId = Integer.valueOf(orgIdS);
 
-        List<DiskForHisForProcess> list = diskForHisForProcessService.list(new  QueryWrapper<DiskForHisForProcess>().eq("org_id", GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId));
+        }
+        List<DiskForHisForProcess> list = diskForHisForProcessService.list(new  QueryWrapper<DiskForHisForProcess>().eq("org_id", orgId).eq("process_instance_data_id",processInstanceDataId));
         return list;
 
 

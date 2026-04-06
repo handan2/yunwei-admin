@@ -35,10 +35,11 @@ public class ResponseResult {
     }
 
     public static ResponseResult fail() {
+
         return new ResponseResult(0, "操作失败", "");
     }
 
     public static ResponseResult fail(String msg) {
-        return new ResponseResult(0, "", msg);//20230207
+        return new ResponseResult(0, "操作失败", msg);//20230207
     }
 }

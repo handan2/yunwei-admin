@@ -18,6 +18,7 @@ public class CheckProcessVO {
     //审批意见
     private String comment;
     //
+    private String violate;//20250423
     private String haveOperate;//这个是可以从DB中直接读的，
     private String operate;
     // 是否允许修改表单
@@ -46,5 +47,6 @@ public class CheckProcessVO {
     private String haveChangeNetCard;
     private String haveChangeDisk;
     private String haveOtherOperate;
+    private Integer orgId;
 
 }

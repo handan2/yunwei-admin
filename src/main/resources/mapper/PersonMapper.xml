@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.PersonMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.Person">
+        <id column="id" property="id" />
+        <result column="A0000" property="a0000" />
+        <result column="UNIQUE_ID" property="uniqueId" />
+        <result column="NBASE" property="nbase" />
+        <result column="NBASE_0" property="nbase0" />
+        <result column="A0100" property="a0100" />
+        <result column="A0101" property="a0101" />
+        <result column="B0110_0" property="b01100" />
+        <result column="B0110" property="b0110" />
+        <result column="E0122_0" property="e01220" />
+        <result column="A011I" property="a011i" />
+        <result column="E01A1_0" property="e01a10" />
+        <result column="E01A1" property="e01a1" />
+        <result column="B0110_CODE" property="b0110Code" />
+        <result column="E0122_CODE" property="e0122Code" />
+        <result column="E01A1_CODE" property="e01a1Code" />
+        <result column="SYS_FLAG" property="sysFlag" />
+        <result column="SDATE" property="sdate" />
+        <result column="FLAG" property="flag" />
+        <result column="A0183" property="a0183" />
+        <result column="A0184" property="a0184" />
+        <result column="A010N" property="a010n" />
+        <result column="A011M" property="a011m" />
+        <result column="A0177" property="a0177" />
+        <result column="STATUS" property="status" />
+        <result column="YUNWEI" property="yunwei" />
+        <result column="YUNWEI_SDATE" property="yunweiSdate" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, A0000, UNIQUE_ID, NBASE, NBASE_0, A0100, A0101, B0110_0, B0110, E0122_0, A011I, E01A1_0, E01A1, B0110_CODE, E0122_CODE, E01A1_CODE, SYS_FLAG, SDATE, FLAG, A0183, A0184, A010N, A011M, A0177, STATUS, YUNWEI, YUNWEI_SDATE, create_time
+    </sql>
+
+</mapper>

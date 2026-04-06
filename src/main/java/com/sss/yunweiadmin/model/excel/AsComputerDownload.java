@@ -63,6 +63,8 @@ public class AsComputerDownload {
     @ExcelProperty("涉密级别")
     private String miji;
     //AsComputerSpecial
+    @ExcelProperty("信息点号")
+    private String portNo;
     @ExcelProperty("内存(MB)")
     private Integer ram;
     //20221115 这个类里的@DateTimeFormat字符串转字符串时，这个@DateTimeFormat不起作用：原字符串啥格式也行&&原样转入；
@@ -85,7 +87,7 @@ public class AsComputerDownload {
     @ExcelProperty("硬盘序列号")
     private String diskSn;
     @ExcelProperty("CPU型号")
-    private String CPU;
+    private String cpu;
     @ExcelProperty("U口")
     private String usb;
     @ExcelProperty("串口")

@@ -18,6 +18,6 @@ import java.util.Map;
  */
 public interface ProcessFormTemplateService extends IService<ProcessFormTemplate> {
     List<FormTemplateVO> getFormTemplateTree(List<ProcessFormTemplate> initList,Integer processDefinitionId,String actProcessInstanceId);
-    Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) ;
+    Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId, Integer orgId) ;
     Map<String, String> getLabelIdMapForItemByAjax(Integer processDefinitionId, String hideGroupIds);
 }

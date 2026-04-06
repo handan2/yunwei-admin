@@ -1,12 +1,13 @@
 package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.Console;
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.text.csv.CsvWriter;
-import cn.hutool.core.util.ArrayUtil;
-import cn.hutool.core.util.ObjUtil;
-import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.*;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.webservice.SoapClient;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
 import com.alibaba.excel.ExcelWriter;
@@ -19,11 +20,8 @@ import com.alibaba.excel.write.metadata.style.WriteFont;
 import com.alibaba.excel.write.style.HorizontalCellStyleStrategy;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.segments.MergeSegments;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.api.R;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
@@ -32,31 +30,33 @@ import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.excel.*;
 import com.sss.yunweiadmin.model.vo.AssetVO;
+import com.sss.yunweiadmin.model.vo.CheckProcessVO;
 import com.sss.yunweiadmin.model.vo.ValueLabelVO;
+import com.sss.yunweiadmin.model.vo.HaveDeviceVO;
+import com.sss.yunweiadmin.model.vo.UploadCheckInfoVO;
 import com.sss.yunweiadmin.service.*;
-import com.sun.javafx.binding.SelectBinding;
 import lombok.SneakyThrows;
-import org.activiti.dmn.api.NativeQuery;
-import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.activiti.engine.impl.bpmn.helper.ScopeUtil;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
-import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.omg.CORBA.OBJ_ADAPTER;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.w3c.dom.Document;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.io.File;
+import javax.xml.xpath.XPathConstants;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -111,6 +111,14 @@ public class AsDeviceCommonController {
     OperateeLogService operateeLogService;
     @Autowired
     InspectionService inspectionService;
+    @Autowired
+    SysUserService sysUserService;
+    @Autowired
+    SapAssetService sapAssetService;
+    @Autowired
+    SystemInfoService systemInfoService;
+    @Autowired
+    UsblogService usblogService;
 
 
     //20231205 专用于手工记日志：流程相关
@@ -157,6 +165,125 @@ public class AsDeviceCommonController {
     @GetMapping("statistics")
     public boolean statistics() {
         return asDeviceCommonService.addStatistics();
+    }
+
+
+    public static <S, T> T copyProperties(S source, Class<T> targetClass, Map<String, String> mapping) {
+        try {
+            // 创建目标对象实例
+            T target = targetClass.getDeclaredConstructor().newInstance();
+            for (Map.Entry<String, String> entry : mapping.entrySet()) {
+                String sourceFieldName = entry.getKey();
+                String targetFieldName = entry.getValue();
+                // 获取源对象属性值
+                Object value = ReflectUtil.getFieldValue(source, sourceFieldName);
+                if (value != null) {
+                    // 设置目标对象属性值
+                    ReflectUtil.setFieldValue(target, targetFieldName, value);
+                }
+            }
+            return target;
+        } catch (Exception e) {
+            throw new RuntimeException("属性拷贝出错", e);
+        }
+    }
+
+    //20250322
+//    class StringWrapper {
+//        String value;
+//
+//        public StringWrapper(String value) {
+//            this.value = value;
+//        }
+//    }
+
+
+    //20250223
+    @PostMapping("uploadCheckInfo")
+    public boolean uploadCheckInfo(@RequestBody UploadCheckInfoVO uploadCheckInfoVO) {
+        if(ObjectUtil.isNotEmpty(uploadCheckInfoVO)){
+            List<Usblog> usblogsList = uploadCheckInfoVO.getUsblogsList();
+            SystemInfo systemInfo= uploadCheckInfoVO.getSystemInfo();
+            if(CollUtil.isNotEmpty(usblogsList)){
+                usblogService.saveBatch(usblogsList);
+            }
+            if(ObjectUtil.isNotEmpty(systemInfo)){
+                systemInfoService.save(systemInfo);
+            }
+
+        }
+
+        return true;
+
+    }
+
+    //20250223
+    @GetMapping("getERPDeviceInfo")
+    public boolean getERPDeviceInfo(String s) {//20250223 这是把main里的相关测试逻辑又封装了一遍；原名pushERPDeviceInfo
+
+        Map<String, Object> map = new HashMap<String, Object>();
+        if (s.equals("1")) {
+            map.put("FEILDNAME", "PM_Z01");
+            map.put("XMLINPUT", "<REQUEST><ITEM><AEDAT>2026-01-21</AEDAT><EQART></EQART></ITEM></REQUEST>");
+        } else if (s.equals("2")) {
+            map.put("FEILDNAME", "PM_Z02");
+            map.put("XMLINPUT", "<REQUEST><EQUNR>3300006351</EQUNR><ZZRP>陈路昭</ZZRP><ZZDH></ZZDH><STATS></STATS><ZZSBMJ></ZZSBMJ><BEBER>A33</BEBER><EQART></EQART><ZZLWZL></ZZLWZL><MSGRP></MSGRP><TPLNR></TPLNR><ZZSFSM></ZZSFSM></REQUEST>");//注意参数格式是MESR
+        }
+
+
+        String url = "http://10.84.10.10:8000/sap/bc/srt/rfc/sap/zwrite_itl_ecc/800/zwrite_itl_ecc/zwrite_itl_ecc";
+
+        // 新建客户端
+        SoapClient client = SoapClient.create(url)
+                // 设置要请求的方法，此接口方法前缀为web，传入对应的命名空间
+                .setMethod("urn:ZWRITE_ITL_ECC",
+                        "urn:sap-com:document:sap:rfc:functions")
+                .setParams(map, false);
+
+        String xml = client.getMsgStr(true);
+        Console.log(xml);
+
+        String body = HttpRequest.post(url).basicAuth("pm01", "s123456789").header("Content-Type", "text/xml;charset=UTF-8").body(xml).execute().body();
+        System.out.println(body);
+        Console.log(body);
+        Document document = XmlUtil.parseXml(body);
+        Object msgString = XmlUtil.getByXPath("//XMLOUTPUT/text()", document, XPathConstants.STRING);
+        String msgString1 = ((String)msgString).replace("\\","\\\\");
+        List<SapAsset> assetList = JSON.parseArray(msgString1, SapAsset.class);
+
+        if(CollUtil.isNotEmpty(assetList))
+            return  asDeviceCommonService.saveSapAsset(assetList);
+        else
+            return false;
+
+    }
+
+
+    @GetMapping("haveDevice")
+    public HaveDeviceVO haveDevice(String PID) {
+        if(ObjectUtil.isEmpty(PID))
+            throw new RuntimeException("请传身份ID！");
+        SysUser user = sysUserService.getOne(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("id_number", PID));
+        if(ObjectUtil.isEmpty(user))
+            throw new RuntimeException("用户不存在！");
+        HaveDeviceVO haveDeviceVO = new HaveDeviceVO();
+        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("user_name",user.getDisplayName()).eq("state","在用");
+        List<AsDeviceCommon> list = asDeviceCommonService.list(queryWrapper);
+        if(CollUtil.isNotEmpty(list)){
+            String str = "";
+
+            for(AsDeviceCommon a : list){
+                str += a.getNo() + "(" + a.getName()+ "),";
+            }
+            haveDeviceVO.setDeviceStr(str);
+            haveDeviceVO.setHaveDevice("是");
+        } else {
+            haveDeviceVO.setDeviceStr("");
+            haveDeviceVO.setHaveDevice("否");
+        }
+
+        return haveDeviceVO;
+
     }
 
     //20230304获得指定excel导出模板的所有属性名称
@@ -207,14 +334,32 @@ public class AsDeviceCommonController {
 
 
     @GetMapping("list")
-    public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDept, String userName, String miji, Integer customTableId, String stateForExcludeForJsonStr, String processName, String sn, String ip, String mac, String netInterface ,String serial, String usb,String parallel, String dvdRom, String  dvdRw, String portShemi, String portCommon, String safeInstall, String haveInspect) {
+    public IPage<AsDeviceCommon> list(int currentPage, int pageSize, String no, Integer typeId, String name, String netType, String state, Integer userDept, String userName, String miji, Integer customTableId, String stateForExcludeForJsonStr, String processName, String sn, String ip, String portNo, String mac, String netInterface ,String serial, String usb,String parallel, String dvdRom, String  dvdRw, String portShemi, String portCommon, String safeInstall, String haveInspect, String source) {
 
-        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId);
+        Integer orgIdForKey = GlobalParam.orgId;//20241111用于新用户流程里 跨部门穿透密钥管理员选密钥
+        if(ObjectUtil.isNotEmpty(userName) && userName.contains("_")){
+            String[] a = userName.split("_");
+            orgIdForKey = Integer.valueOf(a[1]);
+            userName = a[0];//去除标记
+        }
+        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",orgIdForKey);
+
+
+        //todo做余涛IP限制：同所外IP不能查设备信息
+        String ipClinet = (String) httpSession.getAttribute("IP");
+
+        SysUser user = (SysUser) httpSession.getAttribute("user");
+        if("yutao03".equals(user.getLoginName())){
+            queryWrapper.in("type_id",Arrays.asList(GlobalParam.typeIDForUdisk,GlobalParam.typeIDForDrive) );//光驱、U盘
+        }
 
 
         queryWrapper.orderByDesc("id");
         if (ObjectUtil.isNotEmpty(no)) {
             queryWrapper.like("no", no);
+        }
+        if (ObjectUtil.isNotEmpty(source)) {
+            queryWrapper.like("source", source);
         }
         if (ObjectUtil.isNotEmpty(miji)) {
             if ("未定密".equals(miji))
@@ -284,9 +429,11 @@ public class AsDeviceCommonController {
                 queryWrapper.notIn("type_id", typeIdList2);//20240428
             }
         } else {
-            if (ObjectUtil.isEmpty(customTableId))//既不是流程中(不含“多选设备”)的设备查询 && 设备查询中也没有选择任何类别
+            if (ObjectUtil.isEmpty(customTableId) || customTableId == GlobalParam.cusTblIDForStor)//20250902 添加了“存储介质基本表”对硬盘的排除  ；既不是流程中(不含“多选设备”)的设备查询 && 设备查询中也没有选择任何类别
                 queryWrapper.notIn("type_id", typeIdList2);//20240428把白名单已排除； 20220905把硬盘排除; 20221203 挪此处：排除可能就是需要查询硬盘的情况
         }
+
+
         if (ObjectUtil.isNotEmpty(sn)) {
             queryWrapper.like("sn", sn);
         }
@@ -324,6 +471,19 @@ public class AsDeviceCommonController {
             } else
                 queryWrapper.like("ip", ip);
         }
+        if (ObjectUtil.isNotEmpty(portNo)) {
+            if(portNo.contains("checkPortNoRepeat")){//20251009 todo 断点 排除正在走变更流程的信息点
+                String[] a = portNo.split("_");
+                queryWrapper.eq("port_no", a[0]);
+                //todo搜正在走（变更）流程的(老)信息点号
+                QueryWrapper<ProcessInstanceChange> queryWrapper1  = new  QueryWrapper<ProcessInstanceChange>().eq("org_id", GlobalParam.orgId).eq("is_report_title", "否").eq("is_finish", "否").eq("lifte_cycle", "变更").eq("name", "信息点号").select("old_value");
+                List<Map<String, Object>> listMaps1 = processInstanceChangeService.listMaps(queryWrapper1);
+                List<String> infoNoListForProcessing =  listMaps1.stream().map(item->item.get("old_value").toString()).collect(Collectors.toList());
+                if(CollUtil.isNotEmpty(infoNoListForProcessing))
+                    queryWrapper.notIn("port_no",infoNoListForProcessing);
+            } else
+                queryWrapper.like("port_no", portNo);
+        }
         if (ObjectUtil.isNotEmpty(mac)) {
             queryWrapper.like("mac", mac);
         }
@@ -338,7 +498,7 @@ public class AsDeviceCommonController {
                 //20221225 添加“申领”/"定密及启用"流程时：对“库存”与“归库”状态 && 部门名称的“组合约束”：归库不限本部门&&其他限
                 //注：对于“外设申领”次设备（计算机）：是不过第一分支的：因为前
                 if ((processName.contains("申领") && !processName.contains("外设")) || (processName.contains("申领") && processName.contains("外设") && level2AsTypeId != GlobalParam.typeIDForCMP) || processName.contains("定密及启用"))
-                    //20230725申领不再限制部门了:no,暂还限制
+                    //20230725申领不再限制部门了:no,暂还限制 && 归库不限制
                     queryWrapper.and(qw -> qw.eq("state", "停用").eq("user_dept", deptName).or().eq("state", "库存").eq("user_dept", deptName).or().eq("state", "归库").or().eq("state", "停用"));//.eq("user_dept", deptName)
                 else if (processName.contains("外设") && level2AsTypeId ==  GlobalParam.typeIDForCMP)//申领和变更时 ，计算机都需要是在用
                     queryWrapper.and(qw -> qw.eq("state", "在用").eq("user_dept", deptName));
@@ -414,7 +574,13 @@ public class AsDeviceCommonController {
             if ((processName.contains("存储介质") && processName.contains("报废")) || processName.contains("特殊事项")) {
                 queryWrapper.ne("state", "报废");
             }
+            //20250507 惯性公司流程
+            if ( processName.contains("用户信息变更") && ObjectUtil.isEmpty(customTableId) ) {//:变更部门时判断原部门设备：要排除流程发起时同时查询本人密钥的ajax（此时通过cunstomTableId）
+                List<Integer> typeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForCMP);
+                typeIdList.addAll(asTypeService.getTypeIdList(GlobalParam.typeIDForAff));
+                queryWrapper.in("type_id", typeIdList);
 
+            }
         } else {
             if (ObjectUtil.isNotEmpty(userDept)) {
                 String deptName = sysDeptService.getById(userDept).getName();
@@ -428,6 +594,8 @@ public class AsDeviceCommonController {
         }
         //20240901 年度内检查
         if (ObjectUtil.isNotEmpty(haveInspect)){
+            System.out.println("20241110in-year inspect  checkCondition start ----");
+            System.out.println(LocalDateTime.now());
             LocalDate today = LocalDate.now(); // 获取当前日期
             LocalDate firstDayOfYear = today.withDayOfYear(1).withYear(today.getYear());//获取今年的第一天
             int year = today.getYear();
@@ -444,6 +612,8 @@ public class AsDeviceCommonController {
                 queryWrapper.in("no",nosForInspect);
             } else
                 queryWrapper.notIn("no",nosForInspect);
+            System.out.println("20241110in-year inspect  checkCondition end ----");
+            System.out.println(LocalDateTime.now());
 
         }
 
@@ -487,14 +657,15 @@ public class AsDeviceCommonController {
 //                }).collect(Collectors.toList());
 //            }
 //        }
-
+        System.out.println("20241110in-year inspect  return page ----");
+        System.out.println(LocalDateTime.now());
         return page;
     }
 
     @GetMapping("getAsDeviceCommonNoVL")
     public List<ValueLabelVO> getAsDeviceCommonNoVL(Integer userDeptId, Integer customTableId, String stateForExcludeForJsonStr) {
         QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
-        queryWrapper.ne("type_id", 30);//20220905把硬盘排除
+        queryWrapper.ne("type_id", GlobalParam.typeIDForDisk);//20220905把硬盘排除
         if (ObjectUtil.isNotEmpty(customTableId)) {//20220716
             String str = processFormCustomTypeService.getById(customTableId).getProps();
             JSONObject jsonObject = JSON.parseObject(str);
@@ -535,9 +706,16 @@ public class AsDeviceCommonController {
     //与前端path.js里路径对应，所有的页面都是用的这个，先不改了
     @GetMapping("get")
     public AssetVO get(Integer id, String no) {
+        Integer orgId = GlobalParam.orgId;
+        if(ObjectUtil.isNotEmpty(no) && no.contains("_")) {//20241106 穿透流程的前端参数标记
+            String[] a = no.split("_");
+            orgId = Integer.valueOf(a[1]);
+            no = a[0];
+           // httpSession.setAttribute("crossOrgId",orgId);//20241107 实在不想改
+        }
         AssetVO assetVO = new AssetVO();
         AsDeviceCommon asDeviceCommon = new AsDeviceCommon();
-        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
+        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",orgId).eq("org_id",orgId);
         if (ObjectUtil.isNotEmpty(id))
             queryWrapper.eq("id", id);
         if (ObjectUtil.isNotEmpty(no))
@@ -545,8 +723,10 @@ public class AsDeviceCommonController {
         List<AsDeviceCommon> list = asDeviceCommonService.list(queryWrapper);
         if (CollUtil.isNotEmpty(list))
             asDeviceCommon = list.get(0);
+        else
+            throw new RuntimeException("未找到相关设备");
         //20230519处理硬盘在设备查询/基础属性里的“共用字段”/portNo
-        if (asDeviceCommon.getTypeId() == 30){
+        if (asDeviceCommon.getTypeId() == GlobalParam.typeIDForDisk){
             if(asDeviceCommon.getHostAsId() != 0)
                 asDeviceCommon.setPortNo(asDeviceCommonService.getById(asDeviceCommon.getHostAsId()).getNo());
 
@@ -557,38 +737,38 @@ public class AsDeviceCommonController {
         Integer asTypeId = asType.getId();
         if (asTypeId ==  GlobalParam.typeIDForCMP|| asTypeId ==  GlobalParam.typeIDForFWQ) {
             //计算机
-            AsComputerSpecial asComputerSpecial = asComputerSpecialService.getOne(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            AsComputerSpecial asComputerSpecial = asComputerSpecialService.getOne(new  QueryWrapper<AsComputerSpecial>().eq("org_id",orgId).eq("as_id", asDeviceCommon.getId()));
             if (asComputerSpecial != null) {
                 assetVO.setAsComputerSpecial(asComputerSpecial);
             }
-            AsComputerGranted asComputerGranted = asComputerGrantedService.getOne(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            AsComputerGranted asComputerGranted = asComputerGrantedService.getOne(new  QueryWrapper<AsComputerGranted>().eq("org_id",orgId).eq("as_id", asDeviceCommon.getId()));
             if (asComputerGranted != null) {
                 assetVO.setAsComputerGranted(asComputerGranted);
             }
             //202206112加载硬盘信息；20230519 过滤“报废/待报废的硬盘”
-            List<AsDeviceCommon> diskList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("host_as_id", asDeviceCommon.getId()).ne("state","报废").ne("state","摘除"));
+            List<AsDeviceCommon> diskList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",orgId).eq("host_as_id", asDeviceCommon.getId()).ne("state","报废").ne("state","摘除"));
             assetVO.setDiskList(diskList);
         } else if (asTypeId ==  GlobalParam.typeIDForNET) {
             //网络设备
-            AsNetworkDeviceSpecial asNetworkDeviceSpecial = asNetworkDeviceSpecialService.getOne(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            AsNetworkDeviceSpecial asNetworkDeviceSpecial = asNetworkDeviceSpecialService.getOne(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",orgId).eq("as_id", asDeviceCommon.getId()));
             if (asNetworkDeviceSpecial != null) {
                 assetVO.setAsNetworkDeviceSpecial(asNetworkDeviceSpecial);
             }
         } else if (asTypeId ==  GlobalParam.typeIDForAff) {
             //外设
-            AsIoSpecial asIoSpecial = asIoSpecialService.getOne(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            AsIoSpecial asIoSpecial = asIoSpecialService.getOne(new  QueryWrapper<AsIoSpecial>().eq("org_id",orgId).eq("as_id", asDeviceCommon.getId()));
             if (asIoSpecial != null) {
                 assetVO.setAsIoSpecial(asIoSpecial);
             }
         } else if (asTypeId ==  GlobalParam.typeIDForSafe) {
             //安全防护产品
-            AsSecurityProductsSpecial asSecurityProductsSpecial = asSecurityProductsSpecialService.getOne(new  QueryWrapper<AsSecurityProductsSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            AsSecurityProductsSpecial asSecurityProductsSpecial = asSecurityProductsSpecialService.getOne(new  QueryWrapper<AsSecurityProductsSpecial>().eq("org_id",orgId).eq("as_id", asDeviceCommon.getId()));
             if (asSecurityProductsSpecial != null) {
                 assetVO.setAsSecurityProductsSpecial(asSecurityProductsSpecial);
             }
         } else if (asTypeId ==  GlobalParam.typeIDForYingyong) {
             //应用系统 20211121
-            AsApplicationSpecial asApplicationSpecial = asApplicationSpecialService.getOne(new  QueryWrapper<AsApplicationSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            AsApplicationSpecial asApplicationSpecial = asApplicationSpecialService.getOne(new  QueryWrapper<AsApplicationSpecial>().eq("org_id",orgId).eq("as_id", asDeviceCommon.getId()));
             if (asApplicationSpecial != null) {
                 assetVO.setAsApplicationSpecial(asApplicationSpecial);
             }
@@ -615,58 +795,58 @@ public class AsDeviceCommonController {
     下载标签数据  20230207这个上传/下载相关action的日志注解可能后续要去除：目前做法是已在日志切面类中通过过滤“含‘上传/下载’”的type将这些“触发”过滤
      打印标签列表todo屏敝“无密级”
     */
-    @OperateLog(module = "设备模块", type = "标签数据下载")
-    @GetMapping("download222")
-    @SneakyThrows
-    public void downloadBaomiLab222(HttpServletResponse response, int[] selectedKeys) {
-
-        List<BaomiLabExcel> data0List = new ArrayList<>();
-        WriteSheet sheet0 = EasyExcel.writerSheet(0, "保密标签").head(BaomiLabExcel.class).build();
-
-        //20222315 测试选择列 可用
-        //List<String> a  = new ArrayList<>();
-        //a.add("no");
-        // WriteSheet sheet4 = EasyExcel.writerSheet(4, "存储介质").includeColumnFiledNames(a).head(StorageExcel.class).build();
-        //  WriteSheet sheet4 = EasyExcel.writerSheet(4, "存储介质").head(StorageExcel.class).build();
-        //20221214 测试导出excel中加数据列：已，很容易
-        if (selectedKeys.length > 0) {
-            List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("id", Arrays.stream(selectedKeys).boxed().toArray(Integer[]::new)));
-            for (AsDeviceCommon asDeviceCommon : asDeviceCommonList) {
-                BaomiLabExcel tmp = new BaomiLabExcel();
-                BeanUtils.copyProperties(asDeviceCommon, tmp);
-                AsType asType = asTypeService.getById(asDeviceCommon.getTypeId());
-                AsType asTypeLevel2 = asTypeService.getLevel2AsTypeById(asType.getId());
-                String asTypeName = asType.getName();
-                String title = "三十三所  ";
-                if ("桌面计算机".equals(asTypeName)) {
-                    title = title + "办公用计算机";
-                } else {
-                    if (asTypeLevel2.getId() ==  GlobalParam.typeIDForAff) {//代表“外设声像及自动化”
-                        title = title + "办公设备";
-                    } else if (asTypeLevel2.getId() == GlobalParam.typeIDForStor) {//存储介质
-                        title = title + "存储介质/" + asTypeName;
-
-                    } else
-                        title = title + asTypeName;
-                }
-
-                tmp.setTitle(title);
-                tmp.setType(asDeviceCommon.getNetType());//类别改为联网类别
-                tmp.setFormat("baomiLab.btw");
-                tmp.setPrinter("Brother QL-570");//注意打印中心东院是9800，如果东西院打印机型号不一样，那就手动改成一个名如这个“9500”
-                data0List.add(tmp);
-            }
-        }
-        response.setContentType("text/csv;charset=gb2312");
-        response.setCharacterEncoding("GB2312");
-        String fileName = "保密标签（非密）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
-        response.setHeader("Content-disposition", "attachment;filename=" + new String(fileName.getBytes("GB2312"), "ISO-8859-1") + ".csv");
-        ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).useDefaultStyle(false).excelType(ExcelTypeEnum.CSV).build();
-        //
-        excelWriter.write(data0List, sheet0);
-        //
-        excelWriter.finish();
-    }
+//    @OperateLog(module = "设备模块", type = "标签数据下载")
+//    @GetMapping("download222")
+//    @SneakyThrows
+//    public void downloadBaomiLab222(HttpServletResponse response, int[] selectedKeys) {
+//
+//        List<BaomiLabExcel> data0List = new ArrayList<>();
+//        WriteSheet sheet0 = EasyExcel.writerSheet(0, "保密标签").head(BaomiLabExcel.class).build();
+//
+//        //20222315 测试选择列 可用
+//        //List<String> a  = new ArrayList<>();
+//        //a.add("no");
+//        // WriteSheet sheet4 = EasyExcel.writerSheet(4, "存储介质").includeColumnFiledNames(a).head(StorageExcel.class).build();
+//        //  WriteSheet sheet4 = EasyExcel.writerSheet(4, "存储介质").head(StorageExcel.class).build();
+//        //20221214 测试导出excel中加数据列：已，很容易
+//        if (selectedKeys.length > 0) {
+//            List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("id", Arrays.stream(selectedKeys).boxed().toArray(Integer[]::new)));
+//            for (AsDeviceCommon asDeviceCommon : asDeviceCommonList) {
+//                BaomiLabExcel tmp = new BaomiLabExcel();
+//                BeanUtils.copyProperties(asDeviceCommon, tmp);
+//                AsType asType = asTypeService.getById(asDeviceCommon.getTypeId());
+//                AsType asTypeLevel2 = asTypeService.getLevel2AsTypeById(asType.getId());
+//                String asTypeName = asType.getName();
+//                String title = ((GlobalParam.orgId == 1)?"惯性公司  ":"三十三所  ");
+//                if ("桌面计算机".equals(asTypeName)) {
+//                    title = title + "办公用计算机";
+//                } else {
+//                    if (asTypeLevel2.getId() ==  GlobalParam.typeIDForAff) {//代表“外设声像及自动化”
+//                        title = title + "办公设备";
+//                    } else if (asTypeLevel2.getId() == GlobalParam.typeIDForStor) {//存储介质
+//                        title = title + "存储介质/" + asTypeName;
+//
+//                    } else
+//                        title = title + asTypeName;
+//                }
+//
+//                tmp.setTitle(title);
+//                tmp.setType(asDeviceCommon.getNetType());//类别改为联网类别
+//                tmp.setFormat("baomiLab.btw");
+//                tmp.setPrinter("Brother QL-570");//注意打印中心东院是9800，如果东西院打印机型号不一样，那就手动改成一个名如这个“9500”
+//                data0List.add(tmp);
+//            }
+//        }
+//        response.setContentType("text/csv;charset=gb2312");
+//        response.setCharacterEncoding("GB2312");
+//        String fileName = "保密标签（非密）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
+//        response.setHeader("Content-disposition", "attachment;filename=" + new String(fileName.getBytes("GB2312"), "ISO-8859-1") + ".csv");
+//        ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).useDefaultStyle(false).excelType(ExcelTypeEnum.CSV).build();
+//        //
+//        excelWriter.write(data0List, sheet0);
+//        //
+//        excelWriter.finish();
+//    }
 
     @OperateLog(module = "设备模块", type = "标签数据下载")
     @GetMapping("download2")
@@ -682,7 +862,7 @@ public class AsDeviceCommonController {
                 AsType asTypeLevel2 = asTypeService.getLevel2AsTypeById(asType.getId());
                 String asTypeName = asType.getName();
                 String name = asDeviceCommon.getName();//20230423
-                String titlePrefix = "三十三所  ";
+                String titlePrefix = GlobalParam.orgId == 1?"惯性公司  ":"三十三所  ";
                 String title = "";
                 title = titlePrefix + asTypeName;//20230423
                 if ("办公计算机".equals(asTypeName)) {
@@ -702,7 +882,7 @@ public class AsDeviceCommonController {
             }
         }
         response.setCharacterEncoding("GB2312");
-        response.setHeader("Content-Disposition", "attachment;filename=" + new String("保密标签（非密）.csv".getBytes("UTF-8"), "ISO8859-1"));
+        response.setHeader("Content-Disposition", "attachment;filename=" + new String("保密标签（公开）.csv".getBytes("UTF-8"), "ISO8859-1"));
         response.setContentType("text/csv");
         CsvWriter csvWriter = CsvUtil.getWriter(response.getWriter());
         csvWriter.writeBeans(data0List);
@@ -840,7 +1020,7 @@ public class AsDeviceCommonController {
                 queryWrapper.eq("user_name", jsonObject.getString("userName"));
             }
             if (jsonObject.containsKey("netType")) {//json取值先判断有无KEY，否则报空指针
-                queryWrapper.eq("net_type", jsonObject.getString("netType"));
+                queryWrapper.like("net_type", jsonObject.getString("netType"));
             }
 
             //20240515
@@ -1026,7 +1206,7 @@ public class AsDeviceCommonController {
         response.setContentType("application/vnd.ms-excel");
         //  response.setCharacterEncoding("utf-8");
         //String fileName = URLEncoder.encode("设备模板（非密）", "UTF-8");//20230206d原来的谷歌可用的
-        String fileName = "设备信息（非密）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
+        String fileName = "设备信息（公开）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
         response.setHeader("Content-disposition", "attachment;filename=" + new String(fileName.getBytes("GB2312"), "ISO-8859-1") + ".xlsx");
         //表头策略使用默认 设置字体大小
         WriteCellStyle headWriteCellStyle = new WriteCellStyle();
@@ -1133,7 +1313,7 @@ public class AsDeviceCommonController {
         response.setContentType("application/vnd.ms-excel");
         //  response.setCharacterEncoding("utf-8");
         //String fileName = URLEncoder.encode("设备模板（非密）", "UTF-8");//20230206d原来的谷歌可用的
-        String fileName = "设备信息（非密）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
+        String fileName = "设备信息（公开）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
         response.setHeader("Content-disposition", "attachment;filename=" + new String(fileName.getBytes("GB2312"), "ISO-8859-1") + ".xlsx");
         //表头策略使用默认 设置字体大小
         WriteCellStyle headWriteCellStyle = new WriteCellStyle();
@@ -1403,7 +1583,7 @@ public class AsDeviceCommonController {
                 queryWrapper.eq("user_name", jsonObject.getString("userName"));
             }
             if (jsonObject.containsKey("netType")) {//json取值先判断有无KEY，否则报空指针
-                queryWrapper.eq("net_type", jsonObject.getString("netType"));
+                queryWrapper.like("net_type", jsonObject.getString("netType"));
             }
             if (jsonObject.containsKey("selectedColumns")) {//json取值先判断有无KEY，否则报空指针
                 selectedColumnsStr = jsonObject.getString("selectedColumns");
@@ -1450,7 +1630,7 @@ public class AsDeviceCommonController {
         response.setContentType("application/vnd.ms-excel");
         //  response.setCharacterEncoding("utf-8");
         //String fileName = URLEncoder.encode("设备模板（非密）", "UTF-8");//20230206d原来的谷歌可用的
-        String fileName = "设备模板（非密）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
+        String fileName = "设备模板（公开）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
         response.setHeader("Content-disposition", "attachment;filename=" + new String(fileName.getBytes("GB2312"), "ISO-8859-1") + ".xls");
         //
         ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).useDefaultStyle(false).excelType(ExcelTypeEnum.XLS).build();
@@ -1528,7 +1708,12 @@ public class AsDeviceCommonController {
         ReadSheet sheet4 = EasyExcel.readSheet("存储介质").head(StorageExcel.class).registerReadListener(listener4).build();
         ReadSheet sheet5 = EasyExcel.readSheet("白名单").head(AppExcel.class).registerReadListener(listener5).build();
         //读取数据
-        excelReader.read(sheet0, sheet1, sheet2, sheet3, sheet4, sheet5);
+        try {
+            excelReader.read(sheet0, sheet1, sheet2, sheet3, sheet4, sheet5);
+        } catch (Exception e) {
+            throw new RuntimeException("数据格式有误，请检查数字类型或日期类型是否正确填写", e);
+        }
+
         //获取数据
         List<AsComputerExcel> list0 = listener0.getData();
         List<AsNetworkDeviceExcel> list1 = listener1.getData();

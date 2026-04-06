@@ -14,7 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
  * @since 2021-04-17
  */
 public interface ProcessInstanceDataService extends IService<ProcessInstanceData> {
+    public String getTimeAndRandomNum();
 
+    boolean autoStart(MultipartFile[] files ,EndAndStartProcessVO endAndStartProcessVO, String fujianMiji);
     boolean endAndStart(EndAndStartProcessVO endAndStartProcessVO);
 
     boolean start(MultipartFile[] files, StartProcessVO startProcessVO,String fujianMiji);
@@ -22,6 +24,8 @@ public interface ProcessInstanceDataService extends IService<ProcessInstanceData
     boolean handle(CheckProcessVO checkProcessVO);
 
     boolean modifyProcessForm(ModifyProcessFormVO modifyProcessFormVO);
+
+    boolean terminate(ProcessInstanceData processInstanceData);
 
     boolean delete(ProcessInstanceData processInstanceData);
 

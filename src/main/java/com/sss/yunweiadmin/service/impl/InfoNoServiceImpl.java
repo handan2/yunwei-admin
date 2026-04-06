@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 /**
  * <p>
- *  服务实现类
+ * 服务实现类
  * </p>
  *
  * @author 任勇林
@@ -28,21 +28,21 @@ import java.util.stream.Collectors;
 @Service
 public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> implements InfoNoService {
     @Override
-    public String addExcel(List<InfoNoExcel> excelList, String importMode){
+    public String addExcel(List<InfoNoExcel> excelList, String importMode) {
         //去掉db中存在的信息点号，剩下页面上需要导入的信息点号
         List<InfoNoExcel> pageList;
         //db中存在的信息点号
         List<InfoNo> dbList = new ArrayList<>();
 
         //处理日期类型
-       // ExcelDateUtil.converToDate(excelList, InfoExcel.class);
+        // ExcelDateUtil.converToDate(excelList, InfoExcel.class);
         /*
             importMode=是，先删除，后全部插入信息点号
             importMode=否，插入不在db中的信息点号
          */
         //20211116读出DB与EXCEL资产号重复的记录; 20220825 有时间根据下面调整的结果把张强的资产导入代码改了
-        List<InfoNo> dupList = this.list(new  QueryWrapper<InfoNo>().eq("org_id", GlobalParam.orgId).in("value", excelList.stream().map(InfoNoExcel::getValue).collect(Collectors.toList())));
-        if (importMode.equals("是")) {//可 重复&覆盖，把重复的从DB删除
+        List<InfoNo> dupList = this.list(new QueryWrapper<InfoNo>().eq("org_id", GlobalParam.orgId).in("value", excelList.stream().map(InfoNoExcel::getValue).collect(Collectors.toList())));
+        if (importMode.equals("覆盖")) {//可 重复&覆盖，把重复的从DB删除
             if (ObjectUtil.isNotEmpty(dupList)) {
                 dbList = dupList;
                 List<Integer> idList = dupList.stream().map(InfoNo::getId).collect(Collectors.toList());
@@ -50,13 +50,16 @@ public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> impleme
             }
             pageList = excelList;
         } else {//不可 重复&覆盖
-            if (ObjectUtil.isNotEmpty(dupList)) {//有与DB重复的情况，注意：如果数据均是重复的，这里处理完后pageList里没数据了
-                dbList = dupList;
-                Set<String> valueSet = dupList.stream().map(InfoNo::getValue).collect(Collectors.toSet());//value字段是信息点号的值字段
-                pageList = excelList.stream().filter(item -> !valueSet.contains(item.getValue())).collect(Collectors.toList());
-            } else {//此时导入的value均不存在DB中
-                pageList = excelList;
-            }
+            if (importMode.equals("新增")) {
+                if (ObjectUtil.isNotEmpty(dupList)) {//有与DB重复的情况，注意：如果数据均是重复的，这里处理完后pageList里没数据了
+                    dbList = dupList;
+                    Set<String> valueSet = dupList.stream().map(InfoNo::getValue).collect(Collectors.toSet());//value字段是信息点号的值字段
+                    pageList = excelList.stream().filter(item -> !valueSet.contains(item.getValue())).collect(Collectors.toList());
+                } else {//此时导入的value均不存在DB中
+                    pageList = excelList;
+                }
+            } else
+                throw new RuntimeException("暂不支持更新！");
         }
         if (ObjectUtil.isNotEmpty(pageList)) {
             for (InfoNoExcel infoNoExcel : pageList) {
@@ -66,7 +69,8 @@ public class InfoNoServiceImpl extends ServiceImpl<InfoNoMapper, InfoNo> impleme
                 if (ObjectUtil.isEmpty(infoNoExcel.getNetType())) {
                     throw new RuntimeException("联网类别不能为空");
                 }
-                InfoNo InfoNo = new InfoNo();BeanUtils.copyProperties(infoNoExcel, InfoNo);
+                InfoNo InfoNo = new InfoNo();
+                BeanUtils.copyProperties(infoNoExcel, InfoNo);
                 this.save(InfoNo);
             }
         }

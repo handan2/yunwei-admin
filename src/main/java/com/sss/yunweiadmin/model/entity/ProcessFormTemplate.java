@@ -94,6 +94,8 @@ public class ProcessFormTemplate implements Serializable {
 
     private String datasource;
 
+    private String  isForReport;
+
     private Integer width;
 
     private Integer height;

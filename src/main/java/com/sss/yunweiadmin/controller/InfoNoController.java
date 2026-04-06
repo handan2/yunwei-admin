@@ -53,15 +53,18 @@ public class InfoNoController {
     private InfoNoService infoNoService;
 
     @GetMapping("list")
-    public IPage<InfoNo> list(int currentPage, int pageSize, String netType, String value, String status, String location) {
-        QueryWrapper<InfoNo> queryWrapper = new  QueryWrapper<InfoNo>().eq("org_id",GlobalParam.orgId).eq("org_id", GlobalParam.orgId);
+    public IPage<InfoNo> list(int currentPage, int pageSize, String netType, String value, String port,  String status, String location) {
+        QueryWrapper<InfoNo> queryWrapper = new  QueryWrapper<InfoNo>().eq("org_id",GlobalParam.orgId);
         if (!Strings.isNullOrEmpty(netType)) {
             queryWrapper.eq("net_type", netType);
         }
         if (!Strings.isNullOrEmpty(value)) {
             queryWrapper.like("value", value);
         }
-        if (!Strings.isNullOrEmpty(value)) {
+        if (!Strings.isNullOrEmpty(port)) {
+            queryWrapper.like("port", port);
+        }
+        if (!Strings.isNullOrEmpty(status)) {
             queryWrapper.eq("status", status);
         }
         if (!Strings.isNullOrEmpty(location)) {
@@ -164,7 +167,7 @@ public class InfoNoController {
     public void downloadTemplate(HttpServletResponse response) {
         response.setContentType("application/vnd.ms-excel");
         response.setCharacterEncoding("utf-8");
-        String fileName = URLEncoder.encode("信息点号模板（非密）", "UTF-8");
+        String fileName = URLEncoder.encode("信息点号模板（公开）", "UTF-8");
         response.setHeader("Content-disposition", "attachment;filename=" + fileName + ".xls");
         //
         ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).useDefaultStyle(false).excelType(ExcelTypeEnum.XLS).build();

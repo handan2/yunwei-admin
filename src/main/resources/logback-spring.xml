@@ -23,7 +23,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 开发路径 -->
             <!--<fileNamePattern>E:/ideaWorkspace/yunwei-admin/yunweiFile/logs/app.info.%d.log</fileNamePattern>-->
-            <fileNamePattern>D:/java_test/app.info.%d.log</fileNamePattern>
+            <fileNamePattern>E:/java_test/app.info.%d.log</fileNamePattern>
             <!-- 部署路径 -->
             <!--            <fileNamePattern>/usr/local/tomcat/webapps/mallFile/logs/app.info.%d.log</fileNamePattern>-->
         </rollingPolicy>
@@ -42,7 +42,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 开发路径 -->
             <!--<fileNamePattern>E:/ideaWorkspace/yunwei-admin/yunweiFile/logs/app.err.%d.log</fileNamePattern>-->
-            <fileNamePattern>D:/java_test/app.err.%d.log</fileNamePattern>
+            <fileNamePattern>E:/java_test/app.err.%d.log</fileNamePattern>
             <!-- 部署路径 -->
             <!--            <fileNamePattern> /usr/local/tomcat/webapps/mallFile/logs/app.err.%d.log</fileNamePattern>-->
             <!-- 控制保留的归档文件的最大数量，超出数量就删除旧文件，假设设置每个月滚动，

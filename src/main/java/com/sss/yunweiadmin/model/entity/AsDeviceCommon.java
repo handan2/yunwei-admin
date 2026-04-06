@@ -104,5 +104,7 @@ public class AsDeviceCommon implements Serializable {
     private LocalDateTime createDatetime;
 
     private Integer orgId = GlobalParam.orgId;
-
+    private String source;
+    private String szbm;
+    private String szr;
 }

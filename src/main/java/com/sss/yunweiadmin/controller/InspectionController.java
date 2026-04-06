@@ -24,17 +24,16 @@ import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
-import com.sss.yunweiadmin.model.entity.Inspection;
-import com.sss.yunweiadmin.model.entity.InfoNo;
+import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.entity.Inspection;
 import com.sss.yunweiadmin.model.excel.AsAffDownload;
 import com.sss.yunweiadmin.model.excel.InspectionDownload;
 import com.sss.yunweiadmin.model.excel.ExcelListener;
 import com.sss.yunweiadmin.model.excel.InspectionExcel;
+import com.sss.yunweiadmin.model.vo.RepeaterForAssetListVO;
+import com.sss.yunweiadmin.model.vo.StatisticsForInspectionVO;
 import com.sss.yunweiadmin.model.vo.ValueLabelVO;
-import com.sss.yunweiadmin.service.InfoNoService;
-import com.sss.yunweiadmin.service.InspectionService;
-import com.sss.yunweiadmin.service.SysDeptService;
+import com.sss.yunweiadmin.service.*;
 import lombok.SneakyThrows;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
@@ -47,9 +46,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.InputStream;
 import java.net.URLEncoder;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,6 +72,73 @@ public class InspectionController {
     private InspectionService inspectionService;
     @Autowired
     SysDeptService sysDeptService;
+    @Autowired
+    AsTypeService asTypeService;
+    @Autowired
+    AsDeviceCommonService asDeviceCommonService;
+
+
+    @GetMapping("statisticsForInspection")
+    public StatisticsForInspectionVO statisticsForInspection(Integer deptId){
+
+        SysDept sysDept = sysDeptService.getById(deptId);
+        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("state","在用").eq("user_dept",sysDept.getName());
+        List<Integer> typeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForCMP);
+        queryWrapper.in("type_id", typeIdList);
+        List<AsDeviceCommon> cmpList = asDeviceCommonService.list(queryWrapper);
+        StatisticsForInspectionVO statisticsForInspectionVO = new StatisticsForInspectionVO();
+        statisticsForInspectionVO.setCmpTotals(cmpList.size());
+
+
+        //查询已经检查的计算机
+        LocalDate today = LocalDate.now(); // 获取当前日期
+        LocalDate firstDayOfYear = today.withDayOfYear(1).withYear(today.getYear());//获取今年的第一天
+        int year = today.getYear();
+        LocalDate firstDayOfNextYear = LocalDate.ofYearDay(year + 1, 1);//获取明年的第一天
+        QueryWrapper<Inspection> queryWrapperForInspect = new  QueryWrapper<Inspection>().eq("org_id",GlobalParam.orgId);
+        queryWrapperForInspect.select("no");
+        queryWrapperForInspect.ge("inspect_date", firstDayOfYear);
+        queryWrapperForInspect.le("inspect_date", firstDayOfNextYear);
+
+        List<Map<String, Object>> listMaps = inspectionService.listMaps(queryWrapperForInspect);
+
+        List<String> nosForInspect = listMaps.stream().map(item -> String.valueOf(item.get("no"))).collect(Collectors.toList());
+        List<AsDeviceCommon> cmpListForHaveInspected = new ArrayList<>();
+        //再次添加条件
+        if(CollUtil.isNotEmpty(nosForInspect)) {//20260106 加判断，否则size为0会报错
+            queryWrapper.in("no", nosForInspect);
+            cmpListForHaveInspected = asDeviceCommonService.list(queryWrapper);
+        }
+        statisticsForInspectionVO.setCmpTotalsHaveInspeted(cmpListForHaveInspected.size());
+
+        //本月应自查数量(全年剩余月平均)
+        int month = today.getMonthValue();
+       // int cmpTotalsHaveNotImproved = statisticsForInspectionVO.getCmpTotals() - statisticsForInspectionVO.getCmpTotalsHaveInspeted();
+        int cmpTotalsToInspetThisMonth = (statisticsForInspectionVO.getCmpTotals() - statisticsForInspectionVO.getCmpTotalsHaveInspeted()) / (12-month + 1 );
+        statisticsForInspectionVO.setCmpTotalsToInspetThisMonth(cmpTotalsToInspetThisMonth);
+
+        //未检查设备设备号列表
+        List<Integer> cmpIdListForHaveInspected = cmpListForHaveInspected.stream().map(item->item.getId()).collect(Collectors.toList());
+        List<AsDeviceCommon> cmpListForHaveNotInspected = cmpList.stream().filter(item->!cmpIdListForHaveInspected.contains(item)).collect(Collectors.toList());
+        List<String> cmpNoListForHaveNotInspected =  cmpListForHaveNotInspected.stream().map(item->item.getNo()).collect(Collectors.toList());
+        statisticsForInspectionVO.setCmpNoStrHaveNotImproved(cmpNoListForHaveNotInspected.stream().collect(Collectors.joining(",")));
+
+
+        //本月必查计算机列表细分
+        //String no, Integer typeId, String name, String netType, String state, Integer userDept, String userName, String miji, Integer customTableId, String processName, String sn, String haveInspect
+       List<AsDeviceCommon> asDeviceCommonList = asDeviceCommonService.list("",GlobalParam.typeIDForCMP,"","","",deptId,"","",null,"","","");
+       RepeaterForAssetListVO repeaterForAssetListVO = new RepeaterForAssetListVO();
+       repeaterForAssetListVO.setDataSource(asDeviceCommonList);
+       statisticsForInspectionVO.setRepeaterForAssetListVO(repeaterForAssetListVO);
+
+        return statisticsForInspectionVO;
+    }
+    //自查任务
+    @GetMapping("improve")
+    public boolean improve(Integer[] idArr){
+
+        return inspectionService.improve(idArr);
+    }
 
     @GetMapping("list")
     public IPage<Inspection> list(int currentPage, int pageSize, String netType, String inspector, String inspectDate, String mode, String userDept, String userName, String no) {
@@ -197,7 +265,7 @@ public class InspectionController {
     public void downloadTemplate(HttpServletResponse response) {
         response.setContentType("application/vnd.ms-excel");
         response.setCharacterEncoding("utf-8");
-        String fileName = URLEncoder.encode("检查问题模板（非密）", "UTF-8");
+        String fileName = URLEncoder.encode("检查问题模板（公开）", "UTF-8");
         response.setHeader("Content-disposition", "attachment;filename=" + fileName + ".xls");
         //
         ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).useDefaultStyle(false).excelType(ExcelTypeEnum.XLS).build();
@@ -221,7 +289,7 @@ public class InspectionController {
         response.setContentType("application/vnd.ms-excel");
         //  response.setCharacterEncoding("utf-8");
         //String fileName = URLEncoder.encode("设备模板（非密）", "UTF-8");//20230206d原来的谷歌可用的
-        String fileName = "自查结果（非密）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
+        String fileName = "自查结果（公开）";//20230206测试专用火狐设置的:经测这个方法火狐与谷歌都适用，本来想还通过 request来判断浏览器类型区分的，现在暂不用
         response.setHeader("Content-disposition", "attachment;filename=" + new String(fileName.getBytes("GB2312"), "ISO-8859-1") + ".xlsx");
         //表头策略使用默认 设置字体大小
         WriteCellStyle headWriteCellStyle = new WriteCellStyle();

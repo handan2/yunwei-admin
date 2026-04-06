@@ -54,6 +54,7 @@ public class InspectionDownload {
     private String files;
     @ExcelProperty("其他问题")
     private String others;
-
+    @ExcelProperty("*填报时间")
+    private String createDatetime;
 
 }

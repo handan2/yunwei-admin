@@ -34,7 +34,7 @@ public class ProcessInstanceNodeController {
 
     @GetMapping("list")
     public IPage<ProcessInstanceNode> list(Integer processInstanceDataId) {
-        IPage<ProcessInstanceNode>  page = processInstanceNodeService.page(new Page<>(1, 100), new  QueryWrapper<ProcessInstanceNode>().eq("org_id", GlobalParam.orgId).eq("process_instance_data_id", processInstanceDataId).orderByAsc("id"));
+        IPage<ProcessInstanceNode>  page = processInstanceNodeService.page(new Page<>(1, 100), new  QueryWrapper<ProcessInstanceNode>().eq("process_instance_data_id", processInstanceDataId).orderByAsc("id"));//为避免前端跨部门审批时传参，取消.eq("org_id", GlobalParam.orgId)
         List<ProcessInstanceNode> list = page.getRecords();
         List<ProcessInstanceNode> list2 = list.stream().map(item->{
             String comment = item.getComment();

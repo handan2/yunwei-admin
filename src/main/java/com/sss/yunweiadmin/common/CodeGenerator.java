@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CodeGenerator {
-    private static String[] include = {"inspection"};
+    private static String[] include = {"system_info"};
 
     public static void main(String[] args) {
         // 代码生成器

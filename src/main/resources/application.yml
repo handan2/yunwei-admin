@@ -1,15 +1,15 @@
 server:
-  port: 8080
+  port: 8082
   servlet:
-    context-path: /yunwei
+    context-path: /yunweiAdmin
 
 todoRouteForSSO: http://10.84.10.78:8080/yunwei/sysUser/todoForSSO$processInstanceDataId=
-downloadRoot: E:/
+downloadRoot: E:/download/     #20241123 最好download加一个‘/’
 
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/yunwei?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true
+    url: jdbc:mysql://192.168.1.10:3306/yunwei?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver

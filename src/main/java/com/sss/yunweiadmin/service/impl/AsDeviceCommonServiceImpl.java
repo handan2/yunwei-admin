@@ -3,12 +3,17 @@
 package com.sss.yunweiadmin.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -18,11 +23,13 @@ import com.sss.yunweiadmin.mapper.AsDeviceCommonMapper;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.excel.*;
 import com.sss.yunweiadmin.model.vo.AssetVO;
+import com.sss.yunweiadmin.model.vo.RepeaterForAssetListVO;
 import com.sss.yunweiadmin.service.*;
 import net.sf.cglib.core.Local;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpSession;
 import java.lang.reflect.Field;
@@ -70,6 +77,293 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
     ProcessInstanceChangeService processInstanceChangeService;
     @Autowired
     HttpSession httpSession;
+    @Autowired
+    SapAssetService sapAssetService;
+    @Autowired
+    ProcessFormCustomTypeService  processFormCustomTypeService;
+    @Autowired
+    ProcessInstanceDataService processInstanceDataService;
+    @Autowired
+    ProcessFormValue2Service processFormValue2Service;
+    @Autowired
+    InspectionService inspectionService;
+
+
+
+    @Override
+    //20250625 用于每月自查计算机列表
+    public List<AsDeviceCommon> list( String no, Integer typeId, String name, String netType, String state, Integer userDept, String userName, String miji, Integer customTableId, String processName, String sn, String haveInspect) {
+
+
+        QueryWrapper<AsDeviceCommon> queryWrapper = new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId);
+        String deptName = "";
+         if (ObjectUtil.isNotEmpty(userDept)) {
+            deptName = sysDeptService.getById(userDept).getName();
+            queryWrapper.eq("user_dept", deptName);
+        }
+        LocalDate today = LocalDate.now(); // 获取当前日期
+        //20240901 年度内检查
+        if (ObjectUtil.isNotEmpty(haveInspect)){
+            System.out.println("20241110in-year inspect  checkCondition start ----");
+            System.out.println(LocalDateTime.now());
+
+            LocalDate firstDayOfYear = today.withDayOfYear(1).withYear(today.getYear());//获取今年的第一天
+            int year = today.getYear();
+            LocalDate firstDayOfNextYear = LocalDate.ofYearDay(year + 1, 1);//获取明年的第一天
+            QueryWrapper<Inspection> queryWrapperForInspect = new  QueryWrapper<Inspection>().eq("org_id",GlobalParam.orgId).eq("org_id",GlobalParam.orgId);
+            queryWrapperForInspect.select("no");
+            queryWrapperForInspect.ge("inspect_date", firstDayOfYear);
+            queryWrapperForInspect.le("inspect_date", firstDayOfNextYear);
+
+            List<Map<String, Object>> listMaps = inspectionService.listMaps(queryWrapperForInspect);
+
+            List<String> nosForInspect = listMaps.stream().map(item -> String.valueOf(item.get("no"))).collect(Collectors.toList());
+            if("是".equals(haveInspect)){
+                queryWrapper.in("no",nosForInspect);
+            } else
+                queryWrapper.notIn("no",nosForInspect);
+            System.out.println("20241110in-year inspect  checkCondition end ----");
+            System.out.println(LocalDateTime.now());
+
+        }
+        List<AsDeviceCommon> list = new ArrayList<>();
+        List<Integer> typeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForCMP);//限定计算机与服务器
+
+        //查询开网口的涉密单机
+        QueryWrapper<AsDeviceCommon> queryWrapperForNet = new  QueryWrapper<AsDeviceCommon>().eq("user_dept", deptName).like("net_type","未联网").in("type_id", typeIdList);
+        //BeanUtils.copyProperties(queryWrapper, queryWrapperForNet);
+        queryWrapperForNet.in("miji",Arrays.asList("机密","秘密")).eq("state","在用");
+        List<AsComputerGranted> listForGrantedForNet  = asComputerGrantedService.list(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).eq("net_interface","开启"));
+        if(CollUtil.isNotEmpty(listForGrantedForNet)){
+            queryWrapperForNet.in("id",listForGrantedForNet.stream().map(AsComputerGranted::getAsId).collect(Collectors.toList()));
+            List<AsDeviceCommon> asDeviceCommonListForShemiNet = this.list(queryWrapperForNet);
+            asDeviceCommonListForShemiNet.forEach(item->item.setTemp("开网口涉密单机"));
+            list.addAll(asDeviceCommonListForShemiNet);
+        }
+        //查询本月新上账|申领计算机
+        QueryWrapper<AsDeviceCommon> queryWrapperForNew = new  QueryWrapper<AsDeviceCommon>().eq("user_dept", deptName).in("type_id", typeIdList);
+        //BeanUtils.copyProperties(queryWrapper, queryWrapperForNew);
+        LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+        queryWrapperForNew.ge("create_datetime",firstDayOfMonth);
+        List<AsDeviceCommon> asDeviceCommonListForNew = this.list(queryWrapperForNew);
+        asDeviceCommonListForNew.forEach(item->item.setTemp("新上账设备"));
+        list.addAll(asDeviceCommonListForNew);
+
+        //本月维修计算机
+        QueryWrapper<AsDeviceCommon> queryWrapperForRepair = new  QueryWrapper<AsDeviceCommon>().eq("user_dept", deptName).in("type_id", typeIdList);
+        //BeanUtils.copyProperties(queryWrapper, queryWrapperForRepair);
+        List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("dept_name",deptName).like("process_name","计算机维修").ge("start_datetime",firstDayOfMonth));
+        if(CollUtil.isNotEmpty(processInstanceDataList)){
+            List<ProcessFormValue2> processFormValue2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).in("act_process_instance_id",processInstanceDataList.stream().map(item->item.getActProcessInstanceId()).collect(Collectors.toList())));
+
+            List<AsDeviceCommon> asDeviceCommonListForRepair = this.list( queryWrapperForRepair.in("id",processFormValue2List.stream().map(item->item.getAsId()).collect(Collectors.toList())));
+            asDeviceCommonListForRepair.forEach(item->item.setTemp("维修"));
+            list.addAll(asDeviceCommonListForRepair);
+        }
+
+        //
+
+
+
+
+        System.out.println("20241110in-year inspect  return page ----");
+        System.out.println(LocalDateTime.now());
+       // List<AsDeviceCommon> list = this.list(queryWrapper);
+
+        return list;
+
+    }
+
+
+    @Override
+    public Boolean saveSapAsset(List<SapAsset> assetList){
+        //SAP属性值与运维设备属性值的映射关系：类别、状态、密级（这个估计不用）
+        // 类型映射关系
+        /*类别映射存在的问题：
+        1.SAP类型ID与运维类型不一一对应，理论上可能会把任意id推送给我
+        2.结合1，组合判断类型:先通过（预先设定好的几个）类型ID映射给出设备类型，（前面没有命中的话）然后再通过eqktx（设备名称）再判断一轮（这部分判断放在反射遍历时执行）
+        3.20250706 sap推来的类型字段（eqart）已经没有下述的“100023l/10000”之类，比如“工作站”推了“J0901”，而“办公计算机”对应字段为空，
+         todo 问付宝龙，新对接的Saq接口工程师微信，并且要下相应的类型枚举值（之前的在PC上也没有找到相应记录文档）*/
+        Map<String, String> mappingForType = new HashMap<>();
+        mappingForType.put("10000", "打印机");//映射成中文类型名吧
+        mappingForType.put("100023l", "办公计算机");
+
+        //sap与运维字段的映射
+        Map<String, String> mappingForTypeForSAPYunwei = MapUtil.<String, String>builder()
+                .put("invnr","no")
+                .put("zjlydsc","fundSrc")
+                .put("zzsfsm","miji")
+                .put("inbdt","buyDate")
+//                .put("erdat","buyDate")
+//                .put("inbdt","buyDate")
+                .put("herst","manufacturer")
+                .put("typbz","model")
+                .put("serge","sn")
+                .put("pltxt","location") //todo问工程师，SAP楼层与房间号更新，我反向更新有没问题？
+                .put("fing","userDept")
+                .put("zzrp","userName")
+                .put("zzszbm","szbm") //20250319上账部门和上账人，
+                .put("zzszr","szr")
+                .build();
+        List<AsType> asTypeList = asTypeService.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId));
+        Map<String, Integer> typeMap = new HashMap<>();
+        asTypeList.stream().forEach(item->{
+            typeMap.put(item.getName(),item.getId());
+        });
+        //用于写入运维
+        List<AsDeviceCommon> asDeviceCommonListForCMP = new ArrayList<>();
+        List<AsDeviceCommon> asDeviceCommonListForAff = new ArrayList<>();
+        List<AsDeviceCommon> asDeviceCommonListForNet = new ArrayList<>();
+        List<AsComputerSpecial> asComputerSpecialList = new ArrayList<>();
+        List<AsComputerGranted> asComputerGrantedList = new ArrayList<>();
+        List<AsNetworkDeviceSpecial> asNetworkDeviceSpecialList = new ArrayList<>();
+        List<AsIoSpecial> asIoSpecialList = new ArrayList<>();
+        //查询已有设备ID
+        List<Map<String, Object>> listMaps1 = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).ne("type_id",GlobalParam.typeIDForDisk).select("no"));
+        List<String> noListForYunweiAs = listMaps1.stream().map(item -> item.get("no").toString()).collect(Collectors.toList());
+
+        for (SapAsset asset : assetList) {
+            //20250308 todo 对字段值进行过滤和“转译”
+            // 获取对象的所有属性
+            asset.setCreateTime(LocalDateTime.now());
+            Field[] fields = ReflectUtil.getFields(asset.getClass());
+            //下述sap中的两个字段要需要经过复杂转化：才能被运维记录
+            String SAPName = "";//设备名称（用于转化的临时字段值）
+            String SAPNetType = "";//联网类别（用于转化的临时字段值）
+            // 遍历属性
+            for (java.lang.reflect.Field field : fields) {
+                // 获取属性名
+                String fieldName = field.getName();
+                // 获取属性值
+                Object fieldValue = ReflectUtil.getFieldValue(asset, fieldName);
+
+                if ("eqktx".equals(fieldName)) {//设备名称
+                    SAPName = (String) fieldValue;
+                } else if ("zzlwzl".equals(fieldName)) {//联网类别
+                    SAPNetType = (String) fieldValue;
+                }
+            }
+            // StringWrapper wrapperForSAPName = new StringWrapper("SAPName");
+            AsDeviceCommon asDeviceCommon = new AsDeviceCommon();//sap记录属性值转化后，待塞到DB相应字段中:注意，目前只有"no"不同的才真正添加到运维的设备表中
+            //以下的初始值设置也只是在“目前只考虑新增”的设定中有意义
+            asDeviceCommon.setName(SAPName);
+            asDeviceCommon.setNetType(SAPNetType);
+            asDeviceCommon.setState("库存");
+            asDeviceCommon.setTypeId(typeMap.get("其他"));//类别初始值
+
+
+            // 遍历属性
+            for (java.lang.reflect.Field field : fields) {
+                // 获取属性名
+                String fieldName = field.getName();
+                // 获取属性值
+                Object fieldValue = ReflectUtil.getFieldValue(asset, fieldName);
+                if (ObjectUtil.isNotEmpty(fieldValue)) {
+                    if ("eqart".equals(fieldName)) {//类别字段的处理
+                        String typeName = mappingForType.get(fieldValue);
+
+                        if (false) {//ObjectUtil.isNotEmpty(typeName)  类别字段： 20250915偶尔有值（比如J/JO501），但不研了 ; 20250706这个类别映射表中值已经失效（详见上面相关注释），所以这个分支现在均为false
+                            //  ReflectUtil.setFieldValue(asset,fieldName,typeMap.get(typeName));//asset的类别Id还是不要改了
+                            ReflectUtil.setFieldValue(asDeviceCommon, "typeId", typeMap.get(typeName));
+
+                        } else {//TODO根据名称字段eqktx来判断一波：逻辑有问题&这里涉及到组合判断：需要两轮遍历：第一轮先把”类别“|”名称“|”联网类别“读出来
+                            String targetStr = "Hello, World!";
+                            String[] namesForCMP = {"计算机","单机", "工控机","测试设备", "一体机", "笔记本", "终端", "便携机", "台式机"};//, "工作站"
+                            //boolean containsAny = Arrays.stream(namesForCMP).anyMatch(str -> StrUtil.contains(targetStr, str));
+                            String SAPName1 = SAPName;//因为下面的箭头函数里的不能使用“更改过值的”变量
+
+                            if (Arrays.stream(namesForCMP).anyMatch(str -> StrUtil.contains(SAPName1, str))) {// 计算机得单拿出来：因为运维里的计算机分类也是很特殊的
+                                if (SAPNetType.contains("国密网") || SAPNetType.contains("商密网"))
+                                    ReflectUtil.setFieldValue(asDeviceCommon, "typeId", typeMap.get("办公计算机"));//ReflectUtil.setFieldValue(asset,fieldName,typeMap.get("办公计算机"));
+                                else if (SAPNetType.contains("试验网"))
+                                    ReflectUtil.setFieldValue(asDeviceCommon, "typeId", typeMap.get("测试设备"));//ReflectUtil.setFieldValue(asset,fieldName,typeMap.get("测试设备"));
+                                else if (SAPName.contains("便携机") || SAPName.contains("笔记本"))
+                                    ReflectUtil.setFieldValue(asDeviceCommon, "typeId", typeMap.get("便携机"));
+                                else
+                                    ReflectUtil.setFieldValue(asDeviceCommon, "typeId", typeMap.get("计算机"));////这种只能手工在运维里改变分类
+                            } else {
+                                //20250708 遍历一下typeMap，每一次遍历都判断SAPName1里是不是contains typeName,如果有的话，设置asDeviceCommon相关typeid字段
+                                typeMap.entrySet().stream().forEach(entry -> {
+                                    if (SAPName1.contains(entry.getKey())) {
+                                        ReflectUtil.setFieldValue(asDeviceCommon, "typeId", entry.getValue());
+                                    }
+                                });
+                            }
+                        }
+                    } else if (ObjectUtil.isNotEmpty(mappingForTypeForSAPYunwei.get(fieldName))) { //给asDeviceCommon相应字段赋值
+                        if ("inbdt".equals(fieldName)) {//日期转换  || "erdat".equals(fieldName) || "aedat".equals(fieldName)
+                            if ((fieldValue).equals("00000000")) {//sAP里空白的日期会以"00000000"记录导致解析报错，但是后来他们改成“空白”
+                                System.out.println("日期类型的值出现了：" + fieldValue);
+                            } else {
+                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+                                LocalDate localDate = LocalDate.parse((String) fieldValue, formatter);
+                                fieldValue = localDate ;//本次循环里，把这个值替换下，todo验证 ReflectUtil.setFieldValue里Set“各种类型值”是不是没问题
+//
+                            }
+
+                        }
+                        ReflectUtil.setFieldValue(asDeviceCommon, mappingForTypeForSAPYunwei.get(fieldName), fieldValue);
+                        // 输出属性名和属性值
+                        System.out.println("属性名: " + fieldName + ", 属性值: " + fieldValue);
+                    }
+
+                }
+
+            }
+            //俟写入新增的"no":todo 对已有的修改待后续做
+            if (ObjectUtil.isNotEmpty(asDeviceCommon.getNo()) && !noListForYunweiAs.contains(asDeviceCommon.getNo())) {
+                asDeviceCommon.setCreateDatetime(LocalDateTime.now());
+                asDeviceCommon.setSource("SAP");
+                //asDeviceCommonListForCMP.add(asDeviceCommon);
+                this.save(asDeviceCommon);//基本表建立
+                AsType asType = asTypeService.getLevel2AsTypeById(asDeviceCommon.getTypeId());
+                //注：只对能识别的几类设备创建专用表，其他的仅建立基本表：后续手工人工审核处理
+                if(asType.getId() == GlobalParam.typeIDForCMP || asType.getId() == GlobalParam.typeIDForFWQ ){
+                    //思考一个问题：何时初始化这些属性：感觉应该在“申领”后：todo有时间完整
+                    AsComputerGranted asComputerGranted = new AsComputerGranted();
+                    asComputerGranted.setAsId(asDeviceCommon.getId());
+                    asComputerGrantedList.add(asComputerGranted);
+                    AsComputerSpecial asComputerSpecial = new AsComputerSpecial();
+                    asComputerSpecial.setAsId(asDeviceCommon.getId());
+                    asComputerSpecialList.add(asComputerSpecial);
+                } else if(asType.getId() == GlobalParam.typeIDForAff){
+                    AsIoSpecial asIoSpecial = new AsIoSpecial();
+                    asIoSpecial.setAsId(asDeviceCommon.getId());
+                    asIoSpecialList.add(asIoSpecial);
+                } else if(asType.getId() == GlobalParam.typeIDForNET){
+                    AsNetworkDeviceSpecial asNetworkDeviceSpecial = new AsNetworkDeviceSpecial();
+                    asNetworkDeviceSpecial.setAsId(asDeviceCommon.getId());
+                    asNetworkDeviceSpecialList.add(asNetworkDeviceSpecial);
+                }
+
+            }
+            System.out.println(asset);
+        }
+        //写入专用表
+        if(CollUtil.isNotEmpty(asComputerSpecialList))
+            asComputerSpecialService.saveBatch(asComputerSpecialList);
+        if(CollUtil.isNotEmpty(asComputerGrantedList))
+            asComputerGrantedService.saveBatch(asComputerGrantedList);
+        if(CollUtil.isNotEmpty(asIoSpecialList))
+            asIoSpecialService.saveBatch(asIoSpecialList);
+        if(CollUtil.isNotEmpty(asNetworkDeviceSpecialList))
+            asNetworkDeviceSpecialService.saveBatch(asNetworkDeviceSpecialList);
+
+        //写入sapAsset
+        int m = 100;
+        for (int i = 0; i < assetList.size(); i += m) {
+            List<SapAsset> assetList1=  new ArrayList<>(assetList.subList(i, Math.min(i + m, assetList.size())));
+            sapAssetService.saveBatch(assetList1);
+        }
+        //sapAssetService.saveBatch(assetList);
+
+
+        return true;
+
+       
+
+
+    }
     //20230213
     @Override
     public String makeBaomiNo(AsType asType, String miji, LocalDate useDate) {
@@ -198,7 +492,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             asDeviceCommon1.setUserMiji(asDeviceCommon.getUserMiji());//20221115
             asDeviceCommon1.setState(asDeviceCommon.getState());//20221115
             asDeviceCommon1.setName("硬盘");
-            asDeviceCommon1.setTypeId(30);
+            asDeviceCommon1.setTypeId(GlobalParam.typeIDForDisk);
             if (ObjectUtil.isNotEmpty(ypNoIdMap.get(sns[i]))) {//硬盘在DB中存在，则更新此硬盘信息
                 asDeviceCommon1.setId(ypNoIdMap.get(sns[i]));
                 asDeviceCommonListForDiskUpdate.add(asDeviceCommon1);
@@ -210,7 +504,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
                 String dateStr = date.format(fmt);
                 asDeviceCommon1.setNo("YP" + dateStr);
-                asDeviceCommon1.setTypeId(30);
+                asDeviceCommon1.setTypeId(GlobalParam.typeIDForDisk);
                 asDeviceCommon1.setHostAsId(asDeviceCommon.getId());
                 asDeviceCommonListForDiskAdd.add(asDeviceCommon1);
             }
@@ -382,8 +676,10 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         Integer asTypeId = asType.getId();
 
         SysUser user = (SysUser) httpSession.getAttribute("user");
+        SysDept dept = sysDeptService.getById(user.getDeptId());
         List<ProcessInstanceChange> changeList = Lists.newArrayList();
         List<AsConfig> asConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_device_common"));
+        //Boolean takeOffDisk = false;
         asConfigList.forEach(i -> {
 
             ProcessInstanceChange change = new ProcessInstanceChange();
@@ -391,13 +687,16 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             change.setName(i.getZhColumnName());
             change.setIsFinish("是");
             change.setModifyDatetime(LocalDateTime.now());
+            change.setDeptName(dept.getName());
             change.setDisplayName(user.getDisplayName());
             Object dbValueObj = ReflectUtil.getFieldValue(asDeviceCommonDB, StrUtil.toCamelCase(i.getEnColumnName()));
             String dbValueObj_str = "";
             Object pageValueObj = ReflectUtil.getFieldValue(asDeviceCommon, StrUtil.toCamelCase(i.getEnColumnName()));
             String pageValueObj_str = "";
            // if (ObjectUtil.isNotEmpty(dbValueObj)) {
+
             if (i.getType().equals("字符串") || i.getType().equals("数字")) {
+
                 dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":dbValueObj.toString();//i.getType().equals("字符串")
                 pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":pageValueObj.toString();
             } else if (i.getType().contains("日期")){
@@ -407,9 +706,47 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":((LocalDate) pageValueObj).format(fmt);
                 }
             }
-            if(!(ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isEmpty(pageValueObj)) && ((ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isNotEmpty(pageValueObj)) || !dbValueObj_str.equals(pageValueObj_str))){
+            if( !(dbValueObj_str.equals("0") && pageValueObj_str.equals("")) && !(ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isEmpty(pageValueObj)) && ((ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isNotEmpty(pageValueObj)) || !dbValueObj_str.equals(pageValueObj_str))){
                 change.setOldValue(dbValueObj_str);
                 change.setNewValue(pageValueObj_str);
+                //20150129，增加对设备类型变化的判断与阻止
+                if(change.getName().equals("设备类别")){
+                    if(ObjectUtil.isNotEmpty(pageValueObj) && ObjectUtil.isNotEmpty(dbValueObj)){
+                        System.out.println("设备类型变化");
+                        AsType asTypeLevelForNewType = asTypeService.getLevel2AsTypeById(Integer.valueOf(dbValueObj.toString()));
+                        AsType asTypeLevelForOldType = asTypeService.getLevel2AsTypeById(Integer.valueOf(pageValueObj.toString()));
+                        int[] typeIdsForFwqOrCMP = {GlobalParam.typeIDForCMP,GlobalParam.typeIDForFWQ};
+                        if((asTypeLevelForOldType.getId() != asTypeLevelForNewType.getId()) && !(ArrayUtil.contains(typeIdsForFwqOrCMP,asTypeLevelForNewType.getId()) && ArrayUtil.contains(typeIdsForFwqOrCMP,asTypeLevelForOldType.getId()))){
+                           throw new RuntimeException("不能跨二级分类变更设备类型");
+                        }
+                    }
+
+
+                }
+
+                if(asDeviceCommon.getTypeId() == GlobalParam.typeIDForDisk){//如果是直接在硬盘表单中变更，也同步到宿主机; 目前仅同步“序列号变化”
+                    if(change.getName().equals("设备序列号") && !("摘除".equals(asDeviceCommon.getState()) && !("报废".equals(asDeviceCommon.getState())))){
+                        if(ObjectUtil.isNotEmpty(asDeviceCommon.getHostAsId())){
+                            //2AsDeviceCommon asDeviceCommonPC = this.getById(asDeviceCommon.getHostAsId());
+                            ProcessInstanceChange changePC = new ProcessInstanceChange();
+                            BeanUtils.copyProperties(change,changePC);
+                            changePC.setAsId(asDeviceCommon.getHostAsId());
+                            changePC.setName("硬盘修改");
+                            //changePC.setOldValue();
+                            change.setNewValue("原序列号为" + dbValueObj_str + "的硬盘序列号修改为" + pageValueObj_str);
+                            changePC.setIsFinish("是");
+                            changePC.setModifyDatetime(LocalDateTime.now());
+                            changePC.setDeptName(dept.getName());
+                            changePC.setDisplayName(user.getDisplayName());
+
+                            changeList.add(changePC);
+                        }
+
+
+
+                    }
+                }
+
                 changeList.add(change);
             }
             //  }
@@ -423,50 +760,207 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
         //专用表
         if (asTypeId ==  GlobalParam.typeIDForCMP|| asTypeId ==  GlobalParam.typeIDForFWQ) {//20230107 添加服务器存储设备id
-
-
-
-            //20240407todo断点
-
-            List<AsConfig> asConfigList2 =  asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_computer_special"));
-
-
             AsComputerSpecial asComputerSpecial = assetVO.getAsComputerSpecial();
+            AsComputerSpecial asComputerSpecialDB = asComputerSpecialService.getOne(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            //20250106 记录“变更记录”
+            List<ProcessInstanceChange> changeList1 = Lists.newArrayList();
+            List<AsConfig> asConfigList2 =  asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_computer_special"));
+            asConfigList2.forEach(i -> {
+                ProcessInstanceChange change = new ProcessInstanceChange();
+                change.setAsId(asDeviceCommon.getId());
+                change.setName(i.getZhColumnName());
+                change.setIsFinish("是");
+                change.setModifyDatetime(LocalDateTime.now());
+                change.setDeptName(dept.getName());
+                change.setDisplayName(user.getDisplayName());
+                Object dbValueObj = ReflectUtil.getFieldValue(asComputerSpecialDB, StrUtil.toCamelCase(i.getEnColumnName()));
+                String dbValueObj_str = "";
+                Object pageValueObj = ReflectUtil.getFieldValue(asComputerSpecial, StrUtil.toCamelCase(i.getEnColumnName()));
+                String pageValueObj_str = "";
+                // if (ObjectUtil.isNotEmpty(dbValueObj)) {
+                if (i.getType().equals("字符串") || i.getType().equals("数字")) {
+                    dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":dbValueObj.toString();//i.getType().equals("字符串")
+                    pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":pageValueObj.toString();
+                } else if (i.getType().contains("日期")){
+                    if(i.getType().equals("日期")){
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                        dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":((LocalDate) dbValueObj).format(fmt);
+                        pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":((LocalDate) pageValueObj).format(fmt);
+                    }
+                }
+                if( !(dbValueObj_str.equals("0") && pageValueObj_str.equals("")) && !(ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isEmpty(pageValueObj)) && ((ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isNotEmpty(pageValueObj)) || !dbValueObj_str.equals(pageValueObj_str))){
+                    change.setOldValue(dbValueObj_str);
+                    change.setNewValue(pageValueObj_str);
+                    changeList1.add(change);
+                }
+                //  }
+            });
+            if (ObjectUtil.isNotEmpty(changeList1)) {
+                processInstanceChangeService.saveBatch(changeList1);
+            }
             if (ObjectUtil.isNotEmpty(asComputerSpecial)) {
                 asComputerSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asComputerSpecialService.saveOrUpdate(asComputerSpecial);
             }
+
+
             AsComputerGranted asComputerGranted = assetVO.getAsComputerGranted();
+            AsComputerGranted asComputerGrantedDB = asComputerGrantedService.getOne(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            //20250106 记录“变更记录”
+            List<ProcessInstanceChange> changeList2 = Lists.newArrayList();
+            List<AsConfig> asConfigList3 =  asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_computer_granted"));
+            asConfigList3.forEach(i -> {
+                ProcessInstanceChange change = new ProcessInstanceChange();
+                change.setAsId(asDeviceCommon.getId());
+                change.setName(i.getZhColumnName());
+                change.setIsFinish("是");
+                change.setModifyDatetime(LocalDateTime.now());
+                change.setDeptName(dept.getName());
+                change.setDisplayName(user.getDisplayName());
+                Object dbValueObj = ReflectUtil.getFieldValue(asComputerGrantedDB, StrUtil.toCamelCase(i.getEnColumnName()));
+                String dbValueObj_str = "";
+                Object pageValueObj = ReflectUtil.getFieldValue(asComputerGranted, StrUtil.toCamelCase(i.getEnColumnName()));
+                String pageValueObj_str = "";
+                // if (ObjectUtil.isNotEmpty(dbValueObj)) {
+                if (i.getType().equals("字符串") || i.getType().equals("数字")) {
+                    dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":dbValueObj.toString();//i.getType().equals("字符串")
+                    pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":pageValueObj.toString();
+                } else if (i.getType().contains("日期")){
+                    if(i.getType().equals("日期")){
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                        dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":((LocalDate) dbValueObj).format(fmt);
+                        pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":((LocalDate) pageValueObj).format(fmt);
+                    }
+                }
+                if( !(ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isEmpty(pageValueObj)) && ((ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isNotEmpty(pageValueObj)) || !dbValueObj_str.equals(pageValueObj_str))){
+                    change.setOldValue(dbValueObj_str);
+                    change.setNewValue(pageValueObj_str);
+                    changeList2.add(change);
+                }
+                //  }
+            });
+            if (ObjectUtil.isNotEmpty(changeList2)) {
+                processInstanceChangeService.saveBatch(changeList2);
+            }
             if (ObjectUtil.isNotEmpty(asComputerGranted)) {
                 asComputerGranted.setAsId(asDeviceCommon.getId());
                 flag = flag && asComputerGrantedService.saveOrUpdate(asComputerGranted);
             }
-            //20220612 保存硬盘信息
+            //20220612 保存硬盘信息 及变更记录（含计算机与硬盘两个主体的）
             List<AsDeviceCommon> diskListForHis = assetVO.getDiskListForHis();
-            List<AsDeviceCommon> diskListForHisForDel = diskListForHis.stream().filter(item -> item.getTemp().equals("删除")).collect(Collectors.toList());
-            List<AsDeviceCommon> diskListForHisForSaveOrUpdate = diskListForHis.stream().filter(item -> !(item.getTemp().equals("删除"))).collect(Collectors.toList());
             if (CollUtil.isNotEmpty(diskListForHis)) {
-                if (CollUtil.isNotEmpty(diskListForHisForDel))
+                List<AsDeviceCommon> diskListForHisForDel = diskListForHis.stream().filter(item -> item.getTemp().equals("删除")).collect(Collectors.toList());
+                List<AsDeviceCommon> diskListForHisForSaveOrUpdate = diskListForHis.stream().filter(item -> !(item.getTemp().equals("删除"))).collect(Collectors.toList());
+                if (CollUtil.isNotEmpty(diskListForHisForDel)){
+                    //20250328 增加删除时的变更记录
+                    List<String> diskSnList = diskListForHisForDel.stream().map(AsDeviceCommon::getSn).collect(Collectors.toList());
+                    String diskSn =  String.join(",", diskSnList);
+                    ProcessInstanceChange change = new ProcessInstanceChange();
+                    change.setDeptName(dept.getName());
+                    change.setAsId(asDeviceCommon.getId());
+                    change.setIsFinish("是");//这个字段必须有
+                    change.setModifyDatetime(LocalDateTime.now());
+                    change.setDeptName(dept.getName());
+                    change.setDisplayName(user.getDisplayName());
+                    change.setName("硬盘删除");
+                    change.setNewValue("删除硬盘的序列号为：" + diskSn);
+                    processInstanceChangeService.save(change);//删除时仅记录PC为主体的硬盘变更
                     this.removeByIds(diskListForHisForDel.stream().map(AsDeviceCommon::getId).collect(Collectors.toList()));
+                }
+                //注：即使硬盘没有编辑：现有硬盘信息也会记录在diskListForHisForSaveOrUpdate中
                 if (CollUtil.isNotEmpty(diskListForHisForSaveOrUpdate)) {
                     for (AsDeviceCommon item : diskListForHisForSaveOrUpdate) {
-                        item.setTemp("");
                         ///20230608 同步硬盘与计算机同值的相关字段
                         item.setMiji(assetVO.getAsDeviceCommon().getMiji());
                         item.setUserName(assetVO.getAsDeviceCommon().getUserName());
                         item.setUserDept(assetVO.getAsDeviceCommon().getUserDept());
-                        if ((assetVO.getAsDeviceCommon().getState().equals("在用") || assetVO.getAsDeviceCommon().getState().equals("停用")) && (!item.getState().equals("摘除") && !item.getState().equals("报废")))//只有这两种状态同步;硬盘的“摘除”状态不受宿主机同步
+                        //计算机状态变化时，对（新增与修改的）硬盘硬盘状态的强制同步：排除对硬盘本体处于“停用|填错|报废|摘除”状态的同步：只有PC本体为“在用”||“停用”||“库存”时（这里不分PC状态是更改后的，还是<本过程未变化>原值）才会强制同步
+                        if ((assetVO.getAsDeviceCommon().getState().equals("在用") || assetVO.getAsDeviceCommon().getState().equals("停用") || assetVO.getAsDeviceCommon().getState().equals("库存")) && (!item.getState().equals("摘除") && !item.getState().equals("报废") && !item.getState().equals("填错")))//只有这两种状态同步;硬盘的“摘除”||""||""状态不受宿主机同步
                             item.setState(assetVO.getAsDeviceCommon().getState());
                         item.setNetType(assetVO.getAsDeviceCommon().getNetType());
+                        //20250825 修改时 PC与硬盘都记录了 && 新增时只记录PC && 删除时都没记录
+                        AsDeviceCommon diskDB = this.getById(item.getId());
+                        ProcessInstanceChange change = new ProcessInstanceChange();
+                        change.setDeptName(dept.getName());
+                        change.setAsId(asDeviceCommon.getId());
+                        change.setIsFinish("是");//这个字段必须有
+                        change.setModifyDatetime(LocalDateTime.now());
+                        change.setDeptName(dept.getName());
+                        change.setDisplayName(user.getDisplayName());
+                        if(ObjectUtil.isNotEmpty(item.getId()) && !item.getSn().equals(diskDB.getSn())){
+                            change.setName("硬盘修改(序列号)");
+                            change.setOldValue(diskDB.getSn());
+                            change.setNewValue(item.getSn());
+                        } else if(ObjectUtil.isNotEmpty(item.getId()) && !item.getState().equals(diskDB.getState())){//序列号与状态同时修改的情况 暂不考虑
+                            change.setName("硬盘修改(状态)");
+                            change.setNewValue("原序列号为" + diskDB.getSn() + "的状态修改为" + item.getState());
+                        }  else if(item.getTemp().equals("新增")){
+                            change.setName("硬盘新增");
+                            change.setNewValue("新增硬盘的序列号为" + item.getSn());
+                        }
+                        item.setTemp("");
+                        this.saveOrUpdate(item);
+                        if(ObjectUtil.isNotEmpty(change.getNewValue())){
+                            processInstanceChangeService.save(change);//记录PC为主体的硬盘变更
+                         //   if (ObjectUtil.isNotEmpty(item.getId())){//硬盘修改时，此时没写入DB没有id
+                                ProcessInstanceChange changeDisk = new ProcessInstanceChange();//同步记录在硬盘表中
+                                BeanUtils.copyProperties(change, changeDisk);
+                                changeDisk.setAsId(item.getId());//记录硬盘本身为主体的硬盘变更
+                                processInstanceChangeService.save(changeDisk);
+//                            } else { //硬盘新增时
+//
+//
+//                            }
+
+                        }
 
                     }
-                    ;
+                    flag = flag && this.saveOrUpdateBatch(diskListForHisForSaveOrUpdate);
                 }
-                flag = flag && this.saveOrUpdateBatch(diskListForHisForSaveOrUpdate);//20220614这个flag设置有点小问题：暂不改
+
+
             }
         } else if (asTypeId ==  GlobalParam.typeIDForNET) {
             //网络设备
             AsNetworkDeviceSpecial asNetworkDeviceSpecial = assetVO.getAsNetworkDeviceSpecial();
+            AsNetworkDeviceSpecial asNetworkDeviceSpecialDB = asNetworkDeviceSpecialService.getOne(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            //20250106 记录“变更记录”
+            List<ProcessInstanceChange> changeList4 = Lists.newArrayList();
+            List<AsConfig> asConfigList3 =  asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_network_device_special"));
+            asConfigList3.forEach(i -> {
+                ProcessInstanceChange change = new ProcessInstanceChange();
+                change.setAsId(asDeviceCommon.getId());
+                change.setName(i.getZhColumnName());
+                change.setIsFinish("是");
+                change.setModifyDatetime(LocalDateTime.now());
+                change.setDeptName(dept.getName());
+                change.setDeptName(dept.getName());
+                change.setDisplayName(user.getDisplayName());
+                Object dbValueObj = ReflectUtil.getFieldValue(asNetworkDeviceSpecialDB, StrUtil.toCamelCase(i.getEnColumnName()));
+                String dbValueObj_str = "";
+                Object pageValueObj = ReflectUtil.getFieldValue(asNetworkDeviceSpecial, StrUtil.toCamelCase(i.getEnColumnName()));
+                String pageValueObj_str = "";
+                // if (ObjectUtil.isNotEmpty(dbValueObj)) {
+                if (i.getType().equals("字符串") || i.getType().equals("数字")) {
+                    dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":dbValueObj.toString();//i.getType().equals("字符串")
+                    pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":pageValueObj.toString();
+                } else if (i.getType().contains("日期")){
+                    if(i.getType().equals("日期")){
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                        dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":((LocalDate) dbValueObj).format(fmt);
+                        pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":((LocalDate) pageValueObj).format(fmt);
+                    }
+                }
+                if(!(ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isEmpty(pageValueObj)) && ((ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isNotEmpty(pageValueObj)) || !dbValueObj_str.equals(pageValueObj_str))){
+                    change.setOldValue(dbValueObj_str);
+                    change.setNewValue(pageValueObj_str);
+                    changeList4.add(change);
+                }
+                //  }
+            });
+            if (ObjectUtil.isNotEmpty(changeList4)) {
+                processInstanceChangeService.saveBatch(changeList4);
+            }
             if (ObjectUtil.isNotEmpty(asNetworkDeviceSpecial)) {
                 asNetworkDeviceSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asNetworkDeviceSpecialService.saveOrUpdate(asNetworkDeviceSpecial);
@@ -474,6 +968,43 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         } else if (asTypeId ==  GlobalParam.typeIDForAff) {
             //外设
             AsIoSpecial asIoSpecial = assetVO.getAsIoSpecial();
+            AsIoSpecial asIoSpecialDB = asIoSpecialService.getOne(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+            //20250106 记录“变更记录”
+            List<ProcessInstanceChange> changeList4 = Lists.newArrayList();
+            List<AsConfig> asConfigList3 =  asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", "as_io_special"));
+            asConfigList3.forEach(i -> {
+                ProcessInstanceChange change = new ProcessInstanceChange();
+                change.setAsId(asDeviceCommon.getId());
+                change.setName(i.getZhColumnName());
+                change.setIsFinish("是");
+                change.setModifyDatetime(LocalDateTime.now());
+                change.setDeptName(dept.getName());
+                change.setDisplayName(user.getDisplayName());
+                Object dbValueObj = ReflectUtil.getFieldValue(asIoSpecialDB, StrUtil.toCamelCase(i.getEnColumnName()));
+                String dbValueObj_str = "";
+                Object pageValueObj = ReflectUtil.getFieldValue(asIoSpecial, StrUtil.toCamelCase(i.getEnColumnName()));
+                String pageValueObj_str = "";
+                // if (ObjectUtil.isNotEmpty(dbValueObj)) {
+                if (i.getType().equals("字符串") || i.getType().equals("数字")) {
+                    dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":dbValueObj.toString();//i.getType().equals("字符串")
+                    pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":pageValueObj.toString();
+                } else if (i.getType().contains("日期")){
+                    if(i.getType().equals("日期")){
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                        dbValueObj_str =ObjectUtil.isEmpty(dbValueObj)?"":((LocalDate) dbValueObj).format(fmt);
+                        pageValueObj_str = ObjectUtil.isEmpty(pageValueObj)?"":((LocalDate) pageValueObj).format(fmt);
+                    }
+                }
+                if(!(ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isEmpty(pageValueObj)) && ((ObjectUtil.isEmpty(dbValueObj) && ObjectUtil.isNotEmpty(pageValueObj)) || !dbValueObj_str.equals(pageValueObj_str))){
+                    change.setOldValue(dbValueObj_str);
+                    change.setNewValue(pageValueObj_str);
+                    changeList4.add(change);
+                }
+                //  }
+            });
+            if (ObjectUtil.isNotEmpty(changeList4)) {
+                processInstanceChangeService.saveBatch(changeList4);
+            }
             if (ObjectUtil.isNotEmpty(asIoSpecial)) {
                 asIoSpecial.setAsId(asDeviceCommon.getId());
                 flag = flag && asIoSpecialService.saveOrUpdate(asIoSpecial);
@@ -486,13 +1017,13 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                 flag = flag && asSecurityProductsSpecialService.saveOrUpdate(asSecurityProductsSpecial);
             }
         } else if (asTypeId ==  GlobalParam.typeIDForYingyong) {
-            //应用系统
-            AsApplicationSpecial asApplicationSpecial = assetVO.getAsApplicationSpecial();
-            if (ObjectUtil.isNotEmpty(asApplicationSpecial)) {
-                asApplicationSpecial.setAsId(asDeviceCommon.getId());
-                flag = flag && asApplicationSpecialService.saveOrUpdate(asApplicationSpecial);
-            }
+        //应用系统
+        AsApplicationSpecial asApplicationSpecial = assetVO.getAsApplicationSpecial();
+        if (ObjectUtil.isNotEmpty(asApplicationSpecial)) {
+            asApplicationSpecial.setAsId(asDeviceCommon.getId());
+            flag = flag && asApplicationSpecialService.saveOrUpdate(asApplicationSpecial);
         }
+    }
         //20220612 todo问张强，这里是不要flag为false时，抛个异常（可以引发回滚吗？），让其回滚？
         return flag;
     }
@@ -500,7 +1031,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
     private String addAsComputerExcel(List<AsComputerExcel> excelList, String importMode) {
         //20221115从用户表读“部门+用户名”匹配上的人员信息，将其密级赋给计算机本身和硬盘
         List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("status", "正常"));
-        List<SysDept> deptList = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("pid", 2));
+        List<SysDept> deptList = sysDeptService.list(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("pid", GlobalParam.depSubRootID));
         //格式：<信息化中心,13>
         Map<Integer, String> mapDept = new HashMap<>();
         for (SysDept dept : deptList) {
@@ -526,8 +1057,8 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
             注意：更新模式中/对应硬盘的更新：CRUD都有：对DB中有&&导入表中没有的硬盘&&状态是"非 待报废|销毁|归库"的进行删除：但对于更新/新增（时的比较判断逻辑）来说：非在用的硬盘也要考虑进行去
          */
         if (importMode.equals("更新")) {
-            List<Integer> asTypeIdList = asTypeService.getTypeIdList(4);//约定了计算机的id:4
-            List<Integer> asTypeIdList2 = asTypeService.getTypeIdList(29);//约定了服务器存储设备的id:29
+            List<Integer> asTypeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForCMP);//约定了计算机的id:4
+            List<Integer> asTypeIdList2 = asTypeService.getTypeIdList(GlobalParam.typeIDForFWQ);//约定了服务器存储设备的id:29
             asTypeIdList.addAll(asTypeIdList2);
             List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
@@ -575,7 +1106,11 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                         if (ObjectUtil.isEmpty(asDeviceCommon.getState()))
                             asDeviceCommon.setState(this.getById(noIdMap.get(asDeviceCommon.getNo())).getState());
                         asComputerSpecial.setAsId(asDeviceCommon.getId());
-                        asComputerSpecial.setId(asComputerSpecialService.getOne(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
+                        ///20250102 todo在其他类型导入时也同步写下判空逻辑
+                        AsComputerSpecial a = asComputerSpecialService.getOne(new  QueryWrapper<AsComputerSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+                        if(ObjectUtil.isEmpty(a))
+                            throw new RuntimeException(asDeviceCommon.getNo() + "的计算机专用表不存在");
+                        asComputerSpecial.setId(a.getId());
                         asComputerGranted.setAsId(asDeviceCommon.getId());
                         asComputerGranted.setId(asComputerGrantedService.getOne(new  QueryWrapper<AsComputerGranted>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
                         asComputerSpecialService.updateById(asComputerSpecial);
@@ -757,7 +1292,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         //处理日期类型
         ExcelDateUtil.converToDate(excelList, AsNetworkDeviceExcel.class);
         if (importMode.equals("更新")) {//20221227
-            List<Integer> asTypeIdList = asTypeService.getTypeIdList(5);//约定了网络设备的typeid:5
+            List<Integer> asTypeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForNET);//约定了网络设备的typeid:5
             List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
@@ -779,7 +1314,10 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     if (ObjectUtil.isNotEmpty(noIdMap.get(asDeviceCommon.getNo()))) {
                         asDeviceCommon.setId(noIdMap.get(asDeviceCommon.getNo()));
                         this.updateById(asDeviceCommon);
-                        asNetworkDeviceSpecial.setId(asNetworkDeviceSpecialService.getOne(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
+                        AsNetworkDeviceSpecial a = asNetworkDeviceSpecialService.getOne(new  QueryWrapper<AsNetworkDeviceSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+                        if(ObjectUtil.isEmpty(a))
+                            throw new RuntimeException(asDeviceCommon.getNo() + "的网络设备专用表不存在");
+                        asNetworkDeviceSpecial.setId(a.getId());
                         asNetworkDeviceSpecial.setAsId(asDeviceCommon.getId());
                         asNetworkDeviceSpecialService.updateById(asNetworkDeviceSpecial);
                     } else //20221227资产号在DB不存在的设备：做一个记录
@@ -873,7 +1411,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         //处理日期类型
         ExcelDateUtil.converToDate(excelList, AsSecurityProductExcel.class);
         if (importMode.equals("更新")) {//20221227
-            List<Integer> asTypeIdList = asTypeService.getTypeIdList(7);//约定了安全产品的typeid:7
+            List<Integer> asTypeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForSafe);//约定了安全产品的typeid:7
             List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
@@ -989,7 +1527,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         //处理日期类型
         ExcelDateUtil.converToDate(excelList, AsIoExcel.class);
         if (importMode.equals("更新")) {//20221227
-            List<Integer> asTypeIdList = asTypeService.getTypeIdList(6);//约定了外设的typeid:6
+            List<Integer> asTypeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForAff);//约定了外设的typeid:6
             List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
@@ -1011,7 +1549,10 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
                     if (ObjectUtil.isNotEmpty(noIdMap.get(asDeviceCommon.getNo()))) {
                         asDeviceCommon.setId(noIdMap.get(asDeviceCommon.getNo()));
                         this.updateById(asDeviceCommon);
-                        asIoSpecial.setId(asIoSpecialService.getOne(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId())).getId());
+                        AsIoSpecial a = asIoSpecialService.getOne(new  QueryWrapper<AsIoSpecial>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommon.getId()));
+                        if(ObjectUtil.isEmpty(a))
+                            throw new RuntimeException(asDeviceCommon.getNo() + "的外设专用表不存在");
+                        asIoSpecial.setId(a.getId());
                         asIoSpecial.setAsId(asDeviceCommon.getId());
                         asIoSpecialService.updateById(asIoSpecial);
                     } else //20221227资产号在DB不存在的设备：做一个记录
@@ -1103,7 +1644,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
         //处理日期类型
         ExcelDateUtil.converToDate(excelList, AppExcel.class);
         if (importMode.equals("更新")) {//20221227
-            List<Integer> asTypeIdList = asTypeService.getTypeIdList(58);//约定了APP的typeid:58
+            List<Integer> asTypeIdList = asTypeService.getTypeIdList(GlobalParam.typeIDForApp);//约定了APP的typeid:58
             List<Map<String, Object>> listMaps = this.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).in("type_id", asTypeIdList).select("no", "id"));
             List<String> updateFailedList = new ArrayList<>();
             Map<String, Integer> noIdMap = new HashMap<>();
@@ -1303,6 +1844,7 @@ public class AsDeviceCommonServiceImpl extends ServiceImpl<AsDeviceCommonMapper,
 
     //是否覆盖原资产信息，是=不判重，只提示导入多少个资产，否=判重，提示导入多少个资产;设备编号xx、yy已经存在，未导入。
     @Override
+    @Transactional
     public List<String> addExcel(List<AsComputerExcel> list0, List<AsNetworkDeviceExcel> list1, List<AsSecurityProductExcel> list2, List<AsIoExcel> list3, List<StorageExcel> list4, List<AppExcel> list5, String importMode) {
         List<String> resultList = new ArrayList<>();
         //

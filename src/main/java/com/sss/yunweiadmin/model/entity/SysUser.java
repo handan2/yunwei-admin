@@ -130,5 +130,24 @@ public class SysUser implements Serializable {
     @TableField(exist = false)
     private String roleNameStr;
 
+    private String userCode;
+
+    private String orgCode;
+
+    private String identity;
+
+    private String position;
+
+    private String updateDateType;
+
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateDateTime;
+    /**
+     * 仅用于应用系统更新运维用户
+     */
+    @TableField(exist = false)
+    private String token;
+
     private Integer orgId = GlobalParam.orgId;
 }

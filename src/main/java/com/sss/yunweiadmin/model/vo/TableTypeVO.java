@@ -7,4 +7,6 @@ import lombok.Data;
 public class TableTypeVO {
     private String label;
     private String name;
+    private Double sort;
+
 }

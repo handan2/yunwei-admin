@@ -9,6 +9,10 @@ public class InfoNoExcel {
     private String netType;
     @ExcelProperty("信息点号")
     private String value;
+    @ExcelProperty("端口号")
+    private String port;
+    @ExcelProperty("交换机IP")
+    private String ip;
     @ExcelProperty("状态")
     private String status;
     @ExcelProperty("关联资产号")

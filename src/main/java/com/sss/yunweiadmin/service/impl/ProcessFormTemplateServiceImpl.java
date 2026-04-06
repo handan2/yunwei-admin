@@ -55,8 +55,14 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
     public Map<String, String> getLabelIdMapForItemByAjax(Integer processDefinitionId, String hideGroupIds) {
         if(ObjectUtil.isEmpty(processDefinitionId))
             return null;
+        int orgId = GlobalParam.orgId;
+        if(ObjectUtil.isNotEmpty(hideGroupIds) && hideGroupIds.contains("_")) {//20241106 穿透流程的前端参数标记
+            String[] a = hideGroupIds.split("_");
+            orgId = Integer.valueOf(a[1]);
+            hideGroupIds = a[0];//去除标记
+        }
         ProcessDefinition processDefinition = processDefinitionService.getById(processDefinitionId);
-        List<ProcessFormTemplate> list = this.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+        List<ProcessFormTemplate> list = this.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id", processDefinitionId));
         Map<String, String> map = Maps.newHashMap();
         List<String> hideGroupMemberLabelList = new ArrayList<>();
         //20230225 暂时把屏敝隐藏字段组（里的字段）这段代码注释了：因为有的“用于排他网关的隐藏字段”放在隐藏字段组后（因此处处理）无法在前端自动填充赋值
@@ -91,7 +97,7 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
         }
         //202207331把自定义表字段也加上
         List<TableTypeVO> list1 = new ArrayList<>();
-        Map<Integer, List<TableTypeVO>> mapForTableTypeVOList = this.getTableTypeVO(processDefinitionId);
+        Map<Integer, List<TableTypeVO>> mapForTableTypeVOList = this.getTableTypeVO(processDefinitionId,orgId);
         for (Map.Entry<Integer, List<TableTypeVO>> entry : mapForTableTypeVOList.entrySet()) {
             list1.addAll(entry.getValue());
         }
@@ -122,33 +128,38 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
     }
 
     @Override
-    public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) {
+    public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId, Integer orgId) {
         Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
         //1.取出所有的表类型的名称
-        List<ProcessFormTemplate> list = this.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
+        List<ProcessFormTemplate> list = this.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id", processDefinitionId));
         List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
             String tableId = item.getType().split("\\.")[0];
             return Integer.parseInt(tableId);
         }).collect(Collectors.toList());
         if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
             //2.根据表名称取出processFormCustomType
-            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).in("id", tableIdList));
+            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",orgId).in("id", tableIdList));
             //3.
             for (ProcessFormCustomType processFormCustomType : typeList) {
                 List<TableTypeVO> tmpList = Lists.newArrayList();
 
                 String props = processFormCustomType.getProps();
-                Map<String, List<AsConfig>> tmpMap = ProcessFormCustomTypeUtil.parseProps(props);//String代表英文table名称
+                Map<String, List<AsConfig>> tmpMap = ProcessFormCustomTypeUtil.parseProps(props,orgId);//String代表英文table名称
                 tmpMap.entrySet().stream().forEach(item -> {
                     item.getValue().forEach(item2 -> {
                         TableTypeVO tableTypeVO = new TableTypeVO();
                         tableTypeVO.setLabel(processFormCustomType.getName() + "." + item2.getZhColumnName());
                         tableTypeVO.setName(processFormCustomType.getId() + "." + processFormCustomType.getName() + "." + item.getKey() + "." + item2.getEnColumnName() + "." + item2.getId());
+                        tableTypeVO.setSort(item2.getSort());
                         tmpList.add(tableTypeVO);
                     });
                 });
+                //20251010
+                List<TableTypeVO> sortedList = tmpList.stream()
+                        .sorted(Comparator.comparing(TableTypeVO::getSort))
+                        .collect(Collectors.toList());
 
-                map.put(processFormCustomType.getId(), tmpList);
+                map.put(processFormCustomType.getId(), sortedList);
             }
         }
         return map;
@@ -164,9 +175,10 @@ public class ProcessFormTemplateServiceImpl extends ServiceImpl<ProcessFormTempl
     public  List<FormTemplateVO> getFormTemplateTree(List<ProcessFormTemplate> initList,Integer processDefinitionId,String actProcessInstanceId) {
         if (CollUtil.isEmpty(initList)) throw new RuntimeException("集合为空！");
         Integer orgId = GlobalParam.orgId;
-        if(actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
+        if(ObjectUtil.isNotEmpty(actProcessInstanceId) && actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
             String[] a = actProcessInstanceId.split("_");
             orgId = Integer.valueOf(a[1]);
+           // actProcessInstanceId = a[0]; 保留actProcessInstanceId里的“_”标记，方便被调用函数里来判断org_id
         }
         //20221103
         String[] hideFormItemArr ;

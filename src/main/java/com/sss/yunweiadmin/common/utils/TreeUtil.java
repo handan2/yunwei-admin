@@ -16,6 +16,7 @@ import com.sss.yunweiadmin.model.vo.TreeTransferVO;
 import com.sss.yunweiadmin.service.SysUserService;
 import org.springframework.beans.BeanUtils;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -92,7 +93,7 @@ public class TreeUtil {
 
         //获取所有用户
         SysUserService sysUserService = SpringUtil.getBean(SysUserService.class);
-        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).orderByAsc("sort"));
+        List<SysUser> userList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).notIn("status",  Arrays.asList(new String[]{"离退","停用"})).orderByAsc("sort"));
         //20220520 collect（Collectors.groupingBy（））用法：返回一个map
         Map<Integer, List<SysUser>> depUserlistMap = userList.stream().collect(Collectors.groupingBy(SysUser::getDeptId));
         for (SysDept dept : initList) {
@@ -156,7 +157,7 @@ public class TreeUtil {
             Integer pid = (Integer) ReflectUtil.getFieldValue(obj, "pid");
             T parent = map.get(pid);
             if (parent != null) {
-                Object childen = ReflectUtil.getFieldValue(parent, "children");
+                Object childen = ReflectUtil.getFieldValue(parent, "children");//"children"是非DB字段
                 if (childen != null) {
                     ReflectUtil.invoke(childen, "add", map.get(id));
                 } else {

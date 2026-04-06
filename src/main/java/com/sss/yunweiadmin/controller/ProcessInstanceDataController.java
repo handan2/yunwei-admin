@@ -2,23 +2,31 @@ package com.sss.yunweiadmin.controller;
 
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.annotation.JsonAppend;
+import com.google.common.collect.Maps;
 import com.sss.yunweiadmin.bean.WorkFlowBean;
 import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.operate.OperateLog;
 import com.sss.yunweiadmin.common.result.ResponseResult;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
+import com.sss.yunweiadmin.common.utils.CustomFunction;
 import com.sss.yunweiadmin.common.utils.SpringUtil;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.vo.*;
 import com.sss.yunweiadmin.service.*;
 import lombok.SneakyThrows;
+import org.activiti.engine.HistoryService;
+import org.activiti.engine.RuntimeService;
+import org.activiti.engine.runtime.Execution;
+import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Task;
 import org.checkerframework.checker.units.qual.A;
 import org.omg.CORBA.OBJ_ADAPTER;
@@ -82,12 +90,109 @@ public class ProcessInstanceDataController {
     OperateeLogService operateeLogService;
     @Autowired
     SysDicService sysDicService;
+    @Autowired
+    SysUserService sysUserService;
+    @Autowired
+    RuntimeService runtimeService;
+    @Autowired
+    HistoryService historyService;
+
+
+
+    @GetMapping("getUserTodoList")
+    public List<ColumnChartVO> getUserTodoList(Integer processDefinitionId, String hideGroupIds) {
+
+        List<SysUser> sysUserList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",0).eq("status","正常").eq("dept_id",GlobalParam.deptIDForXXH).notLike("display_name","审计").notLike("display_name","管理").notLike("display_name","安全").notLike("display_name","系统"));
+        Map<String, String> loginAndDisplayNameMap = new HashMap<>();
+        sysUserList.forEach( user -> {
+            // 可选：过滤空Key，避免Map出现null键
+            if (ObjectUtil.isNotEmpty(user.getLoginName())) {
+                loginAndDisplayNameMap.put(user.getLoginName(), user.getDisplayName());
+            }
+        });
+        List<String> sysUserLoginNameList = sysUserList.stream().map(i->i.getLoginName()).collect(Collectors.toList());
+        List<String> sysUserDisplayNameList = sysUserList.stream().map(i->i.getDisplayName()).collect(Collectors.toList());
+        List<String> loginNameListForOperatorForCross = null;//跨系统待办人员
+        QueryWrapper<ProcessInstanceData> queryWrapper = new  QueryWrapper<>();//目前唯二一处不需要加eq("org_id",GlobalParam.orgId)
+        if(GlobalParam.orgId == 0) {//只让orgId为0时，即信息化中心来执行；约定了所与惯性公司的ID分别0、1
+            SysDic dic_operatorForCross = sysDicService.getOne(new  QueryWrapper<SysDic>().eq("org_id",1).eq("flag", "跨系统待办人员").orderByAsc("sort"));
+            if(ObjectUtil.isNotEmpty(dic_operatorForCross))
+                loginNameListForOperatorForCross = Arrays.asList(dic_operatorForCross.getName().split(","));//Arrays.asList(operatorTypeIds.split(","))
+           // if(CollUtil.isNotEmpty(loginNameListForOperatorForCross) && loginNameListForOperatorForCross.contains(user.getLoginName()))//同时要获取org_id为 0、1的待办 //
+                queryWrapper.in("org_id",Arrays.asList(new Integer[]{0,1})).notIn("process_status", Arrays.asList(new String[]{"完成","中止","终止",""})).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+           // else
+              //  queryWrapper.eq("org_id",GlobalParam.orgId).notIn("process_status", Arrays.asList(new String[]{"完成","中止","终止"})).like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+        } else
+            queryWrapper.eq("org_id",GlobalParam.orgId).notIn("process_status", Arrays.asList(new String[]{"完成","中止","终止",""})).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+        List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(queryWrapper);
+        Map<String, Integer> map = Maps.newHashMap();
+        sysUserDisplayNameList.stream().forEach(item->map.put(item,0));
+        List<ColumnChartVO> list = new ArrayList<>();
+        List<String>stringList = new ArrayList<>();
+        for(ProcessInstanceData p : processInstanceDataList){
+            if(ObjectUtil.isNotEmpty(p.getLoginCurrentStep())){
+                String[] strArr = p.getLoginCurrentStep().split(",");
+                for(String s : strArr){
+                    if(ObjectUtil.isNotEmpty(loginAndDisplayNameMap.get(s))){
+                        map.put(loginAndDisplayNameMap.get(s), MapUtil.getInt(map, loginAndDisplayNameMap.get(s), 0) + 1);
+                        if(s.equals("kanglei"))
+                            stringList.add(p.getId().toString());
+                    }
+
+                }
+            }
+        }
+
+         list = map.entrySet().stream()
+                 .filter(entry -> StrUtil.isNotBlank(entry.getKey()) && entry.getValue() != null)
+                 .map(entry -> new ColumnChartVO(entry.getKey(), entry.getValue()))
+                 .collect(Collectors.toList());
+     //   ColumnChartVO valueLabelVO = new ColumnChartVO("aaa",12);
+       // list.add(valueLabelVO);
+        System.out.println(map.get("康磊"));
+        return list;
+    }
+
+    /**
+     * 将流程当前活动节点跳转到指定节点
+     * @param processInstanceId 流程实例 ID
+     * @param targetActivityId 目标节点 ID
+     */
+    public void jumpToActivity(String processInstanceId, String targetActivityId) {
+        // 获取当前流程实例
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult();
+
+        if (processInstance == null) {
+            throw new RuntimeException("未找到流程实例，ID: " + processInstanceId);
+        }
+
+        // 获取当前活动节点
+        List<Execution> executions = runtimeService.createExecutionQuery()
+                .processInstanceId(processInstanceId)
+                .list();
+
+//        for (Execution execution : executions) {
+//            // 删除当前活动实例
+//            runtimeService.signal(execution.getId());
+//            runtimeService.deleteExecution
+//            // 创建新的执行实例并跳转到指定节点
+//            runtimeService.createProcessInstanceBuilder()
+//                    .processInstanceId(processInstanceId)
+//                    .startBeforeActivity(targetActivityId)
+//                    .start();
+//        }
+    }
 
     //20231205 专用于手工记日志：流程相关
 
     void saveLog(String mode, String proInfo){
         SysUser user = (SysUser) httpSession.getAttribute("user");
+
         OperateeLog operateeLog = new OperateeLog();
+        if(ObjectUtil.isNotEmpty(httpSession.getAttribute("crossOrgId")))//20241107如果是穿透流程
+            operateeLog.setOrgId((Integer)httpSession.getAttribute("crossOrgId"));
         String paramStr = "";
         if("start".equals(mode)){
             paramStr =  "发起流程【"+ proInfo + "】";
@@ -268,7 +373,7 @@ public class ProcessInstanceDataController {
 
     //待办任务
     @GetMapping("myList")
-    public IPage<ProcessInstanceData> myList(int currentPage, int pageSize, String orderNum, String processName, String processType, String startDate, String no, String miji, String displayName, String deptName) {
+    public IPage<ProcessInstanceData> myList(int currentPage, String param, int pageSize, String orderNum, String processName, String processType, String startDate, String no, String miji, String displayName, String deptName) {
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
 
@@ -281,12 +386,22 @@ public class ProcessInstanceDataController {
             SysDic dic_operatorForCross = sysDicService.getOne(new  QueryWrapper<SysDic>().eq("org_id",1).eq("flag", "跨系统待办人员").orderByAsc("sort"));
             if(ObjectUtil.isNotEmpty(dic_operatorForCross))
                 loginNameListForOperatorForCross = Arrays.asList(dic_operatorForCross.getName().split(","));//Arrays.asList(operatorTypeIds.split(","))
-            if(CollUtil.isNotEmpty(loginNameListForOperatorForCross) && loginNameListForOperatorForCross.contains(user.getLoginName()))//同时要获取org_id为 0、1的待办 //
-                queryWrapper.in("org_id",Arrays.asList(new Integer[]{0,1})).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
-            else
-                queryWrapper.eq("org_id",GlobalParam.orgId).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
-        } else
-            queryWrapper.eq("org_id",GlobalParam.orgId).ne("process_status", "完成").like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+            if( (ObjectUtil.isNotEmpty(param)  && "chart".contains(param)) ){
+                queryWrapper.notLike("login_name", "yutao03");
+                queryWrapper.in("org_id", Arrays.asList(new Integer[]{0, 1})).notIn("process_status", Arrays.asList(new String[]{"完成", "中止", "终止",""})).orderByDesc("last_commit_datetime");
+                List<SysUser> sysUserList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",0).eq("status","正常").eq("dept_id",GlobalParam.deptIDForXXH).notLike("display_name","审计").notLike("display_name","管理").notLike("display_name","安全").notLike("display_name","系统"));
+                if (CollUtil.isNotEmpty(sysUserList)) {
+                    queryWrapper.and(wrapper -> {sysUserList.forEach(sysUser -> wrapper.or().like("display_current_step", sysUser.getDisplayName())); });
+                }
+            } else {
+                if(CollUtil.isNotEmpty(loginNameListForOperatorForCross) && loginNameListForOperatorForCross.contains(user.getLoginName())) {//同时要获取org_id为 0、1的待办 //
+
+                  queryWrapper.in("org_id", Arrays.asList(new Integer[]{0, 1})).notIn("process_status", Arrays.asList(new String[]{"完成", "中止", "终止"})).like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+                } else
+                    queryWrapper.eq("org_id",GlobalParam.orgId).notIn("process_status", Arrays.asList(new String[]{"完成","中止","终止"})).like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
+            }
+            } else
+            queryWrapper.eq("org_id",GlobalParam.orgId).notIn("process_status", Arrays.asList(new String[]{"完成","中止","终止"})).like("display_current_step", user.getDisplayName()).like("login_current_step", user.getLoginName()).orderByDesc("last_commit_datetime");//20241015 倒排主键：id改为last_commit_datetime
 
         if (ObjectUtil.isNotEmpty(processName)) {
             queryWrapper.like("process_name", processName);
@@ -294,9 +409,17 @@ public class ProcessInstanceDataController {
         if (ObjectUtil.isNotEmpty(orderNum)) {
             queryWrapper.like("order_num", orderNum);
         }
-        if (ObjectUtil.isNotEmpty(displayName)) {
-            queryWrapper.eq("display_name", displayName);
+        if (ObjectUtil.isEmpty(param) || !"chart".contains(param)) {
+
+            if (ObjectUtil.isNotEmpty(displayName)) {
+                queryWrapper.eq("display_name", displayName);
+            }
+        } else{ //用于大屏
+            queryWrapper.notLike("display_name", "管理");
+            queryWrapper.notLike("display_name", "审计");
+            queryWrapper.notLike("display_name", "于涛");
         }
+
         if (ObjectUtil.isNotEmpty(deptName)) {
             queryWrapper.eq("dept_name", deptName);
         }
@@ -336,10 +459,13 @@ public class ProcessInstanceDataController {
         //再次对loginName进行了过滤：防止liuyang|liuyang02这种重复
         page.setRecords(page.getRecords().stream().filter(item->{
             List<String> list = Arrays.asList(item.getLoginCurrentStep().split(","));
-            if(list.contains(user.getLoginName()))
+            if (ObjectUtil.isEmpty(param) || !"chart".contains(param)){
+                if(list.contains(user.getLoginName()))
+                    return true;
+                else
+                    return  false;
+            } else
                 return true;
-            else
-                return  false;
         }).collect(Collectors.toList()));
 
         return page;
@@ -562,9 +688,9 @@ public class ProcessInstanceDataController {
         }
         int processDefId = value1.getProcessDefinitionId();
         ProcessDefinition proDef = processDefinitionService.getById(processDefId);
-        if (proDef.getProcessName().contains("故障报修")) {//202208034 故障报修流程不判断validate
-            return null;
-        }
+//        if (proDef.getProcessName().contains("故障报修")) {//202208034 故障报修流程不判断validate
+//            return null;
+//        }
         String processType = proDef.getProcessType();
         //20220528加判空：不能用OBjectUtil(不能判断size=0这种List）
         if (CollUtil.isEmpty(value2List)) {
@@ -590,7 +716,7 @@ public class ProcessInstanceDataController {
         int p_typeId = asTypeService.getOne(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("id", typeId)).getPid();
         int p_p_typeId = asTypeService.getOne(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("id", p_typeId)).getPid();
         //20220919 添加p_p_typeId == 0：用于满足“应用系统”的情况:设备类别的level=2,即p_p_typeId == 0;
-        if (p_p_typeId != 1)//20230719暂改为p_p_typeId != 1
+        if (p_p_typeId != GlobalParam.devRootID)//20230719暂改为p_p_typeId != 1
             return null;
 
         //获取资产ID对应的所有ACTINST IDList
@@ -618,12 +744,14 @@ public class ProcessInstanceDataController {
                 mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).notLike("process_name","策略变更").select("id"));
 //            else if(proDef.getProcessName().contains("借用"))//20231228 暂用于便携机借用，不过没有实质意义：毕竟在“选择资产”时就提前屏敝了
 //                mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).or().like("process_type", "归还").select("id"));
+            else if(proDef.getProcessName().contains("维修") || proDef.getProcessName().contains("定密"))//20250726 定密时，不能同时换硬盘；返过来也不行
+                mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", "定密").or().like("process_type", "维修").notLike("process_name","故障报修").select("id"));
             else
-                mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).notLike("process_name","故障报修").select("id"));
+                mutexDefIdListMap = processDefinitionService.listMaps(queryWrapper.like("process_type", processType).select("id"));
         }
         List<Integer> mutexDefIdList = mutexDefIdListMap.stream().map(item -> Integer.valueOf(item.get("id").toString())).collect(Collectors.toList());
         //取出互斥的业务实例表
-        List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).in("process_definition_id", mutexDefIdList).ne("process_status", "完成").in("act_process_instance_id", actProcessInsIdList));
+        List<ProcessInstanceData> processInstanceDataList = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).in("process_definition_id", mutexDefIdList).notIn("process_status", Arrays.asList("完成","中止","终止")).in("act_process_instance_id", actProcessInsIdList));
         return processInstanceDataList;
     }
 
@@ -642,10 +770,14 @@ public class ProcessInstanceDataController {
     public ProcessDefinition getNewProcessDef(Integer processInstanceDataId) {
         ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
         String actProcessInstanceId = processInstanceData.getActProcessInstanceId();
-        List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstanceId);
-        Task myTask = myTaskList.get(0);
-        Object nextProcessNameObj = workFlowBean.getProcessVariable(myTask);
+        Object nextProcessNameObj = null;
+        if(ObjectUtil.isNotEmpty(actProcessInstanceId)){
+            List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstanceId);
+            Task myTask = myTaskList.get(0);//20250602 这里只适合之前把后续流程写入流程变量的作法
+            nextProcessNameObj = workFlowBean.getProcessVariable(myTask);
+        } else
         // ProcessDefinition nextProcess  = processDefinitionService.getOne(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("status","启用").eq("have_display","是").eq("process_name",(String)nextProcessNameObj));
+            nextProcessNameObj = "信息设备自查结果填报流程";//20250602有时间优化下机制
         return processDefinitionService.getOne(new  QueryWrapper<ProcessDefinition>().eq("org_id",GlobalParam.orgId).eq("status", "启用").eq("have_display", "是").eq("process_name", (String) nextProcessNameObj));
         //return new StartOrHandleProcessResultVO();
 
@@ -663,7 +795,7 @@ public class ProcessInstanceDataController {
     @GetMapping("getOldProValueForRepair")//20230223加:专门用于故障报修流程：该 流程只有一个处理节点
     public  Map getOldProValueForRepair(Integer processInstanceDataId) {
         System.out.println(processInstanceDataId);
-        ProcessInstanceNode node = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId).like("task_name","处理")).get(0);
+        ProcessInstanceNode node = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",processInstanceDataId).like("task_name","处理").or().like("task_name","判断")).get(0);//20250730 惯性报修流程中处理节点名里改为“判断”
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String dateStr = node.getEndDatetime().format(fmt);
         String problemDec = "";
@@ -693,10 +825,28 @@ public class ProcessInstanceDataController {
         return startOrHandleProcessResultVO;
     }
 
+//    @OperateLog(module = "流程模块", type = "代发起流程")
+    @PostMapping("autoStart")//20250602
+    public StartOrHandleProcessResultVO autoStart(MultipartFile[] files,  String aaa, String fujianMiji) {
+        EndAndStartProcessVO endAndStartProcessVO = JSON.parseObject(aaa, EndAndStartProcessVO.class);
+        StartOrHandleProcessResultVO startOrHandleProcessResultVO = new StartOrHandleProcessResultVO();
+        List<ProcessInstanceData> processInstanceDataList = this.validate(endAndStartProcessVO.getValue1(), endAndStartProcessVO.getValue2List(), null);
+        if (ObjectUtil.isNotEmpty(processInstanceDataList)) {//有值即存在互斥实例
+            startOrHandleProcessResultVO.setProcessInstanceDataList(processInstanceDataList);
+            startOrHandleProcessResultVO.setIsSuccess(false);
+        } else {
+            Integer id = endAndStartProcessVO.getValue1().getProcessDefinitionId();
+            ProcessDefinition processDefinition = processDefinitionService.getById(id);
+            saveLog("start",processDefinition.getProcessName());
+            startOrHandleProcessResultVO.setIsSuccess(processInstanceDataService.autoStart(files,endAndStartProcessVO, fujianMiji));
+        }
+        return startOrHandleProcessResultVO;
+    }
+
 //    @OperateLog(module = "流程模块", type = "发起流程")
     @PostMapping("start")//20211112重写
     @SneakyThrows//20240122; 注意总结, MultipartFile[] files && 前端用“formData”传参时，第二个参数也不能用@RequestBody修饰 了：todo研
-    public StartOrHandleProcessResultVO start( MultipartFile[] files ,String aaa,String fujianMiji) {
+    public StartOrHandleProcessResultVO start( MultipartFile[] files, String aaa,String fujianMiji) {
 
         StartProcessVO startProcessVO = JSON.parseObject(aaa, StartProcessVO.class);
         StartOrHandleProcessResultVO startOrHandleProcessResultVO = new StartOrHandleProcessResultVO();
@@ -727,12 +877,21 @@ public class ProcessInstanceDataController {
     @PostMapping("handle")
     //返回值改造成自定义VO
     public StartOrHandleProcessResultVO handle(@RequestBody CheckProcessVO checkProcessVO) {
+        Integer orgId = GlobalParam.orgId;
+        if(ObjectUtil.isNotEmpty(checkProcessVO.getOrgId())) {//20241106 流程的前端发来的机构D参数标记
+             orgId = checkProcessVO.getOrgId();
+             if(orgId != GlobalParam.orgId)//只有不相等时，才写入session
+                httpSession.setAttribute("crossOrgId",orgId);
+        }
         SysUser user = (SysUser) httpSession.getAttribute("user");
         if (user == null) {
             throw new RuntimeException("用户未登录或登陆超时，请关闭本页面，重新从登陆入口进入");
         }
+    //    return null;
         StartOrHandleProcessResultVO startOrHandleProcessResultVO = new StartOrHandleProcessResultVO();
-        List<ProcessInstanceData> processInstanceDataList = this.validate(checkProcessVO.getValue1(), checkProcessVO.getValue2List(), checkProcessVO.getProcessInstanceDataId());
+        List<ProcessInstanceData> processInstanceDataList = null;
+        if(ObjectUtil.isEmpty(httpSession.getAttribute("crossOrgId")))//如果不是穿透流程才判断互斥
+            processInstanceDataList = this.validate(checkProcessVO.getValue1(), checkProcessVO.getValue2List(), checkProcessVO.getProcessInstanceDataId());
         if (ObjectUtil.isNotEmpty(processInstanceDataList)) {//有值即存在互斥实例
             startOrHandleProcessResultVO.setProcessInstanceDataList(processInstanceDataList);
             startOrHandleProcessResultVO.setIsSuccess(false);
@@ -741,6 +900,7 @@ public class ProcessInstanceDataController {
             saveLog("handle", processInstanceData.getProcessName() + "," + processInstanceData.getId());
             startOrHandleProcessResultVO.setIsSuccess(processInstanceDataService.handle(checkProcessVO));
         }
+        httpSession.removeAttribute("crossOrgId");//20241108 关闭跨流程标识
         return startOrHandleProcessResultVO;
     }
 
@@ -762,6 +922,12 @@ public class ProcessInstanceDataController {
 //        //   ProcessInstanceData processInstanceData = ProcessInstanceDataService.getOn
 //        return processInstanceDataService.getById(id);
 //    }
+
+    @OperateLog(module = "流程模块", type = "删除流程")
+    @PostMapping("terminate")
+    public boolean terminate(@RequestBody ProcessInstanceData processInstanceData) {
+        return processInstanceDataService.terminate(processInstanceData);
+    }
 
     @OperateLog(module = "流程模块", type = "删除流程")
     @PostMapping("delete")

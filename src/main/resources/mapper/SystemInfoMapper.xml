@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.SystemInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.SystemInfo">
+        <id column="id" property="id" />
+        <result column="ebm" property="ebm" />
+        <result column="hostname" property="hostname" />
+        <result column="ip_address" property="ipAddress" />
+        <result column="hdd_serial" property="hddSerial" />
+        <result column="install_date" property="installDate" />
+        <result column="cpu_model" property="cpuModel" />
+        <result column="mac__address" property="macAddress" />
+        <result column="check_date" property="checkDate" />
+        <result column="os_name" property="osName" />
+        <result column="usb_log" property="usbLog" />
+        <result column="mem_size" property="memSize" />
+        <result column="hdd_size" property="hddSize" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, ebm, hostname, ip_address, hdd_serial, install_date, cpu_model, mac__address, check_date, os_name, usb_log, mem_size, hdd_size
+    </sql>
+
+</mapper>

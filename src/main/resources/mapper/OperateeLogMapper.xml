@@ -15,12 +15,13 @@
         <result column="operate_module" property="operateModule" />
         <result column="operate_type" property="operateType" />
         <result column="operate_description" property="operateDescription" />
+        <result column="result" property="result" />
         <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, login_name, display_name, ip, create_datetime, method, param, time, operate_module, operate_type, operate_description, org_id
+        id, login_name, display_name, ip, create_datetime, method, param, time, operate_module, operate_type, operate_description, result, org_id
     </sql>
 
 </mapper>

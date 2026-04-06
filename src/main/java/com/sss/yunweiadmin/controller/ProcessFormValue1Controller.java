@@ -1,6 +1,7 @@
 package com.sss.yunweiadmin.controller;
 
 
+import cn.hutool.core.util.ObjUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
@@ -28,11 +29,13 @@ public class ProcessFormValue1Controller {
 
     @GetMapping("get")
     public ProcessFormValue1 get(Integer processDefinitionId, String actProcessInstanceId) {
-        if(actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
+        if(ObjUtil.isNotEmpty(actProcessInstanceId) && actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
             String[] a = actProcessInstanceId.split("_");
             return processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id", a[1]).eq("process_definition_id", processDefinitionId).eq("act_process_instance_id",  a[0]));
-        } else
+        } else {
             return processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id", GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("act_process_instance_id", actProcessInstanceId));
+        }
+
     }
 
 }

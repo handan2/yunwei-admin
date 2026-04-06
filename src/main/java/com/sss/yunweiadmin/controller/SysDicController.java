@@ -55,6 +55,12 @@ public class SysDicController {
 
     @GetMapping("getDicValueList")
     public List<String> getDicValueList(String flag) {
+        int orgId = GlobalParam.orgId;
+        if(flag.contains("_")) {//20241106 穿透流程的前端参数标记
+            String[] a = flag.split("_");
+            orgId = Integer.valueOf(a[1]);
+            flag = a[0];//去除标记
+        }
         List<SysDic> list = sysDicService.list(new  QueryWrapper<SysDic>().eq("org_id",GlobalParam.orgId).eq("flag", flag).orderByAsc("sort"));
         return list.stream().map(SysDic::getName).collect(Collectors.toList());
     }

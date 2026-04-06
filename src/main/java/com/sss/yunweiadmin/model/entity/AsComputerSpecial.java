@@ -73,15 +73,9 @@ public class AsComputerSpecial implements Serializable {
 
     private String affDeviceDec;
 
-    private String haveReinstall;
-
-    private String haveChangeDisk;
-
-    private String haveChangeNetcard;
-
-    private String haveChangeRam;
-
     private String safeInstall;
+
+    private String sealMode;
 
     private Integer orgId = GlobalParam.orgId;
 

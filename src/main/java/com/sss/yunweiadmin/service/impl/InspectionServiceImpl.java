@@ -1,30 +1,25 @@
 package com.sss.yunweiadmin.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.utils.ExcelDateUtil;
-import com.sss.yunweiadmin.model.entity.AsDeviceCommon;
-import com.sss.yunweiadmin.model.entity.Inspection;
+import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.entity.Inspection;
 import com.sss.yunweiadmin.mapper.InspectionMapper;
-import com.sss.yunweiadmin.model.entity.SysUser;
 import com.sss.yunweiadmin.model.excel.AsComputerExcel;
 import com.sss.yunweiadmin.model.excel.InspectionExcel;
-import com.sss.yunweiadmin.service.AsComputerGrantedService;
-import com.sss.yunweiadmin.service.AsDeviceCommonService;
-import com.sss.yunweiadmin.service.InspectionService;
+import com.sss.yunweiadmin.service.*;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.sss.yunweiadmin.service.SysDeptService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpSession;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +38,73 @@ public class InspectionServiceImpl extends ServiceImpl<InspectionMapper, Inspect
     HttpSession httpSession;
     @Autowired
     SysDeptService sysDeptService;
+    @Autowired
+    ProcessInstanceDataService processInstanceDataService;
+    @Autowired
+    SysUserService sysUserService;
+    @Autowired
+    SysRoleUserService sysRoleUserService;
+
+
+
+    @Override
+    public boolean improve(Integer[] idArr){
+        //20250617todo 改造成给所有保密员发送
+        Integer orgId = GlobalParam.orgId;
+
+
+        List<Integer> userIdListForCollaborator = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",orgId).eq("role_id", GlobalParam.roleIdForAssist)).stream().map(item -> item.getUserId()).collect(Collectors.toList());
+        List<SysUser> sysUserList = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",orgId).eq("status","正常").in("id",userIdListForCollaborator));
+        List<ProcessInstanceData> processInstanceDataList = new ArrayList<>();
+
+        LocalDate today = LocalDate.now(); // 获取当前日期
+        int month = today.getMonthValue();
+        Map<Integer, Integer> map = new HashMap<>();//20220625测流程变量
+        sysUserList.stream().forEach(item->{
+            if(ObjectUtil.isEmpty(map.get(item.getDeptId()))){//协管员只选一个人
+                map.put(item.getDeptId(),item.getDeptId());
+                SysDept sysDept = sysDeptService.getById(item.getDeptId());
+                if(ObjectUtil.isNotEmpty(sysDept)){
+                    ProcessInstanceData processInstanceData =  new ProcessInstanceData();
+                    //SysUser user = (SysUser) httpSession.getAttribute("user");
+                    //SysDept dept = sysDeptService.getById(user.getDeptId());
+                    processInstanceData.setProcessName("信息设备自查任务"+"("+month+ "月)");
+                    processInstanceData.setDisplayName("自动");
+                    processInstanceData.setLoginName(item.getLoginName());
+                    processInstanceData.setOrderNum(processInstanceDataService.getTimeAndRandomNum());
+                    processInstanceData.setDeptName(sysDept.getName());
+                    processInstanceData.setStartDatetime(LocalDateTime.now());
+                    processInstanceData.setProcessStatus("定时任务");
+                    processInstanceData.setDisplayCurrentStep(item.getDisplayName());
+                    processInstanceData.setLoginCurrentStep(item.getLoginName());
+                    LocalDateTime localDateTime = LocalDateTime.now();
+                    processInstanceData.setLastCommitDatetime(localDateTime);//20241015
+                    processInstanceDataList.add(processInstanceData);
+                }
+
+            }
+        });
+
+
+//        ProcessInstanceData processInstanceData =  new ProcessInstanceData();
+//        LocalDate today = LocalDate.now(); // 获取当前日期
+//        int month = today.getMonthValue();
+//        processInstanceData.setProcessName("信息设备自查任务"+"("+"1"+ "月)");//
+//        processInstanceData.setDisplayName("自动");
+//        processInstanceData.setLoginName("李凌霄");
+//        processInstanceData.setOrderNum(processInstanceDataService.getTimeAndRandomNum());
+//        processInstanceData.setDeptName("伺服系统生产部");
+//        processInstanceData.setStartDatetime(LocalDateTime.now());
+//        processInstanceData.setProcessStatus("定时任务");
+//        processInstanceData.setDisplayCurrentStep("李凌霄");
+//        processInstanceData.setLoginCurrentStep("lilingxiao");
+//        LocalDateTime localDateTime = LocalDateTime.now();
+//        processInstanceData.setLastCommitDatetime(localDateTime);//20241015
+//        processInstanceDataList.add(processInstanceData);
+
+        processInstanceDataService.saveBatch(processInstanceDataList);//processInstanceDataService.saveBatch(processInstanceDataList);//保存成功后mybatis会把主键/ID传回参数processInstanceData中
+        return true;
+    };
     @Override
     public String addExcel(List<InspectionExcel> excelList, String importMode) {
         //去掉db中存在的信息点号，剩下页面上需要导入的信息点号

@@ -33,13 +33,17 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
         excludeList.add("/sysUser/ssoLoginForUserVO");//20230513
         excludeList.add("/processInstanceData/addCandidate");//20230714
         excludeList.add("/asDeviceCommon/listForSoftware");//
-        excludeList.add("/asDeviceCommon/getAsDeviceCommonBySap");//20241023
+		excludeList.add("/asDeviceCommon/getERPDeviceInfo");//
+		excludeList.add("/asDeviceCommon/uploadCheckInfo");//
       //  excludeList.add("/back");//20211127
         excludeList.add("/login1");
         excludeList.add("/ssologin");
         excludeList.add("/netgateLogin");
         excludeList.add("/redirect");
         excludeList.add("/sysUser/printLogin");
+		excludeList.add("/sysUser/getUsers");
+        excludeList.add("/sysUser/updateUsers");
+        excludeList.add("/sysUser/getToken");
         excludeList.add("/*.js");
         excludeList.add("/*.css");
         excludeList.add("/sysUser/download");
@@ -55,7 +59,7 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
         //20231227 登陆拦截器的优先级高于这里; 这里的配置要清缓存||修改“index.html里的静态资源路径参数”才起作用
         registry.addResourceHandler("/**", "/static/**").addResourceLocations("classpath:/static/");
         //registry.addResourceHandler( "/static/**").addResourceLocations("classpath:/static/");
-        registry.addResourceHandler( "/download/**").addResourceLocations("file:///E:/");
+        registry.addResourceHandler( "/download/**").addResourceLocations("file:///data/download/yunwei/");
         super.addResourceHandlers(registry);
     }
 

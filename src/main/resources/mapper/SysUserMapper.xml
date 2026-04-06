@@ -21,13 +21,18 @@
         <result column="remark" property="remark" />
         <result column="dept_id" property="deptId" />
         <result column="temp" property="temp" />
-        <result column="create_by_user" property="createByUser" />
+        <result column="user_code" property="userCode" />
+        <result column="org_code" property="orgCode" />
+        <result column="identity" property="identity" />
+        <result column="position" property="position" />
+        <result column="update_date_type" property="updateDateType" />
+        <result column="update_date_time" property="updateDateTime" />
         <result column="org_id" property="orgId" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp,create_by_user, org_id
+        id, login_name, display_name, password, secret_degree,id_number, mobile, telephone, location, gender, email, status, sort, create_datetime, remark, dept_id,temp,create_by_user, org_id,userCode,orgCode,identity,position,updateDateType,updateDateTime
     </sql>
 
 </mapper>

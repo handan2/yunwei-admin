@@ -8,8 +8,10 @@ import com.sss.yunweiadmin.mapper.AsTypeMapper;
 import com.sss.yunweiadmin.model.entity.AsType;
 import com.sss.yunweiadmin.model.entity.SysDept;
 import com.sss.yunweiadmin.service.AsTypeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +28,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> implements AsTypeService {
-    @Override
+    @Autowired
+    HttpSession httpSession;
 
+    @Override
     //20230721 用于闭环|特殊事项|外出|存储介质(报废)等流程的允许设备类型IDList(含硬盘)
     public List<Integer> getTypeIdListForSpecial(String processName) {
         List<Integer> list = new ArrayList<>();
@@ -40,6 +44,7 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
         } else if( processName.contains("外出")){
             list.addAll(getTypeIdList(GlobalParam.typeIDForCMP));//计算机
             list.addAll(getTypeIdList(GlobalParam.typeIDForStor));//存储介质
+            list.addAll(getTypeIdList(GlobalParam.typeIDForAff));//外设
         } else {
             list.addAll(getTypeIdList(GlobalParam.typeIDForStor));//存储介质
         }
@@ -47,17 +52,33 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
         return list;
     }
 
-    //20230721 用于闭环|特殊事项|外出等流程的map<允许设备类型ID：自定义表ID>
+    //20230721 用于闭环|特殊事项|外出等流程的map<允许设备类型ID：自定义表ID> ；20250118这个仅用于“设备列表”界面里对已经选择的设备 组装成value2Map时的“二次筛选”
     public Map<Integer,Integer> getTypeIdCustomIdMapForSpecial() {
         List<Integer> cmpList = getTypeIdList(GlobalParam.typeIDForCMP);//计算机
+        List<Integer> fwqList = getTypeIdList(GlobalParam.typeIDForFWQ);//服务器
+        List<Integer> affList = getTypeIdList(GlobalParam.typeIDForAff);//外部设备
+        List<Integer> netList = getTypeIdList(GlobalParam.typeIDForAff);//网络设备
         List<Integer> storList = getTypeIdList(GlobalParam.typeIDForStor);//存储介质
+        List<Integer> driveList = getTypeIdList(GlobalParam.typeIDForDrive);//光驱
         Map<Integer,Integer> map = new HashMap<>();
         cmpList.forEach(i->{
             map.put(i,GlobalParam.cusTblIDForCMP);//16代表自定义“计算机信息表”ID
         });
+        fwqList.forEach(i->{
+            map.put(i,GlobalParam.cusTblIDForCMP);//暂也用“计算机信息表”ID
+        });
         storList.forEach(i->{
             if(i != GlobalParam.typeIDForDisk)//排除硬盘
                 map.put(i,GlobalParam.cusTblIDForStor);//30代表自定义“存储介质信息表”ID
+        });
+        netList.forEach(i->{
+            map.put(i,GlobalParam.cusTblIDForStor);//暂时也用“存储介质信息表”ID
+        });
+        affList.forEach(i->{
+            map.put(i,GlobalParam.cusTblIDForStor);//暂时也用“存储介质信息表”ID
+        });
+        driveList.forEach(i->{
+            map.put(i,GlobalParam.cusTblIDForStor);//暂时也用“存储介质信息表”ID
         });
         return map;
     }
@@ -99,7 +120,7 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
     //20211115获取第二层分类的asType ; 这里未处理level=1的情况
     public AsType  getLevel2AsTypeById(Integer typeId) {
         AsType asType;
-        List<AsType> list = this.list(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId));
+        List<AsType> list = this.list(new  QueryWrapper<>());//20241107 为了避免前端传(跨)部门ID参数；取消环境部门ID约束 &&  假定typeID唯一 ；.eq("org_id",orgId));
         Map<Integer, AsType> map = list.stream().collect(Collectors.toMap(AsType::getId, AsType -> AsType));
         while (true) {
             AsType asTypeTmp = map.get(typeId);
@@ -110,6 +131,7 @@ public class AsTypeServiceImpl extends ServiceImpl<AsTypeMapper, AsType> impleme
                 typeId = asTypeTmp.getPid();
             }
         }
+
         return asType;
     }
 

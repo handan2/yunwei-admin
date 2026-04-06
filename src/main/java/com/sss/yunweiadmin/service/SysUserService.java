@@ -1,5 +1,6 @@
 package com.sss.yunweiadmin.service;
 
+import com.sss.yunweiadmin.common.result.ResponseResult;
 import com.sss.yunweiadmin.model.entity.SysUser;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -14,9 +15,12 @@ import java.util.List;
  * @since 2021-04-09
  */
 public interface SysUserService extends IService<SysUser> {
+
+    void getRenliUsers();
+
     int add(SysUser sysUser);
 
-    boolean upateByIdentity(String identity ,String loginName);
+    boolean upateByIdentity(String identity ,String loginName, Integer crossOrgId);
 
     boolean delete(Integer[] idArr);
 

@@ -28,8 +28,8 @@ public class AsApplicationSpecial implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Autowired
-    private Environment environment;
+//    @Autowired //20241111在办公电脑上编译报错 && 运行时没事
+//    private Environment environment;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;

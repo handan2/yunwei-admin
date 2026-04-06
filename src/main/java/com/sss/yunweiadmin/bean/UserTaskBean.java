@@ -35,7 +35,7 @@ public class UserTaskBean {
     @Autowired
     SysDeptService sysDeptService;
     //workFlowBean里调用他，实参也得加--
-    //202408230：在proceessData表里记录下一步记录人时会调用这个
+    //20250220 此函数现在不需要了 ，待删除 202408230：在proceessData表里记录下一步记录人时会调用这个
     public List<SysUser> getUserList(Integer processDefinitionId, String preTaskDefKey, String currentTaskDefKey,Integer processInstanceDataId) {
         ProcessDefinitionTask preTask = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_def_key", preTaskDefKey));
         ProcessDefinitionTask currentTask = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("task_def_key", currentTaskDefKey));
@@ -60,7 +60,7 @@ public class UserTaskBean {
             list = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()).eq("task_def_key", currentTaskDefKey));
             if (CollUtil.isNotEmpty(list))
                 processInstanceNode = list.get(0);
-            List<ProcessInstanceNode> listForFindAssignTask = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()));
+            List<ProcessInstanceNode> listForFindAssignTask = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()).orderByDesc("id"));
             if (CollUtil.isNotEmpty(listForFindAssignTask)) {
                 //20240811todo断点 前提：不是首节点；查寻当前(要指定责任人的)task的“中文名”,在node记录里找到有没有被assign有的话记录下来，并且在下面的       if (assiginTaskAndUserVO != null) 后加个分支，，
                 //由于node表有写入“延迟”，它只能影响“下一节点的下一节点”；如果是“下一节点”，还是得用（本段逻辑下面的代码机制中）session里那个vo来读取处理人
@@ -142,7 +142,13 @@ public class UserTaskBean {
                     ProcessInstanceData processInstanceData = processInstanceDataService.getById(processInstanceDataId);
                     dept = sysDeptService.getOne(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("name",processInstanceData.getDeptName()));
                 }
-                List<SysUser> userTmp = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).eq("dept_id", dept.getId()).eq("status","正常"));//20240228加了status限制
+                //20250616 仅为惯性公司“五室涿州分部 在走 定密流程时 定密责任人是 五室正职 而设计”
+                Integer deptId = dept.getId();
+                if(GlobalParam.orgId == 1 && deptId == GlobalParam.deptIDForSp5 &&  Arrays.asList(operatorTypeIds.split(",")).contains(String.valueOf(GlobalParam.roleIdForDeptCheifManager))){//定密责任人,目前等同于“部门正职领导”
+                    deptId = GlobalParam.deptIDForS5;
+                }
+
+                List<SysUser> userTmp = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id", GlobalParam.orgId).eq("dept_id", deptId).eq("status","正常"));//20240228加了status限制
                 roleUserList = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).in("role_id", Arrays.asList(operatorTypeIds.split(","))).in("user_id", userTmp.stream().map(SysUser::getId).collect(Collectors.toList())));
                // userList = sysUserService.listByIds(roleUserList.stream().map(SysRoleUser::getUserId).collect(Collectors.toList()));
             } else {

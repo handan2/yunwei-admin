@@ -3,12 +3,14 @@ package com.sss.yunweiadmin.controller;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.google.common.collect.Lists;
 import com.sss.yunweiadmin.common.config.GlobalParam;
 import com.sss.yunweiadmin.common.result.ResponseResultWrapper;
 import com.sss.yunweiadmin.common.utils.TreeUtil;
 import com.sss.yunweiadmin.model.entity.AsComputerSpecial;
 import com.sss.yunweiadmin.model.entity.AsType;
 import com.sss.yunweiadmin.model.entity.ProcessDefinition;
+import com.sss.yunweiadmin.model.entity.SysUser;
 import com.sss.yunweiadmin.model.vo.TreeSelectVO;
 import com.sss.yunweiadmin.model.vo.ValueLabelVO;
 import com.sss.yunweiadmin.service.ProcessDefinitionService;
@@ -19,10 +21,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import javax.servlet.http.HttpSession;
 /**
  * <p>
  * 前端控制器
@@ -39,6 +42,8 @@ public class AsTypeController {
     AsTypeServiceImpl asTypeService;
     @Autowired
     ProcessDefinitionService processDefinitionService;
+    @Autowired
+    HttpSession httpSession;
     //20230721
     @GetMapping("getTypeIdCustomIdMapForSpecial")
     public Map<Integer,Integer> getTypeIdCustomIdMapForSpecia(){
@@ -50,6 +55,25 @@ public class AsTypeController {
     }
     @GetMapping("getAsTypeTree")
     public List<TreeSelectVO> getAsTypeTree(Integer rootId) {//20220717加参数
+
+        SysUser user = (SysUser) httpSession.getAttribute("user");
+        if("yutao03".equals(user.getLoginName())){
+           // queryWrapper.in("type_id", Arrays.asList(36,38) );//光驱、U盘
+            List<TreeSelectVO> treeList = Lists.newArrayList();
+            TreeSelectVO treeelectVO = new TreeSelectVO();
+            treeelectVO.setTitle("U盘");
+            treeelectVO.setValue(36);
+            treeelectVO.setKey(36);
+            treeList.add(treeelectVO);
+            TreeSelectVO treeelectVO1 = new TreeSelectVO();
+            treeelectVO1.setTitle("光驱");
+            treeelectVO1.setValue(38);
+            treeelectVO1.setKey(38);
+            treeList.add(treeelectVO1);
+            return treeList;
+
+        }
+
         //20211119 加入sort
         List<AsType> list = null;
         if (ObjectUtil.isNotEmpty(rootId)) {

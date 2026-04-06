@@ -35,6 +35,9 @@ public class InfoNo implements Serializable {
 
     private String value;
 
+    private String ip;
+
+    private String port;
     /**
      * 状态：占用，空闲
      */

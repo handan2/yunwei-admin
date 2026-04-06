@@ -190,10 +190,10 @@ public class SysRoleController {
     //20211118因tree显示时父节点选中就会默认把子结点全选中，故要过滤掉父节点
     @GetMapping("getPermissionGiveVO")
     public PermissionGiveVO getPermissionGiveVO(Integer roleId) {
-        //20231130测评加.ne("remark","不可见")
-        List<SysPermission> list = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).ne("remark","不可见").orderByAsc("sort"));
+        //20231130测评加.ne("remark","不可见")  new Integer[]{89,90,91,92,93,94,95,96,97,98,99,100,101,108,109,110,111,112,113,182,109,110,111,112,113,160,161})
+        List<SysPermission> list = sysPermissionService.list(new  QueryWrapper<SysPermission>().eq("org_id",GlobalParam.orgId).ne("remark","不可见").notIn("id",Arrays.asList(new Integer[]{89,90,91,92,93,94,95,96,97,98,99,100,101,108,109,110,111,112,113,183,109,110,111,112,113,160,161,175,176,177,178,179,180,82,182,184,169,170,171,172,206,117,118,119,120,121})).orderByAsc("sort"));
         List<TreeSelectVO> permissionList = TreeUtil.getTreeSelectVO(list);
-        List<Integer> checkPermissionIdList = sysRolePermissionService.list(new  QueryWrapper<SysRolePermission>().eq("org_id",GlobalParam.orgId).eq("role_id", roleId)).stream().map(SysRolePermission::getPermissionId).collect(Collectors.toList());
+        List<Integer> checkPermissionIdList = sysRolePermissionService.list(new  QueryWrapper<SysRolePermission>().eq("org_id",GlobalParam.orgId).notIn("permission_id",Arrays.asList(new Integer[]{89,90,91,92,93,94,95,96,97,98,99,100,101,108,109,110,111,112,113,183,109,110,111,112,113,160,161,175,176,177,178,179,180,82,182,184,169,170,171,172,206,117,118,119,120,121})).eq("role_id", roleId)).stream().map(SysRolePermission::getPermissionId).collect(Collectors.toList());
         System.out.println(checkPermissionIdList);
         List<Integer> checkPermissionIdList2 = this.parentFilter(checkPermissionIdList);
         // System.out.println(111);

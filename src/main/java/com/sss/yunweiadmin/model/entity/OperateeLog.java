@@ -78,5 +78,8 @@ public class OperateeLog implements Serializable {
      */
     private String operateDescription;
 
+
+    private String result;
+
     private Integer orgId = GlobalParam.orgId;
 }

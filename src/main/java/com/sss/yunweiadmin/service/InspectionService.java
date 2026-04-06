@@ -16,5 +16,7 @@ import java.util.List;
  * @since 2024-06-23
  */
 public interface InspectionService extends IService<Inspection> {
+
+    public boolean improve(Integer[] idArr);
     String addExcel(List<InspectionExcel> list, String importMode);
 }

@@ -23,6 +23,8 @@ public class AsCommonDownload {
     private Integer order;
     @ExcelProperty("编号")
     private String no;
+    @ExcelProperty("名称")
+    private String name;
     @ExcelProperty("类别")
     private String typeName;
     @ExcelProperty("责任人")

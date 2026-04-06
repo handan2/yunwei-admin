@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sss.yunweiadmin.mapper.SapAssetMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.sss.yunweiadmin.model.entity.SapAsset">
+        <id column="id" property="id" />
+        <result column="equnr" property="equnr" />
+        <result column="invnr" property="invnr" />
+        <result column="eqart" property="eqart" />
+        <result column="eqktx" property="eqktx" />
+        <result column="zzzjly" property="zzzjly" />
+        <result column="zjlydsc" property="zjlydsc" />
+        <result column="tplnr" property="tplnr" />
+        <result column="pltxt" property="pltxt" />
+        <result column="stat" property="stat" />
+        <result column="zzytlb" property="zzytlb" />
+        <result column="herst" property="herst" />
+        <result column="typbz" property="typbz" />
+        <result column="serge" property="serge" />
+        <result column="inbdt" property="inbdt" />
+        <result column="zzlwzl" property="zzlwzl" />
+        <result column="beber" property="beber" />
+        <result column="fing" property="fing" />
+        <result column="zzrp" property="zzrp" />
+        <result column="zzdh" property="zzdh" />
+        <result column="ansdt" property="ansdt" />
+        <result column="zzszr" property="zzszr" />
+        <result column="zzszbm" property="zzszbm" />
+        <result column="zzsbmj" property="zzsbmj" />
+        <result column="msgrp" property="msgrp" />
+        <result column="zzsfsm" property="zzsfsm" />
+        <result column="erdat" property="erdat" />
+        <result column="aedat" property="aedat" />
+        <result column="zzxnzb" property="zzxnzb" />
+        <result column="create_time" property="createTime" />
+        <result column="as_id" property="asId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, equnr, invnr, eqart, eqktx, zzzjly, zjlydsc, tplnr, pltxt, stat, zzytlb, herst, typbz, serge, inbdt, zzlwzl, beber, fing, zzrp, zzdh, ansdt, zzszr, zzszbm, zzsbmj, msgrp, zzsfsm, erdat, aedat, zzxnzb, create_time, as_id
+    </sql>
+
+</mapper>

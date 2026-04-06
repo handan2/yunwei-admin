@@ -7,6 +7,7 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -30,12 +31,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpSession;
 import java.io.File;
+import java.lang.management.GarbageCollectorMXBean;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -101,7 +105,22 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
     Environment environment;
     @Autowired
     AttachmentService attachmentService;
+    @Autowired
+    InspectionService inspectionService;
 
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // 修正后的 cron 表达式：每月15号0点0分0秒执行
+    @Scheduled(cron = "0 0 0 15 * ? ") // 添加年字段（可选），确保格式正确;    //每天8点执行  @Scheduled(cron = "0 0 8 * * ?")
+    public void executeMonthlyTask() {
+        LocalDateTime now = LocalDateTime.now();
+        String formattedDateTime = now.format(formatter);
+
+        System.out.println("定时任务执行时间：" + formattedDateTime);
+        System.out.println("执行每月15号的固定方法...");
+        // 你的业务逻辑代码
+    }
     // 寻找最后一个英文句点后的内容
     public  String subStringByLastPeriod(String input,String direction) {
         // 寻找最后一个英文句点的位置
@@ -123,30 +142,36 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
     }
     //维护硬盘列表相关的变更记录及vlaue2表的值;startAndEnd暂没凋用：有空做吧
+    //diskListForHisForProcess:“His”其实不太准确 && 既旧又新 ：先是前端从后端获取初始值，后经前端（编辑）提交页面后，再提后端
     public void setDiskListChangeAndValue2(List<DiskForHisForProcess> diskListForHisForProcess, ProcessInstanceData processInstanceData, ProcessDefinition processDefinition, ProcessFormValue1 processFormValue1, SysUser user, SysDept dept){
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//20241109
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
         //20220620 保存硬盘信息
        // List<DiskForHisForProcess> diskListForHisForProcess = startProcessVO.getDiskListForHisForProcess();
-        diskForHisForProcessService.remove(new  QueryWrapper<DiskForHisForProcess>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()));//对于start无意义
+        diskForHisForProcessService.remove(new  QueryWrapper<DiskForHisForProcess>().eq("org_id",orgId).eq("process_instance_data_id", processInstanceData.getId()));//对于start无意义
 
         //目前没有“删除”,第一次提交只有（对DiskForHisForProcess表来说）新增，对AsDeviceCommon表来说有“新增/编辑”
         if (CollUtil.isNotEmpty(diskListForHisForProcess)) {//20220701 diskListForHisForProcess初始的数据来源为后台service.list():查不到他也会返回空LIST对象（而不是null）
             List<ProcessFormValue2> processFormValue2ListForDisk = new ArrayList<>();
             List<ProcessInstanceChange> processInstanceChangeListForDisk = new ArrayList<>();//start时无意义
             AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(diskListForHisForProcess.get(0).getHostAsId());
+            Integer finalOrgId = orgId;
             diskListForHisForProcess.forEach(item -> {
                 item.setProcessInstanceDataId(processInstanceData.getId());//仅start时有意义
                 //20230729 硬盘列表写入value2;starAndEnd我也不准确写
                 ProcessInstanceChange processInstanceChangeForDisk = new ProcessInstanceChange();
                 ProcessFormValue2 processFormValue2 = new ProcessFormValue2();
-                processFormValue2.setCustomTableId(39);//20230729硬盘列表专用（ID为39
+                processFormValue2.setCustomTableId(GlobalParam.cusTblIDForDisk);//20230729硬盘列表专用（ID为39
                 processFormValue2.setProcessDefinitionId(processFormValue1.getProcessDefinitionId());
                 processFormValue2.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
                 processFormValue2.setFormValue1Id(processFormValue1.getId());
                 //processFormValue2.setAsId(item.getAsId());//start时因为新增的硬盘没有写入AsDeviceCommon，故这时asID没值（默认是0）; 在流程finish时才（真正写入db+
                 // ）有值
                 if (workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()) && item.getFlag() != null) { //20231005 start节点(且下一节点就是结束)时：item.getFlag() == null：不深研
-                    AsDeviceCommon tmp = new AsDeviceCommon();
-                    BeanUtils.copyProperties(item, tmp);
+                    AsDeviceCommon diskTmp = new AsDeviceCommon();
+                    BeanUtils.copyProperties(item, diskTmp);
                     processInstanceChangeForDisk.setProcessInstanceDataId(processInstanceData.getId());
                     processInstanceChangeForDisk.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
                     processInstanceChangeForDisk.setModifyDatetime(LocalDateTime.now());
@@ -159,29 +184,55 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                     processInstanceChangeForDisk.setLoginName(user.getLoginName());
                     if (item.getFlag().equals("新增")) {
                         //20230108 todo增加序列号判重；modify方法也要照着添加；“填错”状态的SN不在比对范围
-                        tmp.setUserName(asDeviceCommon.getUserName());
-                        tmp.setUserDept(asDeviceCommon.getUserDept());
-                        tmp.setUserMiji(asDeviceCommon.getUserMiji());
-                        tmp.setNetType(asDeviceCommon.getNetType());
-                        tmp.setName("硬盘");
-                        tmp.setTypeId(30);
-                        asDeviceCommonService.save(tmp);
-                        item.setAsId(tmp.getId());
-                        processFormValue2.setAsId(tmp.getId());//20230730
-                        processInstanceChangeForDisk.setAsId(tmp.getId());
+                        diskTmp.setUserName(asDeviceCommon.getUserName());
+                        diskTmp.setUserDept(asDeviceCommon.getUserDept());
+                        diskTmp.setUserMiji(asDeviceCommon.getUserMiji());
+                        diskTmp.setNetType(asDeviceCommon.getNetType());
+                        diskTmp.setName("硬盘");
+                        diskTmp.setTypeId(GlobalParam.typeIDForDisk);
+                        asDeviceCommonService.save(diskTmp);
+                        item.setAsId(diskTmp.getId());
+                        processFormValue2.setAsId(diskTmp.getId());//20230730
+                        processInstanceChangeForDisk.setAsId(diskTmp.getId());
                         processInstanceChangeForDisk.setNewValue(item.getState()+"（新增）");
                         processInstanceChangeListForDisk.add(processInstanceChangeForDisk);
                     } else if (item.getFlag().equals("修改")) {
-                        tmp.setId(item.getAsId());
+                        diskTmp.setId(item.getAsId());
                         processInstanceChangeForDisk.setAsId(item.getAsId());
                         processFormValue2.setAsId(item.getAsId());
                         //20230730 硬盘状态的原值记录
                         AsDeviceCommon asDeviceCommonForDisk = asDeviceCommonService.getById(item.getAsId());
                         processInstanceChangeForDisk.setOldValue(asDeviceCommonForDisk.getState());
 
+                        //20250426 增加维修| 归库流程 时要将硬盘的责任人变更为 保密员：  新责任人从node表中找“保密员”字样的处理节点的处理人
+                        //20250428 经测试 维修流程时硬盘摘除时责任人变保密员没问题；当然维修流程里硬盘列表里的状态字段问题需要解决（这个问题也登记在pC桌面截图命名中）
+                        if(processInstanceData.getProcessName().contains("归库") || processInstanceData.getProcessName().contains("维修") || processInstanceData.getProcessName().contains("计算机定密")){
+                            List<ProcessInstanceNode> nodeList = processInstanceNodeService.list(new  QueryWrapper<ProcessInstanceNode>().eq("org_id", finalOrgId).eq("process_instance_data_id",processInstanceData.getId()).like("task_name","保密员"));
+
+                            if(CollUtil.isNotEmpty(nodeList)){
+                                ProcessInstanceChange processInstanceChangeForDiskUser = new ProcessInstanceChange();
+
+                                ProcessInstanceNode node = nodeList.get(0);
+                                BeanUtils.copyProperties(processInstanceChangeForDisk, processInstanceChangeForDiskUser);
+                                processInstanceChangeForDiskUser.setName("责任人(硬盘)");//硬盘列表的专用“状态”字段名：暂仅变更这一个
+                                processInstanceChangeForDiskUser.setOldValue(asDeviceCommon.getUserName());
+                                processInstanceChangeForDiskUser.setNewValue(node.getDisplayName());
+                                processInstanceChangeListForDisk.add(processInstanceChangeForDiskUser);
+                                diskTmp.setUserName(node.getDisplayName());
+                                //20250426 在硬盘责任人变更要加在“计算机”的变更记录中
+                                ProcessInstanceChange processInstanceChangeForDiskUserForPC = new ProcessInstanceChange();
+                                BeanUtils.copyProperties(processInstanceChangeForDiskUser,processInstanceChangeForDiskUserForPC);
+                                processInstanceChangeForDiskUserForPC.setAsId(asDeviceCommon.getId());
+                                processInstanceChangeForDiskUserForPC.setName("硬盘("+ item.getSn() + ")的责任人" );
+                                processInstanceChangeListForDisk.add(processInstanceChangeForDiskUserForPC);//这里加的硬盘的宿主机变更记录
+
+                            }
+
+                        }
+
                         if(!item.getState().equals(asDeviceCommonForDisk.getState()))
                             processInstanceChangeListForDisk.add(processInstanceChangeForDisk);
-                        asDeviceCommonService.updateById(tmp);
+                        asDeviceCommonService.updateById(diskTmp);
                     }
                 }
 
@@ -190,10 +241,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 
             });
             //20230729先删除旧的value2/硬盘ID;约定“硬盘列表信息表”专用自定义表ID 39; 这个逻辑只在处理节点有用
-            processFormValue2Service.remove(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id",processInstanceData.getActProcessInstanceId()).eq("custom_table_id",39));//start时无意义
+            processFormValue2Service.remove(new  QueryWrapper<ProcessFormValue2>().eq("org_id",orgId).eq("act_process_instance_id",processInstanceData.getActProcessInstanceId()).eq("custom_table_id",GlobalParam.cusTblIDForDisk));//start时无意义
             processFormValue2Service.saveBatch(processFormValue2ListForDisk);
             diskForHisForProcessService.saveBatch(diskListForHisForProcess);
-            processInstanceChangeService.remove(new  QueryWrapper<ProcessInstanceChange>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id",processInstanceData.getActProcessInstanceId()).eq("name","状态（硬盘）"));//start时无意义
+            processInstanceChangeService.remove(new  QueryWrapper<ProcessInstanceChange>().eq("org_id",orgId).eq("act_process_instance_id",processInstanceData.getActProcessInstanceId()).eq("name","状态（硬盘）"));//start时无意义
             processInstanceChangeService.saveBatch(processInstanceChangeListForDisk);//硬盘变更记录 //start时无意义
 
         }
@@ -201,12 +252,16 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 
     //20221213 写入”报表记录表“：
     public void saveForReport(String value1, Integer processDefinitionId, Integer processInstanceDataId) {
-        recordForReportService.remove(new  QueryWrapper<RecordForReport>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceDataId));
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//20241109
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
+        recordForReportService.remove(new  QueryWrapper<RecordForReport>().eq("org_id",orgId).eq("process_instance_data_id", processInstanceDataId));
         JSONObject jsonObject = null;
         List<RecordForReport> recordForReportList = new ArrayList<>();
         if (ObjectUtil.isNotEmpty(value1)) {
             jsonObject = JSONObject.parseObject(value1);
-            List<ProcessFormTemplate> formTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId).eq("is_for_report", "是").and(qw -> qw.eq("flag", "基本类型").or().eq("flag", "字段变更类型")));
+            List<ProcessFormTemplate> formTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id", processDefinitionId).eq("is_for_report", "是").and(qw -> qw.eq("flag", "基本类型").or().eq("flag", "字段变更类型")));
             for (ProcessFormTemplate template : formTemplateList) {
                 String value = jsonObject.getString(template.getId() + "");
                 if (ObjectUtil.isNotEmpty(value)) {
@@ -249,10 +304,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             String[] a = actProcessInstanceId.split("_");
             orgId = Integer.valueOf(a[1]);
             actProcessInstanceId = a[0];//去除标记
+            httpSession.setAttribute("crossOrgId",orgId);//这个函数早于handle方法，所以也开启session
         }
         CheckTaskVO checkTaskVO = new CheckTaskVO();
-        if(orgId != GlobalParam.orgId )//20241106
-            checkTaskVO.setOrgId(orgId);
+        checkTaskVO.setOrgId(orgId);//20241109
         //取出我的一个任务
         List<Task> taskList = workFlowBean.getMyTask(actProcessInstanceId);
         if (CollUtil.isEmpty(taskList)) {
@@ -276,45 +331,57 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 checkTaskVO.setCommentTitle("操作记录");
             }
         }
+        httpSession.removeAttribute("crossOrgId");
         return checkTaskVO;
     }
 
     private void updateInfoNo(String dbValue, String pageValue, Integer asId) {
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//20241109
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
         if (StrUtil.isNotEmpty(dbValue)) {
+            //20241204 注：这里把信息点号按可”多选”处理，实际我后来新加的处理逻辑都没考虑这种情况 && 这里的相应处理也保持现状吧
             dbValue.replace("无,", "");//把默认的这个字符去掉，效果暂未验：不急
             dbValue.replace("无", "");
             String[] infoNoOldArr = dbValue.split(",");
             List<String> infoNoOldList = Stream.of(infoNoOldArr).collect(Collectors.toList());
             //父类是计算机的as_type
-            List<Map<String, Object>> asTypesListMaps = asTypeService.listMaps(new  QueryWrapper<AsType>().eq("org_id",GlobalParam.orgId).eq("pid", 4).select("id"));
+            List<Map<String, Object>> asTypesListMaps = asTypeService.listMaps(new  QueryWrapper<AsType>().eq("org_id",orgId).eq("pid", GlobalParam.typeIDForCMP).select("id"));
             List<Integer> asTypeList = asTypesListMaps.stream().map(item -> Integer.valueOf(item.get("id").toString())).collect(Collectors.toList());
-            List<Map<String, Object>> listMaps = asDeviceCommonService.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("state", "在用").in("type_id", asTypeList).ne("id", asId).select("port_no"));
+            List<Map<String, Object>> listMaps = asDeviceCommonService.listMaps(new  QueryWrapper<AsDeviceCommon>().eq("org_id",orgId).eq("state", "在用").in("type_id", asTypeList).ne("id", asId).select("port_no"));
             List<String> infoNoListForAsdeviceCommon = listMaps.stream().map(item -> item.get("port_no").toString()).collect(Collectors.toList());
-            //在计算机变更记录中的“旧信息点号”（串）中查找出需要修改为“空闲”的信息点号
-            List<String> infoNoOldListFileterd = infoNoOldList.stream().filter(item -> {
-                boolean notUsedByOtherDevice = true;
-                for (String infoNoForAsdeviceCommon : infoNoListForAsdeviceCommon) {
-                    if (StrUtil.isNotEmpty(infoNoForAsdeviceCommon)) {
-                        String[] infoNoArrForAsdeviceCommon = infoNoForAsdeviceCommon.split(",");
-                        List<String> infoNoListForAsdeviceCommonForSplit = Stream.of(infoNoArrForAsdeviceCommon).collect(Collectors.toList());
-                        for (String infoNoForAsdeviceCommonForSplit : infoNoListForAsdeviceCommonForSplit) {
-                            if (infoNoForAsdeviceCommonForSplit.equals(item)) {//排除掉（虽然自己不用了）在别的计算机上还在使用的信息点号
-                                // notUsedByOtherDevice = false;
-                                return false;//20230525 未测，有时间待测
-                            }
-                        }
-                    }
-                }
-                return true;
-            }).collect(Collectors.toList());
-            if (CollUtil.isNotEmpty(infoNoOldListFileterd)) {//对不再使用的信息点号的状态更改
+            //在计算机变更记录(即当前dbValue值)中的“旧信息点号”（串）中查找出需要修改为“空闲”的信息点号：这段的逻辑中是基于“这个信息点号可能被多人共用”，所以把这种号排除：
+            // 20242104目前看应该可以不用考虑这种情况：暂注释
+//            List<String> infoNoOldListFileterd = infoNoOldList.stream().filter(item -> {
+//                boolean notUsedByOtherDevice = true;
+//                for (String infoNoForAsdeviceCommon : infoNoListForAsdeviceCommon) {
+//                    if (StrUtil.isNotEmpty(infoNoForAsdeviceCommon)) {
+//                        String[] infoNoArrForAsdeviceCommon = infoNoForAsdeviceCommon.split(",");
+//                        List<String> infoNoListForAsdeviceCommonForSplit = Stream.of(infoNoArrForAsdeviceCommon).collect(Collectors.toList());
+//                        for (String infoNoForAsdeviceCommonForSplit : infoNoListForAsdeviceCommonForSplit) {
+//                            if (infoNoForAsdeviceCommonForSplit.equals(item)) {//排除掉（虽然自己不用了）在别的计算机上还在使用的信息点号
+//                                // notUsedByOtherDevice = false;
+//                                return false;//20230525 未测，有时间待测
+//                            }
+//                        }
+//                    }
+//                }
+//                return true;
+//            }).collect(Collectors.toList());
+            if (CollUtil.isNotEmpty(infoNoOldList)) {//对不再使用的信息点号的状态更改,原为infoNoOldListFileterd
                 //  List<InfoNo> infoNoListUpdate = new ArrayList<InfoNo>();
-                List<InfoNo> infoNoListUpdate = infoNoService.list(new  QueryWrapper<InfoNo>().eq("org_id",GlobalParam.orgId).in("value", infoNoOldListFileterd));
-                for (InfoNo infoNoUpdate : infoNoListUpdate) {
-                    infoNoUpdate.setStatus("空闲");
+                List<InfoNo> infoNoListUpdateForOld = infoNoService.list(new  QueryWrapper<InfoNo>().eq("org_id",orgId).in("value", infoNoOldList));
+                //20241204：需要筛选出正在走流程变为“infoNoOldList"中成员的信息点
+                QueryWrapper<ProcessInstanceChange> queryWrapper  = new  QueryWrapper<ProcessInstanceChange>().eq("org_id", GlobalParam.orgId).eq("is_report_title", "否").eq("is_finish", "否").eq("name", "信息点号").select("new_value");
+                List<Map<String, Object>> listMaps1 = processInstanceChangeService.listMaps(queryWrapper);
+                List<String> infoNoListForProcessing =  listMaps1.stream().map(item->item.get("new_value").toString()).collect(Collectors.toList());
+                for (InfoNo infoNoUpdateForOld : infoNoListUpdateForOld) {
+                    if(!infoNoListForProcessing.contains(infoNoUpdateForOld))//20241204
+                        infoNoUpdateForOld.setStatus("空闲");
                 }
-                if (CollUtil.isNotEmpty(infoNoListUpdate)) {
-                    infoNoService.updateBatchById(infoNoListUpdate);
+                if (CollUtil.isNotEmpty(infoNoListUpdateForOld)) {
+                    infoNoService.updateBatchById(infoNoListUpdateForOld);
                 }
             }
         }
@@ -324,12 +391,12 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         if (StrUtil.isNotEmpty(pageValue)) {
             String[] infoNoNewArr = pageValue.split(",");
             List<String> infoNoNewList = Stream.of(infoNoNewArr).collect(Collectors.toList());
-            List<InfoNo> infoNoListUpdate = infoNoService.list(new  QueryWrapper<InfoNo>().eq("org_id",GlobalParam.orgId).in("value", infoNoNewList));
-            for (InfoNo infoNoUpdate : infoNoListUpdate) {
-                infoNoUpdate.setStatus("占用");
+            List<InfoNo> infoNoListUpdateForNew = infoNoService.list(new  QueryWrapper<InfoNo>().eq("org_id",orgId).in("value", infoNoNewList));
+            for (InfoNo infoNoUpdateForNew : infoNoListUpdateForNew) {
+                infoNoUpdateForNew.setStatus("占用");
             }
-            if (CollUtil.isNotEmpty(infoNoListUpdate)) {
-                infoNoService.updateBatchById(infoNoListUpdate);
+            if (CollUtil.isNotEmpty(infoNoListUpdateForNew)) {
+                infoNoService.updateBatchById(infoNoListUpdateForNew);
             }
 
 
@@ -339,7 +406,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 
 
     private void setProVarListForChangeDept(ProcessDefinition processDefinition, ProcessInstanceData processInstanceData) {
-
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//20241109
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
           /*20220725 todo在这里添加部门变更的逻辑：在Start方法中，先判断流程名字是不是“变更”，然后判断是不是有部门名称，有的话设置两个流程变量#《currentDeptName，XXXX》,#《部门名称，changeDeptNmae
         这两个名称不相等的话，在此处读user表找出新部门的保密员ID,然后再找到“新部门保密员”（这个节点名要约定:新部门保密员）task定义结点，把这个用户信息给他加进去；新部门的部门领导由前一步的保密员选择，这里就不动了
         ; 排他网关上判断这两个是否相等
@@ -350,38 +420,58 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         Task activeTask = activeTaskList.get(0);
         Map<String, String> map = new HashMap<>();
         if (processDefinition.getProcessType().contains("变更") && processDefinition.getProcessName().contains("变更") && !processDefinition.getProcessType().contains("用户")) {//20220725对信息设备及用户变更流程的processType值约定；20240123 排除了“密钥上交流程”
-            List<ProcessInstanceChange> processInstanceChangeList = processInstanceChangeService.list(new  QueryWrapper<ProcessInstanceChange>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()).eq("name", "责任部门").eq("is_report_title", "否"));
+            List<ProcessInstanceChange> processInstanceChangeList = processInstanceChangeService.list(new  QueryWrapper<ProcessInstanceChange>().eq("org_id",orgId).eq("process_instance_data_id", processInstanceData.getId()).eq("name", "责任部门").eq("is_report_title", "否"));
             if (CollUtil.isNotEmpty(processInstanceChangeList)) {
                 ProcessInstanceChange processInstanceChange = processInstanceChangeList.get(0);
                 String currentDeptName = processInstanceChange.getOldValue();
                 String changeDeptName = processInstanceChange.getNewValue();
-                int deptId = sysDeptService.getOne(new  QueryWrapper<SysDept>().eq("org_id",GlobalParam.orgId).eq("name", changeDeptName)).getId();
-                List<SysUser> userListForChangeDept = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",GlobalParam.orgId).eq("dept_id", deptId).eq("status","正常"));
+                SysDept sysDept = sysDeptService.getOne(new  QueryWrapper<SysDept>().eq("org_id",orgId).eq("name", changeDeptName));
+                if (ObjectUtil.isEmpty(sysDept))
+                    throw new RuntimeException("新部门不存在，请联系管理员！");
+                int deptId = sysDept.getId();
+                List<SysUser> userListForChangeDept = sysUserService.list(new  QueryWrapper<SysUser>().eq("org_id",orgId).eq("dept_id", deptId).eq("status","正常"));
                 if (CollUtil.isEmpty(userListForChangeDept))
                     throw new RuntimeException("新部门没有用户！");
                 List<Integer> userIdListForChangeDept = userListForChangeDept.stream().map(item -> item.getId()).collect(Collectors.toList());
-                List<Integer> userIdListForBaomiUser = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("role_id", 7)).stream().map(item -> item.getUserId()).collect(Collectors.toList());
+                List<Integer> userIdListForBaomiUser = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",orgId).eq("role_id", GlobalParam.roleIdForSafeManager)).stream().map(item -> item.getUserId()).collect(Collectors.toList());
                 List<Integer> baomiUserIdListForChangeDept = userIdListForChangeDept.stream().filter(item -> userIdListForBaomiUser.contains(item)).collect(Collectors.toList());// 也可以用取交集的方法：A.retainAll(B)
                 if (CollUtil.isEmpty(baomiUserIdListForChangeDept))
                     throw new RuntimeException("新部门没有保密员，无法审核本流程！");
                 //填充新部门保密员节点处理人
                 int baomiUserIdForChangeDept = baomiUserIdListForChangeDept.get(0);//只取一个保密员
-                ProcessDefinitionTask taskForChangeDeptForBaomiUser = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).like("task_name", "新部门保密员").eq("process_definition_id", processDefinition.getId()));
+                ProcessDefinitionTask taskForChangeDeptForBaomiUser = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",orgId).like("task_name", "新部门保密员").eq("process_definition_id", processDefinition.getId()));
                 //更改这个Task记录里的处理人配置信息
-                taskForChangeDeptForBaomiUser.setOperatorType("用户");
-                taskForChangeDeptForBaomiUser.setOperatorTypeIds(baomiUserIdForChangeDept + "");
-                taskForChangeDeptForBaomiUser.setOperatorTypeStr("新部门保密员");
-                processDefinitionTaskService.updateById(taskForChangeDeptForBaomiUser);
+                if(ObjectUtil.isNotEmpty(taskForChangeDeptForBaomiUser)){
+                    taskForChangeDeptForBaomiUser.setOperatorType("用户");
+                    taskForChangeDeptForBaomiUser.setOperatorTypeIds(baomiUserIdForChangeDept + "");
+                    taskForChangeDeptForBaomiUser.setOperatorTypeStr("新部门保密员");
+                    processDefinitionTaskService.updateById(taskForChangeDeptForBaomiUser);
+                }
                 //填充新部门领导节点处理人20230227
-                String leaderIdStrForChangeDept = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",GlobalParam.orgId).eq("role_id", 12).select("DISTINCT user_id")).stream().map(item -> item.getUserId().toString()).filter(item -> userIdListForChangeDept.contains(Integer.valueOf(item))).collect(Collectors.joining(","));
+                String leaderIdStrForChangeDept = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",orgId).eq("role_id", GlobalParam.roleIdForDeptManager).select("DISTINCT user_id")).stream().map(item -> item.getUserId().toString()).filter(item -> userIdListForChangeDept.contains(Integer.valueOf(item))).collect(Collectors.joining(","));
                 // userIdListForChangeDept.stream().filter(item->item.getroleIdList().contains(12)).collect(Collectors.toList());
                 if (ObjectUtil.isEmpty(leaderIdStrForChangeDept))
                     throw new RuntimeException("新部门没有部门领导，无法审核本流程！");
-                ProcessDefinitionTask taskForChangeDeptForLeader = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",GlobalParam.orgId).like("task_name", "新部门领导").eq("process_definition_id", processDefinition.getId()));
-                taskForChangeDeptForLeader.setOperatorType("用户");
-                taskForChangeDeptForLeader.setOperatorTypeIds(leaderIdStrForChangeDept);
-                taskForChangeDeptForLeader.setOperatorTypeStr("新部门领导");
-                processDefinitionTaskService.updateById(taskForChangeDeptForLeader);
+                ProcessDefinitionTask taskForChangeDeptForLeader = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",orgId).like("task_name", "新部门领导").eq("process_definition_id", processDefinition.getId()));
+                if(ObjectUtil.isNotEmpty(taskForChangeDeptForLeader)){
+                    taskForChangeDeptForLeader.setOperatorType("用户");
+                    taskForChangeDeptForLeader.setOperatorTypeIds(leaderIdStrForChangeDept);
+                    taskForChangeDeptForLeader.setOperatorTypeStr("新部门领导");
+                    processDefinitionTaskService.updateById(taskForChangeDeptForLeader);
+                }
+                //填充新部门协管员处理人20250601
+                String assistIdStrForChangeDept = sysRoleUserService.list(new  QueryWrapper<SysRoleUser>().eq("org_id",orgId).eq("role_id", GlobalParam.roleIdForAssist).select("DISTINCT user_id")).stream().map(item -> item.getUserId().toString()).filter(item -> userIdListForChangeDept.contains(Integer.valueOf(item))).collect(Collectors.joining(","));
+                if (ObjectUtil.isEmpty(assistIdStrForChangeDept))
+                    throw new RuntimeException("新部门没有协管员，无法继续本流程！");
+                ProcessDefinitionTask taskForChangeDeptForAssist = processDefinitionTaskService.getOne(new  QueryWrapper<ProcessDefinitionTask>().eq("org_id",orgId).like("task_name", "新部门协管员").eq("process_definition_id", processDefinition.getId()));
+                if(ObjectUtil.isNotEmpty(taskForChangeDeptForAssist)){
+                    taskForChangeDeptForAssist.setOperatorType("用户");
+                    taskForChangeDeptForAssist.setOperatorTypeIds(assistIdStrForChangeDept);
+                    taskForChangeDeptForAssist.setOperatorTypeStr("新部门协管员");
+                    processDefinitionTaskService.updateById(taskForChangeDeptForAssist);
+                }
+
+
                 map.put("currentDeptName", currentDeptName);
                 map.put("changeDeptName", changeDeptName);
                 workFlowBean.setProVarList(activeTask, map);
@@ -401,16 +491,20 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             ：下面的逻辑里还有用到DB的value2的，有时间也要换成从VO里取：但好像也没有必要：毕竟流程变量用的只是pageValue:暂不研
      */
     private void setProVarListForExGateway(ProcessInstanceData processInstanceData, String value1, Task actTask) {
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
         List<String> proVarList = workFlowBean.getProVarListForExGateway(processInstanceData.getProcessDefinitionId());
         Map<String, Object> mapForProVar = new HashMap<>();
         if (CollUtil.isEmpty(proVarList)) return;
-        ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()));
-        List<ProcessFormValue2> formValue2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("form_value1_id", processFormValue1.getId()));
+        ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()));
+        List<ProcessFormValue2> formValue2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",orgId).eq("form_value1_id", processFormValue1.getId()));
         // if (CollUtil.isEmpty(formValue2List)) return;//20220920 注释掉，新用户入网流程就没有关联资产
-        List<AsConfig> asConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id", GlobalParam.orgId).select("distinct en_table_name,zh_table_name"));
+        List<AsConfig> asConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id", orgId).select("distinct en_table_name,zh_table_name"));
         JSONObject jsonObject = JSONObject.parseObject(value1);
         //20220722处理非变更字段中的proVar
-        List<ProcessFormTemplate> formTemplateListForBasicColumn = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("flag", "基本类型").orderByAsc("name"));
+        List<ProcessFormTemplate> formTemplateListForBasicColumn = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("flag", "基本类型").orderByAsc("name"));
         for (ProcessFormTemplate processFormTemplate : formTemplateListForBasicColumn) {// formTemplateListForBasicColumn顶多会是空数组
             String pageValue;
             Integer id = processFormTemplate.getId();
@@ -426,7 +520,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             }
         }
         //取出所有的变更字段
-        List<ProcessFormTemplate> formTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("flag", "字段变更类型").orderByAsc("name"));
+        List<ProcessFormTemplate> formTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("flag", "字段变更类型").orderByAsc("name"));
         //组装map <自定义表ID，List<template>>
         Map<Integer, List<ProcessFormTemplate>> map = new HashMap<>();
         for (ProcessFormValue2 processFormValue2 : formValue2List) {
@@ -467,7 +561,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 //                        //20220708 todo断点，这个位置变更字段的名称与值都有了，现在要（增加一个函数调用他）寻找流程定义中所有的排他网关节点及节点的引线/edge，将这些Edge上的parmName读出来
                     String tableName = entry2.getKey();
                     //    String tableName = StrUtil.toCamelCase(tableNameTmp);
-                    AsConfig asConfig = asConfigService.getOne(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).eq("en_table_name", tableName).eq("en_column_name", columnName));
+                    AsConfig asConfig = asConfigService.getOne(new  QueryWrapper<AsConfig>().eq("org_id",orgId).eq("en_table_name", tableName).eq("en_column_name", columnName));
                     String columnZhName = asConfig.getZhColumnName();
                     if (proVarList.contains(columnZhName)) {
                         mapForProVar.put(columnZhName, pageValue);
@@ -487,10 +581,14 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
     }
 
     private void saveProcessFormCustomInst(String jsonStr, Integer processInstanceId, List<ProcessFormValue2> processFormValue2List) {
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//20241109
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
         JSONObject jsonObject = JSONObject.parseObject(jsonStr);
         //20230721
         ProcessDefinition processDefinition = processDefinitionService.getById(this.getById(processInstanceId).getProcessDefinitionId());
-        List<Map<String, Object>> listMaps = processFormTemplateService.listMaps(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("flag", "设备列表").eq("process_definition_id", processDefinition.getId()).select("flag"));
+        List<Map<String, Object>> listMaps = processFormTemplateService.listMaps(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("flag", "设备列表").eq("process_definition_id", processDefinition.getId()).select("flag"));
         List<String> listFlags = listMaps.stream().map(item -> (String) item.get("flag")).collect(Collectors.toList());
         List<ProcessFormCustomInst> processFormCustomInstList = new ArrayList<>();
         if (listFlags.contains("设备列表")) {
@@ -509,6 +607,9 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         ProcessFormCustomInst t = new ProcessFormCustomInst();
                         t.setAsId(a.getId());
                         t.setAssetTypeId(a.getTypeId());
+                        t.setTableName("as_device_common");
+                        t.setColumnType("设备列表字段");
+                        t.setProcessInstanceDataId(processInstanceId);
                         tList.add(t);
                     }
                     tList.get(0).setColumnName("no");
@@ -523,11 +624,11 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                     tList.get(4).setColumnValue(a.getUserDept());
                     processFormCustomInstList.addAll(tList);
                 }
-                for (ProcessFormCustomInst p : processFormCustomInstList) {
-                    p.setTableName("as_device_common");
-                    p.setColumnType("设备列表字段");
-                    p.setProcessInstanceDataId(processInstanceId);
-                }
+//                for (ProcessFormCustomInst p : processFormCustomInstList) {
+//                    p.setTableName("as_device_common");
+//                    p.setColumnType("设备列表字段");
+//                    p.setProcessInstanceDataId(processInstanceId);
+//                }
 //                jsonAssetArray.stream().forEach(item -> {
 //                    JSONObject itemJson = (JSONObject) item;//注意：关于强转“直接用后半句(JSONObject)item.getString”是不行的，可能因为那个括号最后执行吧，也不是：todo记录
 //                    System.out.println(item);
@@ -543,21 +644,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 return;
             //20220601vaule1/value2表中的actProcessInstanceId字段为啥设置成vachar暂不研
             Map<String, String> map = processFormValue2List.stream().collect(Collectors.toMap(t -> String.valueOf(t.getCustomTableId()), t -> String.valueOf(t.getAsId())));
-
-            //原先map的获取方法
-//        Map<String, String> map = new HashMap<>();
-//        JSONArray jsonAssetArray = jsonObject.getJSONArray("asset"); //20220506json数组有一个专有类型 JSONArray,对应的(在jsonObject里)取值也是一个专用函数
-//        //20220528加判断空
-//        if (CollUtil.isEmpty(jsonAssetArray))
-//            return;
-//        jsonAssetArray.stream().forEach(item -> {
-//            JSONObject itemJson = (JSONObject) item;//注意：关于强转“直接用后半句(JSONObject)item.getString”是不行的，可能因为那个括号最后执行吧，也不是：todo记录
-//            System.out.println(item);
-//            map.put(itemJson.getString("customTableId"), itemJson.getString("asId"));
-//        });
-
-
-            //List<ProcessFormCustomInst> processFormCustomInstList_old = processFormCustomInstService.list(new  QueryWrapper<ProcessFormCustomInst>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id",checkProcessVO.getProcessInstanceDataId()));
+            //List<ProcessFormCustomInst> processFormCustomInstList_old = processFormCustomInstService.list(new  QueryWrapper<ProcessFormCustomInst>().eq("org_id",orgId).eq("process_instance_data_id",checkProcessVO.getProcessInstanceDataId()));
             for (Map.Entry entry : jsonObject.entrySet()) {
                 if (entry.getKey().toString().contains(".")) {//通过"."识别自定表字段
                     String[] keyArray = entry.getKey().toString().split("\\.");
@@ -576,10 +663,58 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                     processFormCustomInst.setAssetTypeId(Level2AsTypeId);
                     processFormCustomInstList.add(processFormCustomInst);
                 }
+                //20260107 添加“硬盘信息”列表的记录
+                if(entry.getKey().toString().equals("diskListForHisForProcess")) {
+//                    JSONObject jsonObject2 = jsonObject.getJSONObject("repeater");
+//                    if(ObjUtil.isEmpty(jsonObject2))
+//                        return;
+                    JSONArray jsonAssetArray2 = jsonObject.getJSONArray( "diskListForHisForProcess");
+                    if (CollUtil.isEmpty(jsonAssetArray2))
+                        return;
+                    else {
+                        List<DiskForHisForProcess> diskForHisForProcessList = jsonAssetArray2.toJavaList(DiskForHisForProcess.class);
+                        AsDeviceCommon host = asDeviceCommonService.getById(diskForHisForProcessList.get(0).getHostAsId());//每块硬盘的宿主都一样
+                        for (DiskForHisForProcess a : diskForHisForProcessList) {
+                            List<ProcessFormCustomInst> customList = new ArrayList<>();
+                            //每一个设备暂加3行记录/属性
+                            for (Integer i = 0; i < 5; i++) {
+                                ProcessFormCustomInst t = new ProcessFormCustomInst();
+                                if(ObjectUtil.isNotEmpty(a.getAsId()) && a.getAsId()!= 0 )
+                                    t.setAsId(a.getAsId());
+                                else {//新增硬盘只有流程结束时才写进去 ，所以这里也是流程最后一个节点结束才到
+                                    AsDeviceCommon newDisk = asDeviceCommonService.getOne(new  QueryWrapper<AsDeviceCommon>().eq("sn",a.getSn()).eq("type_id",GlobalParam.typeIDForDisk).ne("state","填错").eq("org_id",orgId).orderByDesc("create_datetime"));
+                                    if(ObjectUtil.isNotEmpty(newDisk))
+                                        t.setAsId(newDisk.getId());
+                                }
+                                t.setAssetTypeId(GlobalParam.typeIDForDisk);
+                                t.setTableName("as_device_common");
+                                t.setColumnType("硬盘信息列表");
+                                t.setProcessInstanceDataId(processInstanceId);
+                                customList.add(t);
+                            }
+                            customList.get(0).setColumnName("no");
+                            customList.get(0).setColumnValue(a.getNo());
+                            customList.get(1).setColumnName("miji");
+                            customList.get(1).setColumnValue(a.getMiji());
+                            customList.get(2).setColumnName("sn");
+                            customList.get(2).setColumnValue(a.getSn());
+                            customList.get(3).setColumnName("user_name");
+                            customList.get(3).setColumnValue(host.getUserName());
+                            customList.get(4).setColumnName("user_dept");
+                            customList.get(4).setColumnValue(host.getUserDept());
+
+                            processFormCustomInstList.addAll(customList);
+                        }
+
+
+
+                    }
+
+                }
             }
         }
 
-        processFormCustomInstService.remove(new  QueryWrapper<ProcessFormCustomInst>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceId));
+        processFormCustomInstService.remove(new  QueryWrapper<ProcessFormCustomInst>().eq("org_id",orgId).eq("process_instance_data_id", processInstanceId));
         processFormCustomInstService.saveBatch(processFormCustomInstList);
     }
 
@@ -652,7 +787,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         preProcessInstanceNode.setButtonName("提交");
         preProcessInstanceNode.setOperate(postProcessName);
         processInstanceNodeService.save(preProcessInstanceNode);
-        changeColumnForHandle(preProcessInstanceData, true);
+        changeColumnForHandle(preProcessInstanceData, endAndStartProcessVO.getValue1(), endAndStartProcessVO.getValue2List(), true);
         //20220621 保存硬盘信息
         //先删除DiskForHisForProcess表原记录
         diskForHisForProcessService.remove(new  QueryWrapper<DiskForHisForProcess>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", preProcessInstanceData.getId()));
@@ -671,7 +806,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         tmp.setUserMiji(asDeviceCommon.getUserMiji());
                         tmp.setNetType(asDeviceCommon.getNetType());
                         tmp.setName("硬盘");
-                        tmp.setTypeId(30);
+                        tmp.setTypeId(GlobalParam.typeIDForDisk);
                         asDeviceCommonService.save(tmp);
                         item.setAsId(tmp.getId());
                     } else if (item.getFlag().equals("修改")) {
@@ -724,7 +859,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
         //assiginTaskAndUserVO放入session
         if (ObjUtil.isNotEmpty(endAndStartProcessVO.getAssiginTask())) {
-            AssiginTaskAndUserVO assiginTaskAndUserVO = new AssiginTaskAndUserVO(endAndStartProcessVO.getOperatorType(), endAndStartProcessVO.getOperatorTypeIds(), endAndStartProcessVO.getHaveNextUser(),null,null);
+            AssiginTaskAndUserVO assiginTaskAndUserVO = new AssiginTaskAndUserVO(endAndStartProcessVO.getOperatorType(), endAndStartProcessVO.getOperatorTypeIds(), endAndStartProcessVO.getHaveNextUser(),endAndStartProcessVO.getAssiginTask(),endAndStartProcessVO.getAssiginUser());
             httpSession.setAttribute("assiginTaskAndUserVO", assiginTaskAndUserVO);
         }
         //20230516  processInstanceData的写入DB前置到这里，
@@ -789,6 +924,232 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             processInstanceData.setDisplayCurrentStep(stepMap.get("displayName"));
             processInstanceData.setLoginCurrentStep(stepMap.get("loginName"));
         }
+        processInstanceDataService.updateById(processInstanceData);//20220710 save前置，这里改update
+        //20220510
+        this.saveProcessFormCustomInst(processFormValue1.getValue(), processInstanceData.getId(), processFormValue2List);
+        //插入流程节点数据
+        ProcessInstanceNode processInstanceNode = new ProcessInstanceNode();
+        processInstanceNode.setProcessInstanceDataId(processInstanceData.getId());
+        processInstanceNode.setTaskDefKey(myTask.getTaskDefinitionKey());
+        processInstanceNode.setTaskName(myTask.getName());
+        processInstanceNode.setDisplayName(user.getDisplayName());
+        processInstanceNode.setLoginName(user.getLoginName());
+        processInstanceNode.setDeptName(dept.getName());
+        //20240808 把assginTask相关信息写入task
+        //逻辑：判断session|assiginTaskAndUserVO中的assiginTask有值后，再读取VO里的责任人信息，写入node相应字段
+        AssiginTaskAndUserVO assiginTaskAndUserVO = (AssiginTaskAndUserVO) httpSession.getAttribute("assiginTaskAndUserVO");
+        if(ObjectUtil.isNotEmpty(assiginTaskAndUserVO) && ObjectUtil.isNotEmpty(assiginTaskAndUserVO.getAssiginTask())){
+            String assiginTask = assiginTaskAndUserVO.getAssiginTask();
+            if(!"下一节点".equals(assiginTask)){
+                processInstanceNode.setAssigin(assiginTask + "|" +  assiginTaskAndUserVO.getOperatorTypeIds());//主管所领导审批|1701
+            }
+        }
+
+
+        processInstanceNode.setStartDatetime(localDateTime);
+        processInstanceNode.setEndDatetime(localDateTime);
+        if (ObjectUtil.isNotEmpty(endAndStartProcessVO.getButtonName())) {
+            processInstanceNode.setButtonName(endAndStartProcessVO.getButtonName());
+        } else {
+            processInstanceNode.setButtonName("提交");
+        }
+        //20220703注释掉
+//        if (ObjectUtil.isNotEmpty(endAndStartProcessVO.getHaveNextUser()) && endAndStartProcessVO.getHaveNextUser().equals("是")) {
+//            processInstanceNode.setOperatorType(endAndStartProcessVO.getOperatorType());
+//            processInstanceNode.setOperatorTypeIds(endAndStartProcessVO.getOperatorTypeIds());
+//            processInstanceNode.setOperatorTypeStr(endAndStartProcessVO.getOperatorTypeStr());
+//        }
+        processInstanceNodeService.save(processInstanceNode);
+        //把ID记录入preProInstData
+        preProcessInstanceData.setPostProcessInstanceId(processInstanceData.getId());
+        processInstanceDataService.updateById(preProcessInstanceData);
+        //20220620 保存硬盘信息
+        List<DiskForHisForProcess> diskListForHisForProcess = endAndStartProcessVO.getDiskListForHisForProcess();
+        //目前没有“删除”,第一次提交只有（对DiskForHisForProcess表来说）新增，对AsDeviceCommon表来说有“新增/编辑”
+        if (CollUtil.isNotEmpty(diskListForHisForProcess)) {//20220701 diskListForHisForProcess初始的数据来源为后台service.list():查不到他也会返回空LIST对象（而不是null）
+            diskListForHisForProcess.forEach(item -> {
+                item.setProcessInstanceDataId(processInstanceData.getId());
+            });
+            diskForHisForProcessService.saveBatch(diskListForHisForProcess);//20220614这个flag设置有点小问题：暂不改
+        }
+        //变更字段
+        changeColumnForStart(processInstanceData, processFormValue1, processFormValue2List);
+        //
+        httpSession.removeAttribute("assiginTaskAndUserVO");
+        return true;
+    }
+
+    @Override
+    @SneakyThrows
+    @Transactional(rollbackFor = Exception.class)
+    //自动代用户发起流程
+    public boolean autoStart(MultipartFile[] files ,EndAndStartProcessVO endAndStartProcessVO, String fujianMiji) {
+        //结束老流程
+        ProcessInstanceData preProcessInstanceData = processInstanceDataService.getById(endAndStartProcessVO.getPreProcessInstDataId());
+        String preActProcessInstanceId = preProcessInstanceData.getActProcessInstanceId();
+        String processStatus = preProcessInstanceData.getProcessStatus();
+
+        LocalDateTime localDateTime = LocalDateTime.now();
+
+        //取出我的一个任务
+//        List<Task> myTaskListForPre = workFlowBean.getMyTask(preActProcessInstanceId);
+//        Task myTaskForPre = myTaskListForPre.get(0);
+//        String postProcessName = (String) workFlowBean.getProcessVariable(myTaskForPre);
+        //完成任务
+      //  workFlowBean.completeTask(preProcessInstanceData.getProcessDefinitionId(), myTaskForPre);
+        preProcessInstanceData.setEndDatetime(LocalDateTime.now());
+        preProcessInstanceData.setProcessStatus("完成");
+        preProcessInstanceData.setDisplayCurrentStep("");
+        preProcessInstanceData.setLoginCurrentStep("");
+        processInstanceDataService.updateById(preProcessInstanceData);
+        //插入流程节点数据
+        SysUser userForPre = (SysUser) httpSession.getAttribute("user");
+        SysDept deptForPre = sysDeptService.getById(userForPre.getDeptId());
+
+
+        httpSession.removeAttribute("assiginTaskAndUserVO");
+
+        //开启新流程
+        //保存processFormValue1
+        ProcessFormValue1 processFormValue1 = new ProcessFormValue1();
+        BeanUtils.copyProperties(endAndStartProcessVO.getValue1(), processFormValue1);
+        processFormValue1Service.save(processFormValue1);
+        //endAndStartProcessVO.getValue1().setId(processFormValue1.getId());
+        ProcessDefinition processDefinition = processDefinitionService.getById(processFormValue1.getProcessDefinitionId());
+        String actProcessName = processDefinition.getProcessName() + "_" + processDefinition.getId();
+        if (ObjectUtil.isEmpty(processDefinition.getDeployId())) {
+            //activiti没有部署过
+            String activitiXml = bpmnToActivitiBean.convert(processDefinition);
+            Deployment deployment = workFlowBean.deploy(actProcessName, activitiXml);
+            //更新deploy_id
+            processDefinition.setDeployId(deployment.getId());
+            processDefinitionService.updateById(processDefinition);
+        }
+        //启动流程；引发第一个ActTask创建
+        ProcessInstance actProcessInstance = workFlowBean.startProcessInstance(actProcessName, processFormValue1.getId());
+        //更新processFormValue1
+        processFormValue1.setActProcessInstanceId(actProcessInstance.getId());
+        processFormValue1Service.updateById(processFormValue1);
+        //保存processFormValue2
+        List<ProcessFormValue2> processFormValue2List = endAndStartProcessVO.getValue2List();
+        //20220528加判空
+        if (CollUtil.isNotEmpty(processFormValue2List)) {
+            processFormValue2List.forEach(item -> {
+
+                item.setProcessDefinitionId(processFormValue1.getProcessDefinitionId());
+                item.setActProcessInstanceId(actProcessInstance.getId());
+                item.setFormValue1Id(processFormValue1.getId());
+            });
+            processFormValue2Service.saveBatch(processFormValue2List);
+        }
+        //assiginTaskAndUserVO放入session
+        if (ObjUtil.isNotEmpty(endAndStartProcessVO.getAssiginTask())) {
+            AssiginTaskAndUserVO assiginTaskAndUserVO = new AssiginTaskAndUserVO(endAndStartProcessVO.getOperatorType(), endAndStartProcessVO.getOperatorTypeIds(), endAndStartProcessVO.getHaveNextUser(),endAndStartProcessVO.getAssiginTask(),endAndStartProcessVO.getAssiginUser());
+            httpSession.setAttribute("assiginTaskAndUserVO", assiginTaskAndUserVO);
+        }
+        //20230516  processInstanceData的写入DB前置到这里，
+        //20220710以下前置，为了setProVarListForExGateway
+        //插入流程实例数据
+        ProcessInstanceData processInstanceData = new ProcessInstanceData();
+        processInstanceData.setProcessDefinitionId(processDefinition.getId());
+        //20211203根据流程实例命名规则及表单提交者确定名称
+        processInstanceData.setProcessName(getProcessName(endAndStartProcessVO, processDefinition));
+        processInstanceData.setBusinessId(processFormValue1.getId());
+        processInstanceData.setActProcessInstanceId(actProcessInstance.getId());
+        //默认授权发起流程后
+//        Map<String, String> stepMap = workFlowBean.getCurrentStep(processDefinition.getId(), 0, actProcessInstance.getId(), myTask.getTaskDefinitionKey());
+//        //20221115
+
+        processInstanceData.setPreProcessInstanceId(preProcessInstanceData.getId());
+        //20221113 增加工单编号及赋值机制
+        processInstanceData.setOrderNum(getTimeAndRandomNum());
+        SysUser user = (SysUser) httpSession.getAttribute("user");
+        SysDept dept = sysDeptService.getById(user.getDeptId());
+        processInstanceData.setDisplayName(user.getDisplayName());
+        processInstanceData.setLoginName(user.getLoginName());
+        processInstanceData.setDeptName(dept.getName());
+        processInstanceData.setStartDatetime(LocalDateTime.now());
+        processInstanceData.setLastCommitDatetime(localDateTime);//20241015
+        processInstanceDataService.save(processInstanceData);//保存成功后mybatis会把主键/ID传回参数processInstanceData中
+
+        //20240829
+        httpSession.removeAttribute("currentStepHandler");
+        Map<String, List> taskAndHandlerMap = new HashMap<>();//<taskName,userList>
+        Map<Integer, Map> prcIDAndHandlerMap = new HashMap<>();//<1000884,<taskName,userList>>
+        httpSession.setAttribute("c", prcIDAndHandlerMap);//20240823 current在本项目中等于“下一步”
+        prcIDAndHandlerMap.put(processInstanceData.getId(),taskAndHandlerMap);
+
+
+
+        //第二个节点（也第一个ActTask，“发起”节点）创建；20220608 startEvent执行完后activeTask，一般只会有一activeTask(即“发起者”那个节点)&&流程的发起者一般也同样是“发起者”那个处理候选人：直接查activeTask即可：不过暂不改
+        List<Task> myTaskList = workFlowBean.getMyTask(actProcessInstance.getId());
+        Task myTask = myTaskList.get(0);
+        setProVarListForExGateway(processInstanceData, endAndStartProcessVO.getValue1().getValue(), myTask);//20220710加
+        if (ObjectUtil.isNotEmpty(endAndStartProcessVO.getButtonName())) {
+            workFlowBean.completeTaskByParam(processDefinition.getId(), myTask, endAndStartProcessVO.getButtonName(), null);//20220628占个位
+        } else {
+            workFlowBean.completeTask(processDefinition.getId(), myTask);
+        }
+        //跳转到ActEventListener,设置下一个节点的处理人（如果下一个节点是当前节点<发起人>指定的，那会用到session/"assiginTaskAndUserVO"）
+        //20211216注意以上代码总共会引发创建两个activiTask:发起人task及下一步的task:两次进入监听器
+
+        //20230531加是否结束判断
+        if (workFlowBean.isFinish(processInstanceData.getActProcessInstanceId())) {//2020621finish改成isFinish
+            processInstanceData.setEndDatetime(LocalDateTime.now());
+            processInstanceData.setProcessStatus("完成");
+            processInstanceData.setDisplayCurrentStep("完成");//20220726由“”改成“完成”
+            processInstanceData.setLoginCurrentStep("完成");
+        } else {
+            //断点20211211 instanceDataid为0 到底有何意义，20230517现已将真实实例id放入
+            Map<String, String> stepMap = workFlowBean.getCurrentStep(processDefinition.getId(), processInstanceData.getId(), actProcessInstance.getId(), myTask.getTaskDefinitionKey());
+            if (stepMap.get("taskType").contains("handle")) {
+                processInstanceData.setProcessStatus("处理中");
+            } else
+                processInstanceData.setProcessStatus("审批中");
+            processInstanceData.setDisplayCurrentStep(stepMap.get("displayName"));
+            processInstanceData.setLoginCurrentStep(stepMap.get("loginName"));
+        }
+
+
+        //20240124 处理附件
+        String attachmentIds = "";
+        if(ObjectUtil.isNotEmpty(files)){
+            for(MultipartFile file : files){
+                //MultipartFile file = files[0];
+                Attachment attachment = new Attachment();
+                attachment.setCreateDatetime(LocalDateTime.now()) ;
+                attachment.setMiji(fujianMiji);
+
+                // String savedName = getTimeAndRandomNum();
+                attachment.setRoute(processInstanceData.getOrderNum());
+
+                String suffix = subStringByLastPeriod(file.getOriginalFilename(),"right");
+                attachment.setType(suffix);
+                String fileNameSaved = subStringByLastPeriod(file.getOriginalFilename(),"left")+ "(" + fujianMiji+ ")" + suffix;
+                attachment.setName(fileNameSaved);
+                attachment.setSourceId(processInstanceData.getId());
+                String localPath = environment.getProperty("downloadRoot")+ processInstanceData.getOrderNum() + "/" ;
+
+                if (!FileUtil.exist(localPath)) {
+                    FileUtil.mkdir(localPath);
+                    System.out.println("Directory created: " + localPath);
+                } else {
+                    System.out.println("Directory already exists.");
+                }
+                attachmentService.save(attachment);
+                attachmentIds += (attachment.getId() + ",");
+                file.transferTo(new File(environment.getProperty("downloadRoot")+ processInstanceData.getOrderNum() + "/" + fileNameSaved));
+            }
+
+
+        }
+        if(ObjectUtil.isNotEmpty(attachmentIds)){//删除字符串最后一个','
+            char lastC = attachmentIds.substring(attachmentIds.length() - 1).charAt(0);
+            if(lastC ==',')
+                attachmentIds = attachmentIds.substring(0, attachmentIds.length() - 1);
+        }
+
+        processInstanceData.setAttachmentIds(attachmentIds);//20240124
         processInstanceDataService.updateById(processInstanceData);//20220710 save前置，这里改update
         //20220510
         this.saveProcessFormCustomInst(processFormValue1.getValue(), processInstanceData.getId(), processFormValue2List);
@@ -938,6 +1299,15 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         Task myTask = myTaskList.get(0);
         //20230517下面这条语句中的myTask必须是“当前task”,所以不能放在"complete"之后
         setProVarListForExGateway(processInstanceData, startProcessVO.getValue1().getValue(), myTask);//20220710加
+
+        //20250928 为了在start时（第二个节点创建前）就会“部门变更”流程变量写入：把以下三行前移至此
+        saveForReport(processFormValue1.getValue(), processInstanceData.getProcessDefinitionId(), processInstanceData.getId());
+        //变更字段
+        changeColumnForStart(processInstanceData, processFormValue1, processFormValue2List);
+        //20220725 部门变更相关流程变量的设置
+        setProVarListForChangeDept(processDefinition, processInstanceData);
+
+
         if (ObjectUtil.isNotEmpty(startProcessVO.getButtonName())) {
             workFlowBean.completeTaskByParam(processDefinition.getId(), myTask, startProcessVO.getButtonName(), null);//20220628占个位
         } else {
@@ -952,7 +1322,13 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             //跳转到ActEventListener,设置下一个节点的处理人（如果下一个节点是当前节点<发起人>指定的，那会用到session/"assiginTaskAndUserVO"）
             //20211216注意以上代码总共会引发创建两个activiTask:发起人task及下一步的task:两次进入监听器
             //20211211 instanceDataid为0 到底有何意义，！？？？20230516已改成真实instanceDataid（相应的实例写入DB代码前移）
-            Map<String, String> stepMap = workFlowBean.getCurrentStep(processDefinition.getId(), processInstanceData.getId(), actProcessInstance.getId(), myTask.getTaskDefinitionKey());
+            Map<String, String> stepMap= new HashMap<String, String>();
+            try {
+                stepMap = workFlowBean.getCurrentStep(processDefinition.getId(), processInstanceData.getId(), actProcessInstance.getId(), myTask.getTaskDefinitionKey());
+            } catch (Exception e) {
+                throw new RuntimeException("可能下一步处理人出现异常，请联系管理员", e);
+            }
+
             //20221212
             if (stepMap.get("taskType").contains("handle")) {
                 processInstanceData.setProcessStatus("处理中");
@@ -981,7 +1357,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 String fileNameSaved = subStringByLastPeriod(file.getOriginalFilename(),"left")+ "(" + fujianMiji+ ")" + suffix;
                 attachment.setName(fileNameSaved);
                 attachment.setSourceId(processInstanceData.getId());
-                String localPath = environment.getProperty("downloadRoot")+ "/" + processInstanceData.getOrderNum() + "/" ;
+                String localPath = environment.getProperty("downloadRoot")+ processInstanceData.getOrderNum() + "/" ;
 
                 if (!FileUtil.exist(localPath)) {
                     FileUtil.mkdir(localPath);
@@ -991,7 +1367,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                 }
                 attachmentService.save(attachment);
                 attachmentIds += (attachment.getId() + ",");
-                file.transferTo(new File(environment.getProperty("downloadRoot")+ "/" + processInstanceData.getOrderNum() + "/" + fileNameSaved));
+                file.transferTo(new File(environment.getProperty("downloadRoot")+ processInstanceData.getOrderNum() + "/" + fileNameSaved));
             }
 
 
@@ -1004,8 +1380,8 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 
         //20220710 save前置，这里加个update
         processInstanceData.setAttachmentIds(attachmentIds);//20240124
-
         processInstanceDataService.updateById(processInstanceData);
+
         //20220510
         this.saveProcessFormCustomInst(processFormValue1.getValue(), processInstanceData.getId(), processFormValue2List);
         //插入流程节点数据
@@ -1043,35 +1419,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //20220620 保存硬盘信息
         List<DiskForHisForProcess> diskListForHisForProcess = startProcessVO.getDiskListForHisForProcess();
         setDiskListChangeAndValue2( diskListForHisForProcess, processInstanceData, processDefinition, processFormValue1, user, dept);
-//        List<ProcessFormValue2> processFormValue2ListForDisk = new ArrayList<>();
-//        //目前没有“删除”,第一次提交只有（对DiskForHisForProcess表来说）新增，对AsDeviceCommon表来说有“新增/编辑”
-//        if (CollUtil.isNotEmpty(diskListForHisForProcess)) {//20220701 diskListForHisForProcess初始的数据来源为后台service.list():查不到他也会返回空LIST对象（而不是null）
-//            diskListForHisForProcess.forEach(item -> {
-//                item.setProcessInstanceDataId(processInstanceData.getId());
-//                //20230729 硬盘列表写入value2;实际上只在handle里写就可以了&&这里写没有必要&&starAndEnd我也不准确写
-//                ProcessFormValue2 processFormValue2 = new ProcessFormValue2();
-//                processFormValue2.setCustomTableId(39);//20230729硬盘列表专用（ID为39
-//                processFormValue2.setProcessDefinitionId(processFormValue1.getProcessDefinitionId());
-//                processFormValue2.setActProcessInstanceId(actProcessInstance.getId());
-//                processFormValue2.setFormValue1Id(processFormValue1.getId());
-//                processFormValue2.setAsId(item.getAsId());//start时因为新增的硬盘没有写入AsDeviceCommon，故这时asID没值（默认是0）; 在流程finish时才（真正写入db+
-//                // ）有值
-//                processFormValue2ListForDisk.add(processFormValue2);
-//
-//            });
-//            //20230729先删除旧的value2/硬盘ID;约定“硬盘列表信息表”专用自定义表ID 39; 这个逻辑只在处理节点有用
-//            //processFormValue2Service.remove(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id",actProcessInstance.getId()).eq("custom_table_id",39));
-//            processFormValue2Service.saveBatch(processFormValue2ListForDisk);
-//            diskForHisForProcessService.saveBatch(diskListForHisForProcess);//20220614这个flag设置有点小问题：暂不改
-//
-//
-//        }
-        //20230223
-        saveForReport(processFormValue1.getValue(), processInstanceData.getProcessDefinitionId(), processInstanceData.getId());
-        //变更字段
-        changeColumnForStart(processInstanceData, processFormValue1, processFormValue2List);
-        //20220725 部门变更相关流程变量的设置
-        setProVarListForChangeDept(processDefinition, processInstanceData);
 
         httpSession.removeAttribute("assiginTaskAndUserVO");
         return true;
@@ -1080,6 +1427,12 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
     @Override
     @Transactional
     public synchronized boolean handle(CheckProcessVO checkProcessVO) {
+        Integer orgId = GlobalParam.orgId;
+        if(ObjectUtil.isNotEmpty(checkProcessVO.getOrgId()) && checkProcessVO.getOrgId() != orgId) {//20241107如果是穿透流程
+            orgId = checkProcessVO.getOrgId();
+            httpSession.setAttribute("crossOrgId",orgId);
+        }
+
         ProcessInstanceData processInstanceData = processInstanceDataService.getById(checkProcessVO.getProcessInstanceDataId());
         String actProcessInstanceId = processInstanceData.getActProcessInstanceId();
         String processStatus = processInstanceData.getProcessStatus();
@@ -1114,9 +1467,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //20220711 从task里找出流程定义信息-->找出(自定义的)task定义相关信息：取代checkVo从前端读的部分
         //20220709设置流程变量
         setProVarListForExGateway(processInstanceData, checkProcessVO.getValue1().getValue(), myTask);
-        //20220725 部门变更相关流程变量的设置
-        setProVarListForChangeDept(processDefinitionService.getById(processInstanceData.getProcessDefinitionId()), processInstanceData);
-        //完成任务
+
+        //20250929 前置到这里
+        saveForReport(checkProcessVO.getValue1().getValue(), processInstanceData.getProcessDefinitionId(), processInstanceData.getId());
+   //完成任务
         if (ObjectUtil.isNotEmpty(checkProcessVO.getButtonName()) || checkProcessVO.getHaveSelectProcess().equals("是")) {
             String selectedProcess = checkProcessVO.getSelectedProcess();
             if (checkProcessVO.getHaveSelectProcess().equals("是") && ObjectUtil.isEmpty(checkProcessVO.getSelectedProcess()))
@@ -1127,17 +1481,58 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             }
             //20220709注意这个completeTaskByParam仅包含buttonName/selectedProcess两种机制
             workFlowBean.completeTaskByParam(processInstanceData.getProcessDefinitionId(), myTask, checkProcessVO.getButtonName(), selectedProcess);
+            //workFlowBean.deleteProcessInstance2(processInstanceData.getActProcessInstanceId());
         } else
             workFlowBean.completeTask(processInstanceData.getProcessDefinitionId(), myTask);
+        //20251015 又后移至complete后：因为他要判断isFinsh决定最终写入DB；但是问题是如果是审批节点中选择了变更部门，流程变量在“下下个节点”创建前才生效
+        changeColumnForHandle(processInstanceData, checkProcessVO.getValue1(), checkProcessVO.getValue2List(), workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()));//changeColumnForHandle(processInstanceData, workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()));
+        //部门变更相关流程变量的设置
+        setProVarListForChangeDept(processDefinitionService.getById(processInstanceData.getProcessDefinitionId()), processInstanceData);
+
         //跳转到ActEventListener,设置下一个节点的处理人
         //更新流程实例
         if (workFlowBean.isFinish(processInstanceData.getActProcessInstanceId())) {//2020621finish改成isFinish
+            /*20250705 测试解析json 用于新用户人网流程走完后的 用户状态变化; 登陆名和和身份证ID也同步更新
+            1.思路：在流程complete时,判断流程名称“新用户入网”，然后根据流程定义templadte表中取出loginName对应字段值，然后更新sysUser表中的记录状态
+            感觉比较简单
+            2.约定了部分表单字段名称
+            * */
+            if(processInstanceData.getProcessName().contains("新用户入网")){
+                JSONObject jsonObject = JSON.parseObject(checkProcessVO.getValue1().getValue());
+                ProcessFormTemplate processFormTemplateForLoginName = processFormTemplateService.getOne(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id",processInstanceData.getProcessDefinitionId()).eq("label","登录账号"));
+                ProcessFormTemplate processFormTemplateForPID = processFormTemplateService.getOne(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id",processInstanceData.getProcessDefinitionId()).eq("label","身份ID"));
+                String idForLoginNameTemplate = String.valueOf(processFormTemplateForLoginName.getId());
+                String idForPIDTemplate = String.valueOf(processFormTemplateForPID.getId());
+                if (jsonObject.containsKey(idForLoginNameTemplate)) {//json取值先判断有无KEY，否则报空指针
+                    String loginName= jsonObject.getString(idForLoginNameTemplate);
+                    String PID = jsonObject.getString(idForPIDTemplate);
+                    //根据PID修改loginName,PID不让他改，20260123  "org_id" 的限制从Arrays.asList(new Integer[]{0,1}))改成了orgId（这个本来就是判断过穿透后的结果） 20250708todo建用户时校验身份证格式; 20251220所里要批惯性的新用户（故org_id放开）
+                    List<SysUser> sysUserList = sysUserService.list(new  QueryWrapper<SysUser>().in("org_id",orgId).eq("id_number", PID));
+                    if(sysUserList.size() != 1)
+                        throw new RuntimeException("身份ID不存在或者重复！请联系管理员");
+
+                    SysUser sysUser = sysUserList.get(0);
+                    sysUser.setLoginName(loginName);
+                    sysUser.setStatus("正常");
+                    sysUser.setRemark("");
+                    sysUserService.updateById(sysUser);
+
+                }
+
+            }
+
+
             processInstanceData.setEndDatetime(LocalDateTime.now());
             processInstanceData.setProcessStatus("完成");
             processInstanceData.setDisplayCurrentStep("完成");//20220726由“”改成“完成”
             processInstanceData.setLoginCurrentStep("完成");
         } else {
-            Map<String, String> stepMap = workFlowBean.getCurrentStep(processInstanceData.getProcessDefinitionId(), processInstanceData.getId(), processInstanceData.getActProcessInstanceId(), myTask.getTaskDefinitionKey());
+            Map<String, String> stepMap= new HashMap<String, String>();
+            try {
+                stepMap = workFlowBean.getCurrentStep(processInstanceData.getProcessDefinitionId(), processInstanceData.getId(), processInstanceData.getActProcessInstanceId(), myTask.getTaskDefinitionKey());
+            } catch (Exception e) {
+                throw new RuntimeException("可能下一步处理人出现异常，请联系管理员", e);
+            }
             processInstanceData.setDisplayCurrentStep(stepMap.get("displayName"));
             processInstanceData.setLoginCurrentStep(stepMap.get("loginName"));
             //注意：下面这个task可能只是当前并发任务中的一个：但也无妨，因为他是为了判断退回，退回连线约定不能放在并发任务（如并行网关）结点中；如果碰到这种情况，Aciviti运行可能报错，但暂时不考虑这种情况了
@@ -1166,6 +1561,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         SysUser user = (SysUser) httpSession.getAttribute("user");
         SysDept dept = sysDeptService.getById(user.getDeptId());
         ProcessInstanceNode processInstanceNode = new ProcessInstanceNode();
+        processInstanceNode.setOrgId(orgId);//20241108
         //BeanUtils.copyProperties(checkProcessVO, processInstanceNode);//20220617增：关于processInstanceNode的属性自动赋值:实际上是可以用的：因为前端已经从values里把那些“非全局表单元素”/node相关的值删除了（当然这样的结果是，换一个流程节点相关form组件里没有初始值了：当然没有也是合理的）：
         processInstanceNode.setProcessInstanceDataId(processInstanceData.getId());
         processInstanceNode.setTaskDefKey(myTask.getTaskDefinitionKey());
@@ -1188,7 +1584,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             }
         }
 
-
         processInstanceNode.setStartDatetime(LocalDateTime.ofInstant(startDateTime.toInstant(), ZoneId.systemDefault()));
         processInstanceNode.setEndDatetime(LocalDateTime.ofInstant(endDateTime.toInstant(), ZoneId.systemDefault()));
         if (ObjectUtil.isNotEmpty(checkProcessVO.getButtonName())) {
@@ -1202,7 +1597,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
 //            processInstanceNode.setOperatorTypeIds(checkProcessVO.getOperatorTypeIds());
 //            processInstanceNode.setOperatorTypeStr(checkProcessVO.getOperatorTypeStr());
 //        }
-        if (ObjectUtil.isNotEmpty(checkProcessVO.getComment()) && checkProcessVO.getHaveComment().equals("是")) {
+        if (ObjectUtil.isNotEmpty(checkProcessVO.getComment()) ) {//20250518 为了让闭环流程里的文本域写到comment，暂注释 && checkProcessVO.getHaveComment().equals("是")
             processInstanceNode.setComment(checkProcessVO.getComment());
         } else {
             if (processInstanceNode.getButtonName().contains("同意")) {//20211117修改退回时，意见也是同意的问题
@@ -1219,29 +1614,52 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
         processInstanceNodeService.save(processInstanceNode);
         //processFormValue1.value
-        ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id", actProcessInstanceId));
+        ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",orgId).eq("act_process_instance_id", actProcessInstanceId));
         processFormValue1.setValue(checkProcessVO.getValue1().getValue());
+
+
+
+
         processFormValue1Service.updateById(processFormValue1);
         //20220531加
         //保存processFormValue2
         List<ProcessFormValue2> processFormValue2List = checkProcessVO.getValue2List();
         //20220528加判空
         if (CollUtil.isNotEmpty(processFormValue2List)) {
-            processFormValue2Service.remove(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id", actProcessInstanceId));
+            processFormValue2Service.remove(new  QueryWrapper<ProcessFormValue2>().eq("org_id",orgId).eq("act_process_instance_id", actProcessInstanceId));
+
+            //20250423让304运维人员将违规记录写入inspection
+            Inspection inspection = new Inspection();
+
+
             processFormValue2List.forEach(item -> {
                 item.setProcessDefinitionId(processFormValue1.getProcessDefinitionId());
                 item.setActProcessInstanceId(actProcessInstanceId);
                 item.setFormValue1Id(processFormValue1.getId());
+                item.setOrgId(processFormValue1.getOrgId());
+                if("yutao03".equals(user.getLoginName()) && ObjectUtil.isNotEmpty(checkProcessVO.getViolate()) && ObjectUtil.isEmpty(inspection.getNo())){//20250423 只记录一个value2;
+                    AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(item.getAsId());
+                    inspection.setMiji(asDeviceCommon.getMiji());
+                    inspection.setNo(asDeviceCommon.getNo());
+                    inspection.setUserDept(asDeviceCommon.getUserDept());
+                    inspection.setUserName(asDeviceCommon.getUserName());
+                    inspection.setCreateDatetime(LocalDateTime.now());
+                    inspection.setInspectDate(LocalDate.now());
+                    inspection.setMode("所内检查");
+                    inspection.setIllegalAccess(checkProcessVO.getViolate());
+                    inspection.setInspector(user.getDisplayName());
+                    inspection.setCreator("自动");
+                    inspectionService.save(inspection);
+
+                }
+
             });
             processFormValue2Service.saveBatch(processFormValue2List);
         }
-        //20221213
-        saveForReport(checkProcessVO.getValue1().getValue(), processInstanceData.getProcessDefinitionId(), processInstanceData.getId());
-        //变更字段 20220701下移到这里，因为这时 processFormValue1已经写到DB中了，下面的方法是根据processInstanceDataID找的value1表查的：20221213其实应该直接使用"环境中现有的"value1:暂不改
-        changeColumnForHandle(processInstanceData, workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()));
+
         //20220621 保存硬盘信息
         //先删除DiskForHisForProcess表原记录
-        diskForHisForProcessService.remove(new  QueryWrapper<DiskForHisForProcess>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()));
+        diskForHisForProcessService.remove(new  QueryWrapper<DiskForHisForProcess>().eq("org_id",orgId).eq("process_instance_data_id", processInstanceData.getId()));
         List<DiskForHisForProcess> diskListForHis = checkProcessVO.getDiskListForHisForProcess();
         ProcessDefinition processDefinition = processDefinitionService.getById(processFormValue1.getProcessDefinitionId());
         setDiskListChangeAndValue2(diskListForHis, processInstanceData,processDefinition, processFormValue1, user, dept);
@@ -1260,7 +1678,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         //
         System.out.println(modifyProcessFormVO);
         ProcessFormValue1 processFormValue1 = processFormValue1Service.getById(processFormValue1Id);
-        processFormValue1.setValue(modifyProcessFormVO.getValue());
+        processFormValue1.setValue(modifyProcessFormVO.getValue1().getValue());
         String actProcessInstanceId = processFormValue1.getActProcessInstanceId();
         List<ProcessInstanceData> list = processInstanceDataService.list(new  QueryWrapper<ProcessInstanceData>().eq("org_id",GlobalParam.orgId).eq("act_process_instance_id",actProcessInstanceId));
         ProcessInstanceData processInstanceData = list.get(0);
@@ -1278,18 +1696,30 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             processFormValue2Service.saveBatch(processFormValue2List);
         }
         //20221213
-        saveForReport(modifyProcessFormVO.getValue(), processInstanceData.getProcessDefinitionId(), processInstanceData.getId());
+        saveForReport(modifyProcessFormVO.getValue1().getValue(), processInstanceData.getProcessDefinitionId(), processInstanceData.getId());
         //变更字段 20220701下移到这里，因为这时 processFormValue1已经写到DB中了，下面的方法是根据processInstanceDataID找的value1表查的：20221213其实应该直接使用"环境中现有的"value1:暂不改
-        changeColumnForHandle(processInstanceData, workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()));
+        changeColumnForHandle(processInstanceData, modifyProcessFormVO.getValue1(), modifyProcessFormVO.getValue2List(),workFlowBean.isFinish(processInstanceData.getActProcessInstanceId()));
         //20220621 保存硬盘信息
         //先删除DiskForHisForProcess表原记录
         diskForHisForProcessService.remove(new  QueryWrapper<DiskForHisForProcess>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()));
         List<DiskForHisForProcess> diskListForHis = modifyProcessFormVO.getDiskListForHisForProcess();
         ProcessDefinition processDefinition = processDefinitionService.getById(processFormValue1.getProcessDefinitionId());
         setDiskListChangeAndValue2(diskListForHis, processInstanceData,processDefinition, processFormValue1, user, dept);
-        this.saveProcessFormCustomInst(modifyProcessFormVO.getValue(), processInstanceData.getId(), processFormValue2List);
+        this.saveProcessFormCustomInst(modifyProcessFormVO.getValue1().getValue(), processInstanceData.getId(), processFormValue2List);
         return processFormValue1Service.updateById(processFormValue1);
 
+    }
+
+    @Override
+    public boolean terminate(ProcessInstanceData processInstanceData) {
+
+        workFlowBean.deleteProcessInstance2(processInstanceData.getActProcessInstanceId());
+        processInstanceData.setEndDatetime(LocalDateTime.now());
+        processInstanceData.setProcessStatus("终止");
+        processInstanceData.setDisplayCurrentStep("终止");//20220726由“”改成“完成”
+        processInstanceData.setLoginCurrentStep("终止");
+        processInstanceDataService.updateById(processInstanceData);
+        return true;
     }
 
     @Override
@@ -1330,12 +1760,15 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             List<String> ids = Arrays.asList(ids_str);
             ids.forEach(i->{
                 Attachment attachment = attachmentService.getById(Integer.valueOf(i));
-                String localPath = environment.getProperty("downloadRoot")+ "/" + attachment.getRoute() + "/" + attachment.getName();
-                if (FileUtil.exist(localPath)) {
-                    // 删除目录及其所有内容
-                    FileUtil.del(localPath);
-                    System.out.println("Directory and all its contents deleted successfully.");
+                if(ObjectUtil.isNotEmpty(attachment)){
+                    String localPath = environment.getProperty("downloadRoot")+ attachment.getRoute() + "/" + attachment.getName();
+                    if (FileUtil.exist(localPath)) {
+                        // 删除目录及其所有内容
+                        FileUtil.del(localPath);
+                        System.out.println("Directory and all its contents deleted successfully.");
+                    }
                 }
+
             });
 
             attachmentService.removeByIds(Arrays.asList(ids_str));
@@ -1429,20 +1862,20 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         ProcessInstanceChange changeSpecial = new ProcessInstanceChange();
                         //if (processFormTemplate.getLabel().split("\\.")[1].equals("责任人") || processFormTemplate.getLabel().split("\\.")[1].equals("责任部门")|| processFormTemplate.getLabel().split("\\.")[1].equals("责任人密级"))
                         String changeColumnName = processFormTemplate.getLabel().split("\\.")[1];
-                        if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘") || changeColumnName.equals("更换内存") || changeColumnName.equals("更换网卡")) {
-                            changeSpecial.setAsId(asId);
-                            changeSpecial.setProcessInstanceDataId(processInstanceData.getId());
-                            changeSpecial.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
-                            changeSpecial.setName(changeColumnName);
-                            changeSpecial.setNewValue(pageValue);
-                            changeSpecial.setIsFinish("否");
-                            changeSpecial.setIsReportTitle("是");
-                            changeSpecial.setZhTableName(asConfigMap.get(tableNameTmp));
-                            changeList.add(changeSpecial);
-                            //以下两个只是个“开关量”：不记入“普通”变更记录；20221208 下面这个判断条件有点多余，todo考虑去掉
-                            if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘") || changeColumnName.equals("更换内存") || changeColumnName.equals("更换网卡"))
-                                continue;
-                        }
+//                        if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘") || changeColumnName.equals("更换内存") || changeColumnName.equals("更换网卡")) {
+//                            changeSpecial.setAsId(asId);
+//                            changeSpecial.setProcessInstanceDataId(processInstanceData.getId());
+//                            changeSpecial.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
+//                            changeSpecial.setName(changeColumnName);
+//                            changeSpecial.setNewValue(pageValue);
+//                            changeSpecial.setIsFinish("否");
+//                            changeSpecial.setIsReportTitle("是");
+//                            changeSpecial.setZhTableName(asConfigMap.get(tableNameTmp));
+//                            changeList.add(changeSpecial);
+//                            //以下两个只是个“开关量”：不记入“普通”变更记录；20221208 下面这个判断条件有点多余，todo考虑去掉
+//                            if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘") || changeColumnName.equals("更换内存") || changeColumnName.equals("更换网卡"))
+//                                continue;
+//                        }
                         if (ObjectUtil.isNotEmpty(pageValue)) {
                            //20231114 更新“安全产品状态”|写入基本表DB
                             if(changeColumnName.equals("是否安装安全产品") && "否".equals(pageValue)){
@@ -1450,7 +1883,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                                 asComputerSpecial.setSafeInstall("否");
                                 asComputerSpecialService.updateById(asComputerSpecial);
                             }
-
                             if ("置空".equals(pageValue)) {//20230524新增“置空”机制：在硬盘报废流程中，利用“信息点号”字段(用于前端临时借用放宿主机资产号的)传递（但此时DB里本身并没有值）
                                 pageValue = "";
                                 /*此时为“硬盘报废”场景，清空
@@ -1509,23 +1941,29 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
         }
     }
 
-    private void changeColumnForHandle(ProcessInstanceData processInstanceData, boolean isFinish) {
+    //注：硬盘的变更信息记录在另外一个单独方法中
+    private void changeColumnForHandle(ProcessInstanceData processInstanceData, ProcessFormValue1 processFormValue1 ,List<ProcessFormValue2> processFormValue2List, boolean isFinish) {//,
+        Integer crossOrgId = (Integer)httpSession.getAttribute("crossOrgId");//20241109
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
         //先删除变更记录
-        processInstanceChangeService.remove(new  QueryWrapper<ProcessInstanceChange>().eq("org_id",GlobalParam.orgId).eq("process_instance_data_id", processInstanceData.getId()));
+        processInstanceChangeService.remove(new  QueryWrapper<ProcessInstanceChange>().eq("org_id",orgId).eq("process_instance_data_id", processInstanceData.getId()));
         //20220716
         ProcessDefinition processDefinition = processDefinitionService.getById(processInstanceData.getProcessDefinitionId());
 
-        ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()));
-        List<ProcessFormValue2> formValue2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",GlobalParam.orgId).eq("form_value1_id", processFormValue1.getId()));
-        if (CollUtil.isEmpty(formValue2List)) return;
+        //ProcessFormValue1 processFormValue1 = processFormValue1Service.getOne(new  QueryWrapper<ProcessFormValue1>().eq("org_id",orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("act_process_instance_id", processInstanceData.getActProcessInstanceId()));
+        //List<ProcessFormValue2> processFormValue2List = processFormValue2Service.list(new  QueryWrapper<ProcessFormValue2>().eq("org_id",orgId).eq("form_value1_id", processFormValue1.getId()));
+        if (CollUtil.isEmpty(processFormValue2List))
+            return;
         //
-        List<AsConfig> asConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",GlobalParam.orgId).select("distinct en_table_name,zh_table_name"));
+        List<AsConfig> asConfigList = asConfigService.list(new  QueryWrapper<AsConfig>().eq("org_id",orgId).select("distinct en_table_name,zh_table_name"));
         Map<String, String> asConfigMap = asConfigList.stream().collect(Collectors.toMap(AsConfig::getEnTableName, AsConfig::getZhTableName));
         //
         JSONObject jsonObject = JSONObject.parseObject(processFormValue1.getValue());
         //Map<Integer, Integer> asIdMap = formValue2List.stream().collect(Collectors.toMap(ProcessFormValue2::getCustomTableId, ProcessFormValue2::getAsId));
         Map<Integer, List<Integer>> customIdAsIdListMap = new HashMap<>();
-        formValue2List.stream().forEach(item -> {
+        processFormValue2List.stream().forEach(item -> {
             if (CollUtil.isNotEmpty(customIdAsIdListMap.get(item.getCustomTableId()))) {
                 customIdAsIdListMap.get(item.getCustomTableId()).add(item.getAsId());
             } else {
@@ -1535,10 +1973,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             }
         });
         //取出所有的变更字段
-        List<ProcessFormTemplate> formTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("flag", "字段变更类型").orderByAsc("name"));
+        List<ProcessFormTemplate> formTemplateList = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",orgId).eq("process_definition_id", processInstanceData.getProcessDefinitionId()).eq("flag", "字段变更类型").orderByAsc("name"));
         //组装map <自定义表ID，List<template>>
         Map<Integer, List<ProcessFormTemplate>> map = new HashMap<>();
-        for (ProcessFormValue2 processFormValue2 : formValue2List) {
+        for (ProcessFormValue2 processFormValue2 : processFormValue2List) {
             List<ProcessFormTemplate> list = formTemplateList.stream().filter(item -> (item.getName().split("\\.")[0]).equals(processFormValue2.getCustomTableId() + "")).collect(Collectors.toList());
             map.put(processFormValue2.getCustomTableId(), list);
         }
@@ -1548,6 +1986,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
             //Integer asId = asIdMap.get(entry.getKey());
             //20230721将上面这句改成从List中遍历
             List<Integer> listAsId = customIdAsIdListMap.get(entry.getKey());
+            Integer finalOrgId = orgId;//20241110 根据下面相应语句报错自动修改的
             listAsId.forEach(asId -> {
                 //组装map2  <基本表ID，List<template>>
                 Map<String, List<ProcessFormTemplate>> map2 = new HashMap<>();
@@ -1575,8 +2014,10 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         asTypeId = asDeviceCommon.getTypeId();
 
                     } else {
-                        dbObject = service.getOne(new  QueryWrapper<Object>().eq("org_id",GlobalParam.orgId).eq("as_id", asId));
+                        dbObject = service.getOne(new  QueryWrapper<Object>().eq("org_id", finalOrgId).eq("as_id", asId));
                     }
+                    if(ObjectUtil.isEmpty(dbObject))//20250521
+                        throw new RuntimeException("相应设备的数据表记录不完整，请联系管理员！");
                     //
                     for (ProcessFormTemplate processFormTemplate : entry2.getValue()) {
                         //name,baomi_no
@@ -1599,22 +2040,6 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                         //20220820为了记录“审批报表专用字段”的变更字段
                         ProcessInstanceChange changeSpecial = new ProcessInstanceChange();
                         String changeColumnName = processFormTemplate.getLabel().split("\\.")[1];
-                        if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘") || changeColumnName.equals("更换内存") || changeColumnName.equals("更换网卡")) {
-                            if (ObjectUtil.isNotEmpty(pageValue)) {//20220829 去空
-                                changeSpecial.setAsId(asId);
-                                changeSpecial.setProcessInstanceDataId(processInstanceData.getId());
-                                changeSpecial.setActProcessInstanceId(processInstanceData.getActProcessInstanceId());
-                                changeSpecial.setName(changeColumnName);
-                                changeSpecial.setNewValue(pageValue);
-                                changeSpecial.setIsFinish("否");
-                                changeSpecial.setIsReportTitle("是");//20320609 有点记不清本字段具体用法：暂不研
-                                changeSpecial.setZhTableName(asConfigMap.get(tableNameTmp));
-                                changeList.add(changeSpecial);
-                                //以下只是个“开关量”：
-                                if (changeColumnName.equals("重装操作系统") || changeColumnName.equals("更换硬盘") || changeColumnName.equals("更换内存") || changeColumnName.equals("更换网卡"))
-                                    continue;
-                            }
-                        }
                         if (ObjectUtil.isNotEmpty(pageValue)) {//这是变更字段存在值的分支
                             //20230527 asDeviceCommon创建前置至此
                             AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(asId);//20230215 实际上这个asDeviceCommon没必要设置：直接用 ReflectUtil.getFieldValue(dbObject, columnName)取相应值即可：暂不改
@@ -1670,6 +2095,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                                 change.setDisplayName(user.getDisplayName());
                                 change.setLoginName(user.getLoginName());
                                 change.setModifyDatetime(LocalDateTime.now());
+                                change.setOrgId(processFormTemplate.getOrgId());
                                 if (isFinish)
                                     change.setIsFinish("是");
                                 else
@@ -1687,7 +2113,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                                     }
                                     //20221005信息点号单独处理
                                     //20230525排除硬盘变更（“宿主机”字段借用"信息点号"）
-                                    if (asTypeId != 30) {
+                                    if (asTypeId != GlobalParam.typeIDForDisk) {
                                         if (changeColumnName.contains("信息点号")) {
                                             updateInfoNo(dbValue, pageValue, asId);
                                         }
@@ -1700,7 +2126,7 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                                     if (asTypeId != 0) {//（机制见上方相应逻辑）为0代表本变更字段并不是asDeviceCommon主表的
                                         AsType asTypeLevel2 = asTypeService.getLevel2AsTypeById(asTypeId);
                                         if (asTypeLevel2.getId() ==  GlobalParam.typeIDForFWQ|| asTypeLevel2.getId() ==  GlobalParam.typeIDForCMP) {
-                                            //20240131 归库流程排除硬盘与主表（计算机）的关联字段变更
+                                            //20240131 归库流程时，要排除硬盘与主表（计算机）的关联字段变更；即归库时不变更这些字段
                                             if (!processInstanceData.getProcessName().contains("归库")  && (changeColumnName.equals("责任人") || changeColumnName.equals("责任人密级") || changeColumnName.equals("责任部门") || changeColumnName.equals("联网类别") || changeColumnName.equals("涉密级别") || changeColumnName.equals("状态"))) {//20230609 责任人
                                                 //添加硬盘相关变更记录
                                                 List<AsDeviceCommon> diskList = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id",GlobalParam.orgId).eq("host_as_id", asDeviceCommon.getId()).ne("state", "报废").ne("state", "摘除"));
@@ -1723,10 +2149,9 @@ public class ProcessInstanceDataServiceImpl extends ServiceImpl<ProcessInstanceD
                                                         if (changeColumnName.equals("联网类别"))
                                                             item.setNetType(pageValue);
                                                         processInstanceChange.setAsId(item.getId());
+                                                        processInstanceChange.setOrgId(processFormTemplate.getOrgId());
                                                         changeList.add(processInstanceChange);
                                                     }
-                                                    //20230809 todo添加对硬盘编辑时的信息维护：如硬盘的新增与摘除，还有硬盘其他信息维护：可能需要对比那个“硬盘状态表diskForHIS”:但好像已经在别处实现了，只是有点问题：如diskForHIS表记录里：如果两块硬盘同时摘除，只把第二个记录成了摘除：todo研
-                                                    //20230610 同步硬盘与计算机同值的相关DB字段
                                                     asDeviceCommonService.updateBatchById(diskList);
                                                 }
 

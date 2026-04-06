@@ -2,10 +2,7 @@ package com.sss.yunweiadmin.controller;
 
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.ArrayUtil;
-import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.core.util.ReflectUtil;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.*;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.google.common.base.Strings;
@@ -25,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpSession;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,7 +51,8 @@ public class ProcessFormTemplateController {
     private AsDeviceCommonService asDeviceCommonService;
     @Autowired
     private ProcessDefinitionService processDefinitionService;
-
+    @Autowired
+    HttpSession httpSession;
 
 
 
@@ -72,7 +71,7 @@ public class ProcessFormTemplateController {
     @GetMapping("getFormTemplateTree")
     public List<FormTemplateVO> getFormTemplateTree(Integer processDefinitionId,String actProcessInstanceId) {//20221103 添加Integer actProcessInstanceId
         List<ProcessFormTemplate> list = null;
-        if(actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
+        if(ObjectUtil.isNotEmpty(actProcessInstanceId) && actProcessInstanceId.contains("_")) {//20241106 穿透流程的前端参数标记
             String[] a = actProcessInstanceId.split("_");
             list = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",a[1]).eq("process_definition_id", processDefinitionId));
             return processFormTemplateService.getFormTemplateTree(list,processDefinitionId,actProcessInstanceId);
@@ -174,54 +173,33 @@ public class ProcessFormTemplateController {
     //示例中最后那个“75”代表as_config中的对应ID
     //asConfigController也有同名getTableTypeVO方法
     @GetMapping("getTableTypeVO")
-    public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId) {
-        return processFormTemplateService.getTableTypeVO(processDefinitionId);
-//        Map<Integer, List<TableTypeVO>> map = Maps.newTreeMap();
-//        //1.取出所有的表类型的名称
-//        List<ProcessFormTemplate> list = processFormTemplateService.list(new  QueryWrapper<ProcessFormTemplate>().eq("org_id",GlobalParam.orgId).eq("process_definition_id", processDefinitionId));
-//        List<Integer> tableIdList = list.stream().filter(item -> item.getFlag().equals("表类型")).map(item -> {
-//            String tableId = item.getType().split("\\.")[0];
-//            return Integer.parseInt(tableId);
-//        }).collect(Collectors.toList());
-//        if (CollUtil.isNotEmpty(list) && CollUtil.isNotEmpty(tableIdList)) {
-//            //2.根据表名称取出processFormCustomType
-//            List<ProcessFormCustomType> typeList = processFormCustomTypeService.list(new  QueryWrapper<ProcessFormCustomType>().eq("org_id",GlobalParam.orgId).in("id", tableIdList));
-//            //3.
-//            for (ProcessFormCustomType processFormCustomType : typeList) {
-//                List<TableTypeVO> tmpList = Lists.newArrayList();
-//
-//                String props = processFormCustomType.getProps();
-//                Map<String, List<AsConfig>> tmpMap = ProcessFormCustomTypeUtil.parseProps(props);//String代表英文table名称
-//                tmpMap.entrySet().stream().forEach(item -> {
-//                    item.getValue().forEach(item2 -> {
-//                        TableTypeVO tableTypeVO = new TableTypeVO();
-//                        tableTypeVO.setLabel(processFormCustomType.getName() + "." + item2.getZhColumnName());
-//                        tableTypeVO.setName(processFormCustomType.getId() + "." + processFormCustomType.getName() + "." + item.getKey() + "." + item2.getEnColumnName() + "." + item2.getId());
-//                        tmpList.add(tableTypeVO);
-//                    });
-//                });
-//
-//                map.put(processFormCustomType.getId(), tmpList);
-//            }
-//        }
-//        return map;
+    public Map<Integer, List<TableTypeVO>> getTableTypeVO(Integer processDefinitionId, String orgIdS) {
+        Integer orgId = GlobalParam.orgId;
+        if(ObjectUtil.isNotEmpty(orgIdS)) {//20241106 穿透流程的前端参数标记
+            orgId = Integer.valueOf(orgIdS);
+        }
+        return processFormTemplateService.getTableTypeVO(processDefinitionId,orgId);
+
     }
 
     //20211129获取流程实例中自定义表各字段的相应实例数据; 格式<"16.计算机信息表.as_device_common.no.75","J0601111">；这个函数只有在流程发起时选择资产后的填充相应字段时被调用
     //20220408这个方法和ProcessFormCustomInstController的设置初衷有关联，todo后续研究需要不需要整合
     //20220616这个方法只有在流程中“选择资产”时执行，纯ajax处理函数
     @GetMapping("getTableTypeInstData")
-    public TableTypeInstDataVO getTableTypeInstData(Integer customTableId, Integer asDeviceCommonId, Integer processDefinitionId) {
+    public TableTypeInstDataVO getTableTypeInstData(Integer customTableId, Integer asDeviceCommonId, Integer processDefinitionId, Integer crossOrgId) {
+        Integer orgId = GlobalParam.orgId;
+        if(ObjUtil.isNotEmpty(crossOrgId))
+            orgId = crossOrgId;
         TableTypeInstDataVO VO = new TableTypeInstDataVO();
         Map<String, String> map = Maps.newTreeMap();
         List<DiskForHisForProcess> diskList = null;//20220621 List<AsDeviceCommon改造成 List<DiskForHisForProcess>
-        List<TableTypeVO> listForTableTypeVO = this.getTableTypeVO(processDefinitionId).get(customTableId);//20220408getTableTypeVO:返回 Map<Integer, List<TableTypeVO>>；map也能用get方法
+        List<TableTypeVO> listForTableTypeVO = this.getTableTypeVO(processDefinitionId,Integer.toString(orgId)).get(customTableId);//20220408getTableTypeVO:返回 Map<Integer, List<TableTypeVO>>；map也能用get方法
         for (TableTypeVO item : listForTableTypeVO) {
             //1.资产哦.as_device_common.no.1
             String name = item.getName();//"name": "16.计算机信息表.as_device_common.no.75"
             String[] arr = name.split("\\.");
             if ("disk_for_render".equals(arr[3])) {//20220616加：自定义字段有“硬盘渲染标识时”给前端传disk数据，还是放前端吧
-                List<AsDeviceCommon> list = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id", GlobalParam.orgId).eq("host_as_id", asDeviceCommonId).like("name", "硬盘").ne("state","报废").ne("state","摘除"));
+                List<AsDeviceCommon> list = asDeviceCommonService.list(new  QueryWrapper<AsDeviceCommon>().eq("org_id", orgId).eq("host_as_id", asDeviceCommonId).like("name", "硬盘").ne("state","报废").ne("state","摘除"));
                 if (list != null) {
                     String hostAsNo = asDeviceCommonService.getById(asDeviceCommonId).getNo();
                     diskList = list.stream().map(item1 -> {
@@ -242,7 +220,7 @@ public class ProcessFormTemplateController {
             if (arr[2].equals("as_device_common")) {
                 obj = service.getById(asDeviceCommonId);
             } else {
-                obj = service.getOne(new  QueryWrapper<Object>().eq("org_id",GlobalParam.orgId).eq("as_id", asDeviceCommonId));
+                obj = service.getOne(new  QueryWrapper<Object>().eq("org_id",orgId).eq("as_id", asDeviceCommonId));
             }
             if (obj != null) {
                 //读实例中相应自定义表的具体字段值：这里的toString()是把所有字段不管啥类型都转成string
@@ -251,7 +229,7 @@ public class ProcessFormTemplateController {
                 //20230524 硬盘类型的”宿主机“借用字段"port_no”字段的填充
                 if("port_no".equals(arr[3])){
                     AsDeviceCommon asDeviceCommon = asDeviceCommonService.getById(asDeviceCommonId);
-                    if(asDeviceCommon.getTypeId() == 30){//硬盘类型
+                    if(asDeviceCommon.getTypeId() == GlobalParam.typeIDForDisk){//硬盘类型
                         if(ObjectUtil.isNotEmpty(asDeviceCommon.getHostAsId())){
                             o = asDeviceCommonService.getById(asDeviceCommon.getHostAsId()).getNo();
                         }
