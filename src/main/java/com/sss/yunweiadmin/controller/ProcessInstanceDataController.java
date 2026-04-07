@@ -21,6 +21,7 @@ import com.sss.yunweiadmin.common.utils.CustomFunction;
 import com.sss.yunweiadmin.common.utils.SpringUtil;
 import com.sss.yunweiadmin.model.entity.*;
 import com.sss.yunweiadmin.model.vo.*;
+import com.sss.yunweiadmin.model.excel.ProcessInstanceExcel;
 import com.sss.yunweiadmin.service.*;
 import lombok.SneakyThrows;
 import org.activiti.engine.HistoryService;
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.File;
 import java.sql.Timestamp;
@@ -986,5 +988,188 @@ public class ProcessInstanceDataController {
             list = activeTaskList.stream().map(Task::getTaskDefinitionKey).collect(Collectors.toList());
         }
         return list;
+    }
+
+    /**
+     * 导出流程实例Excel（包含ProcessFormValue1.value的JSON解析字段）
+     */
+    @GetMapping("exportExcel")
+    public void exportExcel(
+            String processName,
+            String processStatus,
+            String displayName,
+            String deptName,
+            String orderNum,
+            String startDate,
+            String endDate,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        // 1. 构建查询条件，逻辑与list接口一致
+        QueryWrapper<ProcessInstanceData> queryWrapper = new QueryWrapper<ProcessInstanceData>()
+                .eq("org_id", GlobalParam.orgId)
+                .orderByDesc("id");
+
+        if (StrUtil.isNotBlank(processName)) {
+            queryWrapper.like("process_name", processName);
+        }
+        if (StrUtil.isNotBlank(processStatus)) {
+            queryWrapper.eq("process_status", processStatus);
+        }
+        if (StrUtil.isNotBlank(displayName)) {
+            queryWrapper.eq("display_name", displayName);
+        }
+        if (StrUtil.isNotBlank(deptName)) {
+            queryWrapper.eq("dept_name", deptName);
+        }
+        if (StrUtil.isNotBlank(orderNum)) {
+            queryWrapper.like("order_num", orderNum);
+        }
+        if (StrUtil.isNotBlank(startDate)) {
+            String[] dateArr = startDate.split(",");
+            queryWrapper.ge("start_datetime", dateArr[0] + " 00:00:00");
+            queryWrapper.le("start_datetime", dateArr[1] + " 00:00:00");
+        }
+        if (StrUtil.isNotBlank(endDate)) {
+            String[] dateArr = endDate.split(",");
+            queryWrapper.ge("end_datetime", dateArr[0] + " 00:00:00");
+            queryWrapper.le("end_datetime", dateArr[1] + " 00:00:00");
+        }
+
+        // 2. 查询所有符合条件的流程实例（不分页）
+        List<ProcessInstanceData> instanceList = processInstanceDataService.list(queryWrapper);
+
+        // 3. 填充score和JSON字段
+        List<ProcessInstanceExcel> excelList = new ArrayList<>();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        for (ProcessInstanceData instance : instanceList) {
+            ProcessInstanceExcel excel = new ProcessInstanceExcel();
+            excel.setProcessName(instance.getProcessName());
+            excel.setProcessStatus(instance.getProcessStatus());
+            excel.setDisplayCurrentStep(instance.getDisplayCurrentStep());
+            excel.setOrderNum(instance.getOrderNum());
+            excel.setDisplayName(instance.getDisplayName());
+            excel.setDeptName(instance.getDeptName());
+            excel.setStartDatetime(instance.getStartDatetime() != null ? instance.getStartDatetime().format(fmt) : "");
+            excel.setEndDatetime(instance.getEndDatetime() != null ? instance.getEndDatetime().format(fmt) : "");
+
+            // 填充评分
+            Score score = scoreService.getOne(
+                    new QueryWrapper<Score>()
+                            .eq("org_id", GlobalParam.orgId)
+                            .eq("business_id", instance.getId())
+                            .eq("node_type", 3), false);
+            excel.setScore(score != null ? score.getScore() : 0);
+
+            // 解析ProcessFormValue1中的JSON字段
+            ProcessFormValue1 value1 = processFormValue1Service.getOne(
+                    new QueryWrapper<ProcessFormValue1>()
+                            .eq("org_id", GlobalParam.orgId)
+                            .eq("act_process_instance_id", instance.getActProcessInstanceId()));
+            if (value1 != null && StrUtil.isNotBlank(value1.getValue())) {
+                excel.setJsonValue(value1.getValue());
+                // 将JSON解析后放入extraFields，前端动态渲染列头
+                try {
+                    Map<String, Object> jsonMap = JSON.parseObject(value1.getValue(), Map.class);
+                    if (jsonMap != null) {
+                        Map<String, String> extraFields = new java.util.LinkedHashMap<>();
+                        for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
+                            extraFields.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue().toString());
+                        }
+                        excel.setExtraFields(extraFields);
+                    }
+                } catch (Exception e) {
+                    // JSON解析失败，忽略
+                }
+            }
+
+            excelList.add(excel);
+        }
+
+        // 4. 动态生成列：收集所有JSON key作为表头
+        List<String> jsonKeys = new ArrayList<>();
+        for (ProcessInstanceExcel excel : excelList) {
+            if (excel.getExtraFields() != null) {
+                for (String key : excel.getExtraFields().keySet()) {
+                    if (!jsonKeys.contains(key)) {
+                        jsonKeys.add(key);
+                    }
+                }
+            }
+        }
+
+        // 5. 写入响应
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("utf-8");
+            String fileName = java.net.URLEncoder.encode("流程实例导出", "UTF-8").replaceAll("\\+", "%20");
+            response.setHeader("Content-disposition", "attachment;filename*=UTF-8''" + fileName + ".xlsx");
+
+            // 扁平化数据：每行 = 固定列 + 动态JSON列
+            List<List<Object>> dataList = new ArrayList<>();
+            for (ProcessInstanceExcel excel : excelList) {
+                List<Object> row = new ArrayList<>();
+                row.add(nvl(excel.getProcessName()));
+                row.add(nvl(excel.getProcessStatus()));
+                row.add(nvl(excel.getDisplayCurrentStep()));
+                row.add(nvl(excel.getOrderNum()));
+                row.add(nvl(excel.getDisplayName()));
+                row.add(nvl(excel.getDeptName()));
+                row.add(nvl(excel.getStartDatetime()));
+                row.add(nvl(excel.getEndDatetime()));
+                row.add(excel.getScore() != null ? excel.getScore() : 0);
+                // 动态JSON列
+                if (excel.getExtraFields() != null) {
+                    for (String key : jsonKeys) {
+                        row.add(nvl(excel.getExtraFields().get(key)));
+                    }
+                } else {
+                    for (String key : jsonKeys) {
+                        row.add("");
+                    }
+                }
+                dataList.add(row);
+            }
+
+            // 使用EasyExcel动态写入
+            com.alibaba.excel.EasyExcel.write(response.getOutputStream())
+                    .head(generateHead(jsonKeys))
+                    .sheet("流程实例")
+                    .doWrite(dataList);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** 空值处理 */
+    private String nvl(Object obj) {
+        return obj == null ? "" : obj.toString();
+    }
+
+    /**
+     * 生成动态表头
+     * @param jsonKeys JSON解析出的key列表
+     * @return 表头List<List<String>>
+     */
+    private List<List<String>> generateHead(List<String> jsonKeys) {
+        List<List<String>> head = new ArrayList<>();
+
+        // 固定列：流程名称
+        head.add(Arrays.asList("流程名称"));
+        head.add(Arrays.asList("流程状态"));
+        head.add(Arrays.asList("当前步骤"));
+        head.add(Arrays.asList("工单编号"));
+        head.add(Arrays.asList("提交人"));
+        head.add(Arrays.asList("提交部门"));
+        head.add(Arrays.asList("提交时间"));
+        head.add(Arrays.asList("结束时间"));
+        head.add(Arrays.asList("评分"));
+
+        // 动态JSON列
+        for (String key : jsonKeys) {
+            head.add(Arrays.asList(key));
+        }
+        return head;
     }
 }
