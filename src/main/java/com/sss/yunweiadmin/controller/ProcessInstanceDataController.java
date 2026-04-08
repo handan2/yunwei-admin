@@ -865,7 +865,7 @@ public class ProcessInstanceDataController {
         return startOrHandleProcessResultVO;
     }
 
-//    @PostMapping("start2")//备份原版，改为start2
+//    @PostMapping("start2")//备份原版，改为start2 式
 //    public boolean start2(@RequestBody StartProcessVO startProcessVO) {
 //        SysUser user = (SysUser) httpSession.getAttribute("user");
 //        System.out.println(startProcessVO.getValue2List().get(0).getAsId());
@@ -877,7 +877,7 @@ public class ProcessInstanceDataController {
 
 //    @OperateLog(module = "流程模块", type = "处理流程")
     @PostMapping("handle")
-    //返回值改造成自定义VO
+    //返回值改造成自定义VO  555
     public StartOrHandleProcessResultVO handle(@RequestBody CheckProcessVO checkProcessVO) {
         Integer orgId = GlobalParam.orgId;
         if(ObjectUtil.isNotEmpty(checkProcessVO.getOrgId())) {//20241106 流程的前端发来的机构D参数标记
