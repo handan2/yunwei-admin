@@ -38,6 +38,13 @@ import org.springframework.security.access.method.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.write.metadata.WriteSheet;
+import com.alibaba.fastjson.JSONObject;
+import javax.servlet.ServletOutputStream;
+import java.io.IOException;
+import java.net.URLEncoder;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -70,6 +77,9 @@ public class ProcessInstanceDataController {
     ProcessInstanceDataService processInstanceDataService;
     @Autowired
     ProcessInstanceNodeService processInstanceNodeService;
+
+    @Autowired
+    ProcessFormTemplateService processFormTemplateService;
     @Autowired
     HttpSession httpSession;
     @Autowired
@@ -694,7 +704,7 @@ public class ProcessInstanceDataController {
 //            return null;
 //        }
         String processType = proDef.getProcessType();
-        //20220528加判空：不能用OBjectUtil(不能判断size=0这种List）
+        //20220528加判空：不能用OBjectUtil(不能判断size=0这种List)
         if (CollUtil.isEmpty(value2List)) {
             return null;
         }
@@ -1171,5 +1181,189 @@ public class ProcessInstanceDataController {
             head.add(Arrays.asList(key));
         }
         return head;
+    }
+
+    /**
+     * 导出“新用户入网流程”已完成实例的Excel
+     * 创建者：小C
+     * 创建时间：2026-04-13
+     * 最近修改者：小C
+     * 修改时间：2026-04-13
+     */
+    @GetMapping("/exportNewUserInNet")
+    public void exportNewUserInNet(HttpServletResponse response) throws IOException {
+        // 1. 查询所有“新用户入网流程”且状态为“完成”的流程实例
+        List<ProcessInstanceData> instanceList = processInstanceDataService.list(
+            new QueryWrapper<ProcessInstanceData>()
+                .eq("org_id", GlobalParam.orgId)
+                .like("process_name", "新用户入网流程")
+                .eq("process_status", "完成")
+        );
+
+        if (CollUtil.isEmpty(instanceList)) {
+            response.setContentType("text/plain;charset=UTF-8");
+            response.getWriter().write("无数据可导出");
+            return;
+        }
+
+        // 2. 获取所有相关流程定义ID
+        Set<Integer> processDefIds = instanceList.stream()
+            .map(ProcessInstanceData::getProcessDefinitionId)
+            .collect(Collectors.toSet());
+
+        // 3. 查询所有相关模板字段
+        List<ProcessFormTemplate> templateList = processFormTemplateService.list(
+            new QueryWrapper<ProcessFormTemplate>()
+                .eq("org_id", GlobalParam.orgId)
+                .in("process_definition_id", processDefIds)
+        );
+        // 只保留label为指定五个字段的模板
+        List<String> targetLabels = Arrays.asList("登录账号", "身份ID", "用户部门", "用户密级", "用户职务");
+        // id -> label（只保留label为目标字段的模板）
+        Map<Integer, String> idToLabel = templateList.stream()
+            .filter(t -> targetLabels.contains(t.getLabel()))
+            .collect(Collectors.toMap(ProcessFormTemplate::getId, ProcessFormTemplate::getLabel));
+
+        // 4. 查询所有相关表单value（用act_process_instance_id关联）
+        List<String> actInstanceIds = instanceList.stream().map(ProcessInstanceData::getActProcessInstanceId).collect(Collectors.toList());
+        List<ProcessFormValue1> valueList = processFormValue1Service.list(
+            new QueryWrapper<ProcessFormValue1>()
+                .eq("org_id", GlobalParam.orgId)
+                .in("act_process_instance_id", actInstanceIds)
+        );
+        Map<String, String> actIdToValue = valueList.stream()
+            .collect(Collectors.toMap(ProcessFormValue1::getActProcessInstanceId, ProcessFormValue1::getValue));
+
+        // 5. 组装Excel数据
+        List<Map<String, String>> excelData = new ArrayList<>();
+        for (ProcessInstanceData instance : instanceList) {
+            Map<String, String> row = new HashMap<>();
+            row.put("流程编号", instance.getOrderNum());
+            row.put("提交人", instance.getDisplayName());
+            row.put("提交部门", instance.getDeptName());
+            row.put("提交时间", instance.getStartDatetime() != null ? instance.getStartDatetime().toString() : "");
+            row.put("完成时间", instance.getEndDatetime() != null ? instance.getEndDatetime().toString() : "");
+
+            String valueJson = actIdToValue.get(instance.getActProcessInstanceId());
+            if (StrUtil.isNotBlank(valueJson)) {
+                JSONObject valueObj = JSONObject.parseObject(valueJson);
+                for (Map.Entry<Integer, String> entry : idToLabel.entrySet()) {
+                    String key = entry.getKey().toString();
+                    // 只考虑 key 为纯数字且 JSON 里有该 key
+                    if (key.matches("\\d+") && valueObj.containsKey(key)) {
+                        row.put(entry.getValue(), valueObj.getString(key));
+                    }
+                }
+            }
+            excelData.add(row);
+        }
+
+        // 6. 导出Excel（EasyExcel）
+        response.setContentType("application/vnd.ms-excel");
+        response.setHeader("Content-Disposition", "attachment;filename=new_user_in_net.xlsx");
+        ServletOutputStream out = response.getOutputStream();
+
+        // 构建表头
+        List<List<String>> head = new ArrayList<>();
+        head.add(Collections.singletonList("流程编号"));
+        head.add(Collections.singletonList("提交人"));
+        head.add(Collections.singletonList("提交部门"));
+        head.add(Collections.singletonList("提交时间"));
+        head.add(Collections.singletonList("完成时间"));
+        for (String label : targetLabels) {
+            head.add(Collections.singletonList(label));
+        }
+
+        // 构建数据
+        List<List<String>> data = excelData.stream()
+            .map(row -> head.stream().map(h -> row.getOrDefault(h.get(0), "")).collect(Collectors.toList()))
+            .collect(Collectors.toList());
+
+        EasyExcel.write(out)
+                .head(head)
+                .sheet("新用户入网流程")
+                .doWrite(data);
+        out.flush();
+        out.close();
+    }
+
+    /**
+     * 调试导出：导出所有新用户入网流程的所有 JSON 字段
+     * 创建者：小C
+     * 创建时间：2026-04-13
+     */
+    @GetMapping("/exportNewUserInNetDebug")
+    public void exportNewUserInNetDebug(HttpServletResponse response) {
+        // 1. 查询流程实例
+        List<ProcessInstanceData> instanceList = processInstanceDataService.list(
+                new QueryWrapper<ProcessInstanceData>()
+                        .like("process_name", "新用户入网流程")
+                        .eq("process_status", "完成")
+                        .eq("org_id", GlobalParam.orgId)
+        );
+
+        List<String> actProcessInstanceIds = instanceList.stream().map(ProcessInstanceData::getActProcessInstanceId).collect(Collectors.toList());
+        List<ProcessFormValue1> valueList = processFormValue1Service.list(
+                new QueryWrapper<ProcessFormValue1>()
+                        .in("act_process_instance_id", actProcessInstanceIds)
+        );
+        Map<String, String> actIdToValue = valueList.stream().collect(Collectors.toMap(ProcessFormValue1::getActProcessInstanceId, ProcessFormValue1::getValue));
+
+        // 2. 收集所有 JSON 字段 key
+        Set<String> allJsonKeys = new LinkedHashSet<>();
+        for (ProcessInstanceData instance : instanceList) {
+            String valueJson = actIdToValue.get(instance.getActProcessInstanceId());
+            if (StrUtil.isNotBlank(valueJson)) {
+                JSONObject valueObj = JSONObject.parseObject(valueJson);
+                allJsonKeys.addAll(valueObj.keySet());
+            }
+        }
+
+        // 3. 构建表头
+        List<String> headList = new ArrayList<>();
+        headList.add("流程编号");
+        headList.add("提交人");
+        headList.add("提交部门");
+        headList.add("提交时间");
+        headList.add("完成时间");
+        headList.addAll(allJsonKeys);
+
+        // 4. 构建数据
+        List<List<String>> data = new ArrayList<>();
+        for (ProcessInstanceData instance : instanceList) {
+            List<String> row = new ArrayList<>();
+            row.add(instance.getOrderNum());
+            row.add(instance.getDisplayName());
+            row.add(instance.getDeptName());
+            row.add(instance.getStartDatetime() != null ? instance.getStartDatetime().toString() : "");
+            row.add(instance.getEndDatetime() != null ? instance.getEndDatetime().toString() : "");
+
+            String valueJson = actIdToValue.get(instance.getActProcessInstanceId());
+            JSONObject valueObj = StrUtil.isNotBlank(valueJson) ? JSONObject.parseObject(valueJson) : new JSONObject();
+            for (String key : allJsonKeys) {
+                row.add(valueObj.getString(key));
+            }
+            data.add(row);
+        }
+
+        // 5. 写入 Excel
+        try {
+            response.setContentType("application/vnd.ms-excel");
+            response.setCharacterEncoding("utf-8");
+            String fileName = java.net.URLEncoder.encode("新用户入网流程_调试导出.xlsx", "UTF-8");
+            response.setHeader("Content-disposition", "attachment;filename=" + fileName);
+
+            List<List<String>> head = new ArrayList<>();
+            for (String col : headList) {
+                head.add(Collections.singletonList(col));
+            }
+
+            EasyExcel.write(response.getOutputStream())
+                    .head(head)
+                    .sheet("sheet1")
+                    .doWrite(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
